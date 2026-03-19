@@ -42,6 +42,11 @@
       padding: 40px 0 0 0;
     }
 
+    .confirm-view {
+      justify-content: flex-start;
+      padding: 40px 0 0 0;
+    }
+
     .status-view {
       flex-direction: column;
       justify-content: flex-start;
@@ -201,6 +206,11 @@
       <input type="number" id="initialNumber" inputmode="numeric" min="1" step="1" oninput="validateInitialInvoiceNumber()">
       <div id="invoiceNumberError" class="inline-error" aria-live="polite"></div>
     </div>
+    <!-- Vue confirmation -->
+    <div id="confirmView" class="popup-view confirm-view">
+      <div class="message-title" id="confirmTitle"></div>
+      <div class="message-sub" id="confirmMessage"></div>
+    </div>
     <!-- Formulaire initial -->
     <div id="formView" class="popup-view form-view active">
       <div class="label">Contact :</div>
@@ -234,7 +244,7 @@
     <!-- Pied de page -->
     <div class="footer">
       <button id="submit" class="btn btn-green" disabled onclick="handlePrimaryAction()">Générer la facture</button>
-      <button id="close" class="btn btn-white" style="display:none;" onclick="google.script.host.close()">Fermer</button>
+      <button id="close" class="btn btn-white" style="display:none;" onclick="handleSecondaryAction()">Fermer</button>
       <button id="openPdf" class="btn btn-green" style="display:none;" onclick="openPdfAndClose()">Ouvrir le PDF</button>
     </div>
   </div>
@@ -242,12 +252,22 @@
   <script>
     let pdfUrl = '';
     let currentPrimaryAction = null;
-    const popupViewIds = ["invoiceNumberView", "formView", "loadingView", "successView", "errorView"];
+    let currentSecondaryAction = null;
+    const popupViewIds = ["invoiceNumberView", "confirmView", "formView", "loadingView", "successView", "errorView"];
     if (typeof window.initialInvoiceNumber === "undefined") {
       window.initialInvoiceNumber = null;
     }
     if (typeof window.requiresInitialInvoiceSetup === "undefined") {
       window.requiresInitialInvoiceSetup = false;
+    }
+    if (typeof window.showConfirmDelete === "undefined") {
+      window.showConfirmDelete = false;
+    }
+    if (typeof window.confirmViewTitle === "undefined") {
+      window.confirmViewTitle = "";
+    }
+    if (typeof window.confirmViewMessage === "undefined") {
+      window.confirmViewMessage = "";
     }
 
     function setActiveView(viewId) {
@@ -256,18 +276,27 @@
       });
     }
 
-    function setFooterButtons({ submit, openPdf, close, submitLabel }) {
+    function setFooterButtons({ submit, openPdf, close, submitLabel, closeLabel }) {
       document.getElementById("submit").style.display = submit;
       document.getElementById("openPdf").style.display = openPdf;
       document.getElementById("close").style.display = close;
       if (typeof submitLabel !== "undefined") {
         document.getElementById("submit").textContent = submitLabel;
       }
+      if (typeof closeLabel !== "undefined") {
+        document.getElementById("close").textContent = closeLabel;
+      }
     }
 
     function handlePrimaryAction() {
       if (typeof currentPrimaryAction === "function") {
         currentPrimaryAction();
+      }
+    }
+
+    function handleSecondaryAction() {
+      if (typeof currentSecondaryAction === "function") {
+        currentSecondaryAction();
       }
     }
 
@@ -301,6 +330,23 @@
       clearInvoiceNumberInlineError();
       showFormView();
       validateForm();
+    }
+
+    function showConfirmView({ title, message, onConfirm, onCancel }) {
+      document.getElementById("confirmTitle").textContent = title;
+      document.getElementById("confirmMessage").textContent = message;
+      document.getElementById("errorMessage").textContent = "";
+      setActiveView("confirmView");
+      setFooterButtons({
+        submit: "block",
+        openPdf: "none",
+        close: "block",
+        submitLabel: "Supprimer",
+        closeLabel: "Annuler"
+      });
+      document.getElementById("submit").disabled = false;
+      currentPrimaryAction = onConfirm;
+      currentSecondaryAction = onCancel;
     }
 
     // Remplir les menus déroulants avec les données injectées
@@ -366,17 +412,19 @@
     function showFormView() {
       document.getElementById("errorMessage").textContent = "";
       setActiveView("formView");
-      setFooterButtons({ submit: "block", openPdf: "none", close: "none", submitLabel: "Générer la facture" });
+      setFooterButtons({ submit: "block", openPdf: "none", close: "none", submitLabel: "Générer la facture", closeLabel: "Fermer" });
       currentPrimaryAction = submit;
+      currentSecondaryAction = () => google.script.host.close();
     }
 
     function showInvoiceNumberView() {
       clearInvoiceNumberInlineError();
       document.getElementById("errorMessage").textContent = "";
       setActiveView("invoiceNumberView");
-      setFooterButtons({ submit: "block", openPdf: "none", close: "none", submitLabel: "OK" });
+      setFooterButtons({ submit: "block", openPdf: "none", close: "none", submitLabel: "OK", closeLabel: "Fermer" });
       document.getElementById("submit").disabled = false;
       currentPrimaryAction = submitInitialInvoiceNumber;
+      currentSecondaryAction = () => google.script.host.close();
       document.getElementById("initialNumber").focus();
     }
 
@@ -384,18 +432,24 @@
       document.getElementById("errorMessage").textContent = "";
       setActiveView("loadingView");
       setFooterButtons({ submit: "none", openPdf: "none", close: "none" });
+      currentPrimaryAction = null;
+      currentSecondaryAction = null;
     }
 
     function showSuccessView() {
       document.getElementById("errorMessage").textContent = "";
       setActiveView("successView");
-      setFooterButtons({ submit: "none", openPdf: "block", close: "block" });
+      setFooterButtons({ submit: "none", openPdf: "block", close: "block", closeLabel: "Fermer" });
+      currentPrimaryAction = null;
+      currentSecondaryAction = () => google.script.host.close();
     }
 
     function showErrorView(message) {
       document.getElementById("errorMessage").textContent = message;
       setActiveView("errorView");
-      setFooterButtons({ submit: "none", openPdf: "none", close: "block" });
+      setFooterButtons({ submit: "none", openPdf: "none", close: "block", closeLabel: "Fermer" });
+      currentPrimaryAction = null;
+      currentSecondaryAction = () => google.script.host.close();
     }
 
     function openPdfAndClose() {
@@ -431,7 +485,18 @@
     // Remplir les menus déroulants au chargement
     document.addEventListener("DOMContentLoaded", () => {
       populateDropdowns();
-      if (window.initialInvoiceNumber === null && window.requiresInitialInvoiceSetup) {
+      if (window.showConfirmDelete) {
+        showConfirmView({
+          title: window.confirmViewTitle,
+          message: window.confirmViewMessage,
+          onConfirm: () => {
+            google.script.run
+              .withSuccessHandler(() => google.script.host.close())
+              .supprimerLignesCochées();
+          },
+          onCancel: () => google.script.host.close()
+        });
+      } else if (window.initialInvoiceNumber === null && window.requiresInitialInvoiceSetup) {
         showInvoiceNumberView();
       } else {
         showFormView();

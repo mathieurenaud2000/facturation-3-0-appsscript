@@ -798,14 +798,15 @@ function trash() {
   const data = sheet.getRange("A7:A").getValues();
   const ligneCocheeCount = data.filter(row => row[0] === true).length;
 
-  const html = HtmlService.createTemplateFromFile("confirmDelete");
-  html.ligneCocheeCount = ligneCocheeCount;
-
-  const output = html.evaluate()
+  const confirmTitle = `Supprimer ${ligneCocheeCount} ligne${ligneCocheeCount > 1 ? 's' : ''}`;
+  const confirmMessage = `Confirmer la suppression de ${ligneCocheeCount} ligne${ligneCocheeCount > 1 ? 's' : ''} ?`;
+  const output = HtmlService.createHtmlOutputFromFile("popup")
     .setWidth(400)
     .setHeight(220);
+  output.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  output.append(`<script>var contacts = []; var activityTypes = []; var initialInvoiceNumber = null; var requiresInitialInvoiceSetup = false; var showConfirmDelete = true; var confirmViewTitle = ${JSON.stringify(confirmTitle)}; var confirmViewMessage = ${JSON.stringify(confirmMessage)};</script>`);
 
-  SpreadsheetApp.getUi().showModalDialog(output, `Supprimer ${ligneCocheeCount} ligne${ligneCocheeCount > 1 ? 's' : ''}`);
+  SpreadsheetApp.getUi().showModalDialog(output, confirmTitle);
 }
 
 function supprimerLignesCochées() {
@@ -993,8 +994,9 @@ function info() {
   html.website = website;
   html.nextInvoice = nextInvoice;
 
-  SpreadsheetApp.getUi().showModalDialog(
-    html.evaluate().setWidth(600).setHeight(450),
+  const htmlOutput = html.evaluate().setWidth(600).setHeight(450);
+  SpreadsheetApp.getUi().showModelessDialog(
+    htmlOutput,
     "Configuration de la facture"
   );
 }
@@ -1035,7 +1037,7 @@ function dossier() {
     const folder = DriveApp.getFolderById(folderId);
     const url = folder.getUrl();
     const html = `<script>window.open('${url}', '_blank'); google.script.host.close();</script>`;
-    SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(1).setHeight(1), "Ouvrir le dossier");
+    SpreadsheetApp.getUi().showModelessDialog(HtmlService.createHtmlOutput(html).setWidth(1).setHeight(1), "Ouvrir le dossier");
   } catch (e) {
     SpreadsheetApp.getUi().alert("Erreur : ID de dossier invalide.");
   }
