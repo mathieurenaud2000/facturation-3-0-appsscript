@@ -445,11 +445,15 @@
     }
 
     function showErrorView(message) {
-      document.getElementById("errorMessage").textContent = message;
+      const safeMessage = typeof message === "string" && message.trim() !== ""
+        ? message
+        : "Une erreur est survenue.";
+      pdfUrl = "";
+      document.getElementById("errorMessage").textContent = safeMessage;
       setActiveView("errorView");
-      setFooterButtons({ submit: "none", openPdf: "none", close: "block", closeLabel: "Fermer" });
+      setFooterButtons({ submit: "none", openPdf: "none", close: "block", closeLabel: "Retour" });
       currentPrimaryAction = null;
-      currentSecondaryAction = () => google.script.host.close();
+      currentSecondaryAction = showFormView;
     }
 
     function openPdfAndClose() {
@@ -477,7 +481,7 @@
           }
         })
         .withFailureHandler(error => {
-          showErrorView(`Erreur inattendue : ${error.message}`);
+          showErrorView(error && error.message ? `Erreur inattendue : ${error.message}` : null);
         })
         .submitFacturerForm(contact, activityType, window.initialInvoiceNumber);
     }
