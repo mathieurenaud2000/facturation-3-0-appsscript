@@ -256,7 +256,7 @@
     <div class="footer">
       <button id="submit" class="btn btn-green" disabled onclick="handlePrimaryAction()">Générer la facture</button>
       <button id="close" class="btn btn-white" style="display:none;" onclick="handleSecondaryAction()">Fermer</button>
-      <button id="openPdf" class="btn btn-green" style="display:none;" onclick="openPdfAndClose()">Ouvrir le PDF</button>
+      <button id="openPdf" class="btn btn-green" style="display:none;" onclick="handlePrimaryAction()">Ouvrir le PDF</button>
     </div>
   </div>
 
@@ -312,16 +312,68 @@
       });
     }
 
-    function setFooterButtons({ submit, openPdf, close, submitLabel, closeLabel }) {
-      document.getElementById("submit").style.display = submit;
-      document.getElementById("openPdf").style.display = openPdf;
-      document.getElementById("close").style.display = close;
-      if (typeof submitLabel !== "undefined") {
-        document.getElementById("submit").textContent = submitLabel;
+    function setFooterButtons(footer) {
+      const normalizedFooter = Object.assign({
+        primary: { label: "", visible: false },
+        secondary: { label: "", visible: false },
+        openPdf: { visible: false }
+      }, footer || {});
+      const primaryButton = document.getElementById("submit");
+      const secondaryButton = document.getElementById("close");
+      const openPdfButton = document.getElementById("openPdf");
+
+      primaryButton.style.display = normalizedFooter.primary.visible ? "block" : "none";
+      secondaryButton.style.display = normalizedFooter.secondary.visible ? "block" : "none";
+      openPdfButton.style.display = normalizedFooter.openPdf.visible ? "block" : "none";
+
+      if (typeof normalizedFooter.primary.label === "string" && normalizedFooter.primary.label !== "") {
+        primaryButton.textContent = normalizedFooter.primary.label;
       }
-      if (typeof closeLabel !== "undefined") {
-        document.getElementById("close").textContent = closeLabel;
+      if (typeof normalizedFooter.secondary.label === "string" && normalizedFooter.secondary.label !== "") {
+        secondaryButton.textContent = normalizedFooter.secondary.label;
       }
+    }
+
+    function setPopupState({
+      view,
+      title,
+      message,
+      footer,
+      primaryAction,
+      secondaryAction
+    }) {
+      if (view === "formView") {
+        pdfUrl = "";
+        pendingInvoiceSubmission = null;
+      }
+
+      if (view === "confirmView") {
+        document.getElementById("confirmTitle").textContent = title || "";
+        document.getElementById("confirmMessage").textContent = message || "";
+      } else if (view === "messageView") {
+        const safeTitle = typeof title === "string" && title.trim() !== "" ? title : "Information";
+        const safeMessage = typeof message === "string" && message.trim() !== ""
+          ? message
+          : "Une erreur est survenue.";
+        document.getElementById("messageViewTitle").textContent = safeTitle;
+        document.getElementById("messageViewMessage").textContent = safeMessage;
+      } else if (view === "errorView") {
+        const safeMessage = typeof message === "string" && message.trim() !== ""
+          ? message
+          : "Une erreur est survenue.";
+        pdfUrl = "";
+        document.getElementById("errorMessage").textContent = safeMessage;
+      }
+
+      if (view !== "errorView") {
+        document.getElementById("errorMessage").textContent = "";
+      }
+
+      setActiveView(view);
+      setFooterButtons(footer);
+      document.getElementById("submit").disabled = !footer || !footer.primary || !footer.primary.visible;
+      currentPrimaryAction = typeof primaryAction === "function" ? primaryAction : null;
+      currentSecondaryAction = typeof secondaryAction === "function" ? secondaryAction : null;
     }
 
     function handlePrimaryAction() {
@@ -416,39 +468,33 @@
     }
 
     function showConfirmView({ title, message, action, confirmLabel, cancelLabel }) {
-      document.getElementById("confirmTitle").textContent = title;
-      document.getElementById("confirmMessage").textContent = message;
-      document.getElementById("errorMessage").textContent = "";
-      setActiveView("confirmView");
-      setFooterButtons({
-        submit: "block",
-        openPdf: "none",
-        close: "block",
-        submitLabel: confirmLabel || "Confirmer",
-        closeLabel: cancelLabel || "Annuler"
+      setPopupState({
+        view: "confirmView",
+        title,
+        message,
+        footer: {
+          primary: { label: confirmLabel || "Confirmer", visible: true },
+          secondary: { label: cancelLabel || "Annuler", visible: true },
+          openPdf: { visible: false }
+        },
+        primaryAction: () => handleConfirmAction(action, true),
+        secondaryAction: () => handleConfirmAction(action, false)
       });
-      document.getElementById("submit").disabled = false;
-      currentPrimaryAction = () => handleConfirmAction(action, true);
-      currentSecondaryAction = () => handleConfirmAction(action, false);
     }
 
     function showMessageView({ title, message }) {
-      const safeTitle = typeof title === "string" && title.trim() !== "" ? title : "Information";
-      const safeMessage = typeof message === "string" && message.trim() !== ""
-        ? message
-        : "Une erreur est survenue.";
-      document.getElementById("messageViewTitle").textContent = safeTitle;
-      document.getElementById("messageViewMessage").textContent = safeMessage;
-      document.getElementById("errorMessage").textContent = "";
-      setActiveView("messageView");
-      setFooterButtons({
-        submit: "none",
-        openPdf: "none",
-        close: "block",
-        closeLabel: "Fermer"
+      setPopupState({
+        view: "messageView",
+        title,
+        message,
+        footer: {
+          primary: { label: "", visible: false },
+          secondary: { label: "Fermer", visible: true },
+          openPdf: { visible: false }
+        },
+        primaryAction: null,
+        secondaryAction: () => google.script.host.close()
       });
-      currentPrimaryAction = null;
-      currentSecondaryAction = () => google.script.host.close();
     }
 
     // Remplir les menus déroulants avec les données injectées
@@ -512,50 +558,72 @@
     }
 
     function showFormView() {
-      document.getElementById("errorMessage").textContent = "";
-      setActiveView("formView");
-      setFooterButtons({ submit: "block", openPdf: "none", close: "none", submitLabel: "Générer la facture", closeLabel: "Fermer" });
-      currentPrimaryAction = submit;
-      currentSecondaryAction = () => google.script.host.close();
+      setPopupState({
+        view: "formView",
+        footer: {
+          primary: { label: "Générer la facture", visible: true },
+          secondary: { label: "Fermer", visible: false },
+          openPdf: { visible: false }
+        },
+        primaryAction: submit,
+        secondaryAction: () => google.script.host.close()
+      });
     }
 
     function showInvoiceNumberView() {
       clearInvoiceNumberInlineError();
-      document.getElementById("errorMessage").textContent = "";
-      setActiveView("invoiceNumberView");
-      setFooterButtons({ submit: "block", openPdf: "none", close: "none", submitLabel: "OK", closeLabel: "Fermer" });
+      setPopupState({
+        view: "invoiceNumberView",
+        footer: {
+          primary: { label: "OK", visible: true },
+          secondary: { label: "Fermer", visible: false },
+          openPdf: { visible: false }
+        },
+        primaryAction: submitInitialInvoiceNumber,
+        secondaryAction: () => google.script.host.close()
+      });
       document.getElementById("submit").disabled = false;
-      currentPrimaryAction = submitInitialInvoiceNumber;
-      currentSecondaryAction = () => google.script.host.close();
       document.getElementById("initialNumber").focus();
     }
 
     function showLoadingView() {
-      document.getElementById("errorMessage").textContent = "";
-      setActiveView("loadingView");
-      setFooterButtons({ submit: "none", openPdf: "none", close: "none" });
-      currentPrimaryAction = null;
-      currentSecondaryAction = null;
+      setPopupState({
+        view: "loadingView",
+        footer: {
+          primary: { label: "", visible: false },
+          secondary: { label: "", visible: false },
+          openPdf: { visible: false }
+        },
+        primaryAction: null,
+        secondaryAction: null
+      });
     }
 
     function showSuccessView() {
-      document.getElementById("errorMessage").textContent = "";
-      setActiveView("successView");
-      setFooterButtons({ submit: "none", openPdf: "block", close: "block", closeLabel: "Fermer" });
-      currentPrimaryAction = null;
-      currentSecondaryAction = () => google.script.host.close();
+      setPopupState({
+        view: "successView",
+        footer: {
+          primary: { label: "", visible: false },
+          secondary: { label: "Fermer", visible: true },
+          openPdf: { visible: true }
+        },
+        primaryAction: openPdfAndClose,
+        secondaryAction: () => google.script.host.close()
+      });
     }
 
     function showErrorView(message) {
-      const safeMessage = typeof message === "string" && message.trim() !== ""
-        ? message
-        : "Une erreur est survenue.";
-      pdfUrl = "";
-      document.getElementById("errorMessage").textContent = safeMessage;
-      setActiveView("errorView");
-      setFooterButtons({ submit: "none", openPdf: "none", close: "block", closeLabel: "Retour" });
-      currentPrimaryAction = null;
-      currentSecondaryAction = showFormView;
+      setPopupState({
+        view: "errorView",
+        message,
+        footer: {
+          primary: { label: "", visible: false },
+          secondary: { label: "Retour", visible: true },
+          openPdf: { visible: false }
+        },
+        primaryAction: null,
+        secondaryAction: showFormView
+      });
     }
 
     function openPdfAndClose() {
