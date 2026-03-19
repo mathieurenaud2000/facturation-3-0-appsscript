@@ -264,6 +264,12 @@
     let currentPrimaryAction = null;
     let currentSecondaryAction = null;
     const popupViewIds = ["invoiceNumberView", "confirmView", "messageView", "formView", "loadingView", "successView", "errorView"];
+    if (typeof window.contacts === "undefined") {
+      window.contacts = [];
+    }
+    if (typeof window.activityTypes === "undefined") {
+      window.activityTypes = [];
+    }
     if (typeof window.initialInvoiceNumber === "undefined") {
       window.initialInvoiceNumber = null;
     }
@@ -368,7 +374,7 @@
       currentSecondaryAction = onCancel;
     }
 
-    function showMessageView({ title, message, onClose }) {
+    function showMessageView({ title, message }) {
       const safeTitle = typeof title === "string" && title.trim() !== "" ? title : "Information";
       const safeMessage = typeof message === "string" && message.trim() !== ""
         ? message
@@ -384,7 +390,7 @@
         closeLabel: "Fermer"
       });
       currentPrimaryAction = null;
-      currentSecondaryAction = typeof onClose === "function" ? onClose : () => google.script.host.close();
+      currentSecondaryAction = () => google.script.host.close();
     }
 
     // Remplir les menus déroulants avec les données injectées
@@ -544,8 +550,7 @@
       } else if (window.showStandaloneMessage) {
         showMessageView({
           title: window.messageViewTitle,
-          message: window.messageViewMessage,
-          onClose: () => google.script.host.close()
+          message: window.messageViewMessage
         });
       } else if (window.initialInvoiceNumber === null && window.requiresInitialInvoiceSetup) {
         showInvoiceNumberView();
