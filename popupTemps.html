@@ -17,6 +17,31 @@
       flex-direction: column;
     }
 
+    .popup-view {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .popup-view.active {
+      display: flex;
+    }
+
+    .form-view {
+      justify-content: flex-start;
+    }
+
+    .status-view {
+      justify-content: flex-start;
+      padding-top: 75px;
+    }
+
+    .error-view {
+      justify-content: flex-start;
+      padding-top: 60px;
+    }
+
     .form-container {
       flex: 1;
       display: flex;
@@ -97,15 +122,6 @@
       border: 1px solid #45a049;
     }
 
-    .loader {
-      display: none;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: center;
-      flex: 1;
-      margin-top: 75px;
-    }
-
     .spinner {
       border: 16px solid #f3f3f3;
       border-top: 16px solid #4CAF50;
@@ -119,46 +135,88 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+
+    .message-title {
+      font-size: 16pt;
+      font-weight: bold;
+      text-align: center;
+      margin: 20px 0 5px 0;
+    }
+
+    .message-sub {
+      font-size: 14pt;
+      text-align: center;
+    }
+
+    .success-icon {
+      color: #4CAF50;
+      font-size: 90px;
+      margin-bottom: 15px;
+    }
+
+    .error-actions {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div id="formContainer" class="form-container">
-      <div class="label" id="clientLabel">Client :</div>
-      <select id="clientSelect" onchange="handleClientChange()">
-        <option value="">Sélectionnez un client</option>
-        <?!= Array.isArray(clients) ? clients.map(client => `<option value="${client}" ${client === (clientSelected || '') ? 'selected' : ''}>${client}</option>`).join('') : '' ?>
-        <option value="__autre__">Autre...</option>
-      </select>
-      <input type="text" id="newClientInput" placeholder="Entrez un nouveau client" style="display:none;">
-      <div class="label">Campagne :</div>
-      <input type="text" id="campaign" value="<?!= typeof campaign === 'string' ? campaign : '' ?>">
-      <div class="label">Projet :</div>
-      <input type="text" id="project" value="<?!= typeof project === 'string' ? project : '' ?>">
-      <div class="label" id="activityLabel">Activité :</div>
-      <select id="activitySelect" onchange="handleActivityChange()">
-        <option value="">Sélectionnez une activité</option>
-        <?!= Array.isArray(activities) ? activities.map(activity => `<option value="${activity}" ${activity === (activitySelected || '') ? 'selected' : ''}>${activity}</option>`).join('') : '' ?>
-        <option value="__autre__">Autre...</option>
-      </select>
-      <input type="text" id="newActivityInput" placeholder="Entrez une nouvelle activité" style="display:none;">
-    </div>
+    <div id="formView" class="popup-view form-view active">
+      <div id="formContainer" class="form-container">
+        <div class="label" id="clientLabel">Client :</div>
+        <select id="clientSelect" onchange="handleClientChange()">
+          <option value="">Sélectionnez un client</option>
+          <?!= Array.isArray(clients) ? clients.map(client => `<option value="${client}" ${client === (clientSelected || '') ? 'selected' : ''}>${client}</option>`).join('') : '' ?>
+          <option value="__autre__">Autre...</option>
+        </select>
+        <input type="text" id="newClientInput" placeholder="Entrez un nouveau client" style="display:none;">
+        <div class="label">Campagne :</div>
+        <input type="text" id="campaign" value="<?!= typeof campaign === 'string' ? campaign : '' ?>">
+        <div class="label">Projet :</div>
+        <input type="text" id="project" value="<?!= typeof project === 'string' ? project : '' ?>">
+        <div class="label" id="activityLabel">Activité :</div>
+        <select id="activitySelect" onchange="handleActivityChange()">
+          <option value="">Sélectionnez une activité</option>
+          <?!= Array.isArray(activities) ? activities.map(activity => `<option value="${activity}" ${activity === (activitySelected || '') ? 'selected' : ''}>${activity}</option>`).join('') : '' ?>
+          <option value="__autre__">Autre...</option>
+        </select>
+        <input type="text" id="newActivityInput" placeholder="Entrez une nouvelle activité" style="display:none;">
+      </div>
 
-    <div id="loader" class="loader">
-      <div class="spinner"></div>
-    </div>
-
-    <div class="footer" id="footer">
-      <div class="rate-container">
-        <div class="label">Taux :</div>
-        <select id="rate"></select>
-        <div id="newRateContainer" style="display: none; flex-direction: row; align-items: center; width: 100%;">
-          <input type="number" id="newRateInput" min="1" max="1000" style="width: 70px; font-size: 13pt; padding: 8px; border: 1px solid #ccc; border-radius: 0;" />
-          <span style="margin-left: 10px; font-size: 10pt; color: #888;">$/h</span>
+      <div class="footer" id="footer">
+        <div class="rate-container">
+          <div class="label">Taux :</div>
+          <select id="rate"></select>
+          <div id="newRateContainer" style="display: none; flex-direction: row; align-items: center; width: 100%;">
+            <input type="number" id="newRateInput" min="1" max="1000" style="width: 70px; font-size: 13pt; padding: 8px; border: 1px solid #ccc; border-radius: 0;" />
+            <span style="margin-left: 10px; font-size: 10pt; color: #888;">$/h</span>
+          </div>
+        </div>
+        <div class="btn-container">
+          <button id="submit" class="btn btn-green" onclick="submitForm()">OK</button>
         </div>
       </div>
-      <div class="btn-container">
-        <button id="submit" class="btn btn-green" onclick="submitForm()">OK</button>
+    </div>
+
+    <div id="loadingView" class="popup-view status-view">
+      <div class="spinner"></div>
+      <div class="message-title">Création de l'entrée</div>
+      <div class="message-sub">Veuillez patienter...</div>
+    </div>
+
+    <div id="successView" class="popup-view status-view">
+      <i class="fas fa-check-circle success-icon"></i>
+      <div class="message-title">Entrée créée</div>
+      <div class="message-sub">Fermeture en cours...</div>
+    </div>
+
+    <div id="errorView" class="popup-view error-view">
+      <div class="message-title">Erreur</div>
+      <div class="message-sub" id="errorMessage"></div>
+      <div class="error-actions">
+        <button class="btn btn-green" onclick="showFormView()">Retour</button>
       </div>
     </div>
   </div>
@@ -166,27 +224,54 @@
   <script>
     let rates = <?!= JSON.stringify(rates || ['0']) ?>;
     if (!Array.isArray(rates)) rates = ['0'];
+    const popupViewIds = ['formView', 'loadingView', 'successView', 'errorView'];
 
-    const rateSelect = document.getElementById('rate');
-    rates.forEach((rate, index) => {
-      const option = document.createElement('option');
-      option.value = rate;
-      option.text = rate === '0' ? 'Aucun taux disponible' : rate;
-      if (index === 0) option.selected = true;
-      rateSelect.appendChild(option);
-    });
+    function setActiveView(viewId) {
+      popupViewIds.forEach(id => {
+        document.getElementById(id).classList.toggle('active', id === viewId);
+      });
+    }
 
-    const plusOption = document.createElement('option');
-    plusOption.value = '__ajouter__';
-    plusOption.text = '+';
-    rateSelect.appendChild(plusOption);
+    function showFormView() {
+      setActiveView('formView');
+    }
 
-    rateSelect.addEventListener('change', () => {
-      if (rateSelect.value === '__ajouter__') {
-        rateSelect.style.display = 'none';
-        document.getElementById('newRateContainer').style.display = 'flex';
-      }
-    });
+    function showLoadingView() {
+      setActiveView('loadingView');
+    }
+
+    function showSuccessView() {
+      setActiveView('successView');
+    }
+
+    function showErrorView(message) {
+      document.getElementById('errorMessage').textContent = message;
+      setActiveView('errorView');
+    }
+
+    function initializeRateOptions() {
+      const rateSelect = document.getElementById('rate');
+      rateSelect.innerHTML = '';
+      rates.forEach((rate, index) => {
+        const option = document.createElement('option');
+        option.value = rate;
+        option.text = rate === '0' ? 'Aucun taux disponible' : rate;
+        if (index === 0) option.selected = true;
+        rateSelect.appendChild(option);
+      });
+
+      const plusOption = document.createElement('option');
+      plusOption.value = '__ajouter__';
+      plusOption.text = '+';
+      rateSelect.appendChild(plusOption);
+
+      rateSelect.addEventListener('change', () => {
+        if (rateSelect.value === '__ajouter__') {
+          rateSelect.style.display = 'none';
+          document.getElementById('newRateContainer').style.display = 'flex';
+        }
+      });
+    }
 
     function handleClientChange() {
       const select = document.getElementById('clientSelect');
@@ -256,14 +341,18 @@
       const finalClient = client === "__autre__" ? newClient : client;
       const finalActivity = activity === "__autre__" ? newActivity : activity;
 
-      document.getElementById('formContainer').style.display = 'none';
-      document.getElementById('footer').style.display = 'none';
-      document.getElementById('loader').style.display = 'flex';
+      showLoadingView();
 
       google.script.run
         .withSuccessHandler(() => {
-          google.script.host.close();
-          google.script.run.showBeepPopup();
+          showSuccessView();
+          window.setTimeout(() => {
+            google.script.host.close();
+            google.script.run.showBeepPopup();
+          }, 300);
+        })
+        .withFailureHandler(error => {
+          showErrorView(`Erreur : ${error.message}`);
         })
         .submitTimeEntryForm(
           finalClient,
@@ -277,6 +366,11 @@
           rate
         );
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      showFormView();
+      initializeRateOptions();
+    });
   </script>
 </body>
 </html>
