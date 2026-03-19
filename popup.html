@@ -193,8 +193,6 @@
         <option>Autre</option>
       </select>
       <input type="text" id="newActivityType" placeholder="Entrez une nouvelle activité" style="display:none;" oninput="validateForm()">
-      <div class="label invoice-number-label" id="invoiceNumberLabel" style="display:none;">Numéro de facture :</div>
-      <input type="number" id="invoiceNumber" placeholder="Entrez le numéro de facture" style="display:none;" min="1" step="1" oninput="validateForm()">
     </div>
     <!-- État de chargement -->
     <div class="loading-container">
@@ -221,20 +219,12 @@
 
   <script>
     let pdfUrl = '';
-    let showInvoiceNumberField = false;
-
-    // Vérifier si CONFIG!A2 est vide
-    google.script.run
-      .withSuccessHandler(result => {
-        showInvoiceNumberField = result.isConfigA2Empty;
-        document.getElementById("invoiceNumberLabel").style.display = showInvoiceNumberField ? "block" : "none";
-        document.getElementById("invoiceNumber").style.display = showInvoiceNumberField ? "block" : "none";
-        populateDropdowns();
-      })
-      .withFailureHandler(error => {
-        showError(`Erreur lors de la vérification de CONFIG!A2 : ${error.message}`);
-      })
-      .checkConfigA2();
+    if (typeof window.initialInvoicePrefix === "undefined") {
+      window.initialInvoicePrefix = null;
+    }
+    if (typeof window.initialInvoiceNumber === "undefined") {
+      window.initialInvoiceNumber = null;
+    }
 
     // Remplir les menus déroulants avec les données injectées
     function populateDropdowns() {
@@ -278,7 +268,6 @@
       const newContact = document.getElementById("newContact");
       const activitySelect = document.getElementById("activityType");
       const newActivityType = document.getElementById("newActivityType");
-      const invoiceNumber = document.getElementById("invoiceNumber");
       const submitBtn = document.getElementById("submit");
 
       // Afficher/masquer les champs "Autre"
@@ -290,16 +279,13 @@
         (contactSelect.value !== "Autre" || (newContact.value.trim() !== ""));
       const isActivityValid = activitySelect.value !== "Sélectionnez une activité" && 
         (activitySelect.value !== "Autre" || (newActivityType.value.trim() !== ""));
-      const isInvoiceNumberValid = !showInvoiceNumberField || 
-        (invoiceNumber.value.trim() !== "" && Number.isInteger(Number(invoiceNumber.value)) && Number(invoiceNumber.value) > 0);
 
       contactSelect.classList.toggle("invalid", !isContactValid);
       newContact.classList.toggle("invalid", contactSelect.value === "Autre" && newContact.value.trim() === "");
       activitySelect.classList.toggle("invalid", !isActivityValid);
       newActivityType.classList.toggle("invalid", activitySelect.value === "Autre" && newActivityType.value.trim() === "");
-      invoiceNumber.classList.toggle("invalid", showInvoiceNumberField && !isInvoiceNumberValid);
 
-      submitBtn.disabled = !(isContactValid && isActivityValid && isInvoiceNumberValid);
+      submitBtn.disabled = !(isContactValid && isActivityValid);
     }
 
     function showLoading() {
@@ -345,7 +331,6 @@
       const activityType = document.getElementById("activityType").value === "Autre" ? 
         document.getElementById("newActivityType").value.trim() : 
         document.getElementById("activityType").value;
-      const invoiceNumber = showInvoiceNumberField ? Number(document.getElementById("invoiceNumber").value) : null;
 
       showLoading();
 
@@ -361,7 +346,7 @@
         .withFailureHandler(error => {
           showError(`Erreur inattendue : ${error.message}`);
         })
-        .submitFacturerForm(contact, activityType, invoiceNumber);
+        .submitFacturerForm(contact, activityType, window.initialInvoicePrefix, window.initialInvoiceNumber);
     }
 
     // Remplir les menus déroulants au chargement

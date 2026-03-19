@@ -139,7 +139,7 @@ function Facturer() {
 
   const folderId = String(facturerGestionSheet.getRange("E2").getValue() || "");
   if (!folderId) {
-    facturerUi.alert("Erreur : Aucun dossier Google Drive configuré dans GESTION!E2. Veuillez configurer via le menu Configuration.", SpreadsheetApp.getUi().ButtonSet.OK);
+    facturerUi.alert("Erreur : Aucun dossier configuré.", SpreadsheetApp.getUi().ButtonSet.OK);
     return;
   }
 
@@ -147,12 +147,10 @@ function Facturer() {
   try {
     facturerDriveFolder = DriveApp.getFolderById(folderId);
   } catch (e) {
-    facturerUi.alert("Erreur : L’ID du dossier dans GESTION!E2 est invalide.", SpreadsheetApp.getUi().ButtonSet.OK);
+    facturerUi.alert("Erreur : ID de dossier invalide.", SpreadsheetApp.getUi().ButtonSet.OK);
     return;
   }
 
-  const facturerLastInvoiceNumber = Number(facturerConfigSheet.getRange("A2").getValue()) || 0;
-  const facturerNewInvoiceNumber = facturerLastInvoiceNumber + 1;
   const facturerContacts = facturerConfigSheet.getRange("B2:B" + facturerConfigSheet.getLastRow()).getValues().flat().filter(String);
   const facturerActivityTypes = facturerConfigSheet.getRange("C2:C" + facturerConfigSheet.getLastRow()).getValues().flat().filter(String);
 
@@ -239,30 +237,196 @@ function Facturer() {
     return;
   }
 
+  if (checkInvoiceNumberingSetup().requiresInitialInvoiceSetup) {
+    const facturerInitialNumberHtml = HtmlService.createHtmlOutputFromFile("popupInvoiceNumber")
+      .setWidth(420)
+      .setHeight(220);
+    facturerUi.showModalDialog(facturerInitialNumberHtml, "Numéro de facture");
+    return;
+  }
+
+  showFacturerPopup(facturerContacts, facturerActivityTypes, null, null);
+}
+
+function checkInvoiceNumberingSetup() {
+  const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const facturerTrackingSheet = facturerSpreadsheet.getSheetByName("FACTURATION");
+  if (!facturerTrackingSheet) {
+    throw new Error("La feuille 'FACTURATION' est manquante.");
+  }
+  const facturerTrackingLastRow = facturerTrackingSheet.getLastRow();
+  const existingInvoiceValues = facturerTrackingLastRow >= 6
+    ? facturerTrackingSheet.getRange(`B6:B${facturerTrackingLastRow}`).getValues().flat().map(value => String(value || "").trim()).filter(String)
+    : [];
+  return { requiresInitialInvoiceSetup: existingInvoiceValues.length === 0 };
+}
+
+function showFacturerPopup(facturerContacts, facturerActivityTypes, invoicePrefix, invoiceNumber) {
+  const facturerUi = SpreadsheetApp.getUi();
   const facturerHtml = HtmlService.createHtmlOutputFromFile("popup")
     .setWidth(400)
     .setHeight(350);
   facturerHtml.addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  facturerHtml.append(`<script>var contacts = ${JSON.stringify(facturerContacts)}; var activityTypes = ${JSON.stringify(facturerActivityTypes)};</script>`);
+  facturerHtml.append(`<script>var contacts = ${JSON.stringify(facturerContacts)}; var activityTypes = ${JSON.stringify(facturerActivityTypes)}; var initialInvoicePrefix = ${JSON.stringify(invoicePrefix)}; var initialInvoiceNumber = ${JSON.stringify(invoiceNumber)};</script>`);
   facturerUi.showModelessDialog(facturerHtml, "Nouvelle facture");
 }
 
-function checkConfigA2() {
+function openFacturerPopupFromInitialSetup(invoicePrefix, invoiceNumber) {
   const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const facturerConfigSheet = facturerSpreadsheet.getSheetByName("CONFIG");
   if (!facturerConfigSheet) {
     throw new Error("La feuille 'CONFIG' est manquante.");
   }
-  const configA2Value = facturerConfigSheet.getRange("A2").getValue();
-  return { isConfigA2Empty: configA2Value === "" || configA2Value === null || isNaN(Number(configA2Value)) };
+  const facturerContacts = facturerConfigSheet.getRange("B2:B" + facturerConfigSheet.getLastRow()).getValues().flat().filter(String);
+  const facturerActivityTypes = facturerConfigSheet.getRange("C2:C" + facturerConfigSheet.getLastRow()).getValues().flat().filter(String);
+  showFacturerPopup(facturerContacts, facturerActivityTypes, invoicePrefix, invoiceNumber);
 }
 
-function submitFacturerForm(contact, activityType, invoiceNumber) {
+function validateInvoiceGeneration_() {
   const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const facturerTimeSheet = facturerSpreadsheet.getSheetByName("FEUILLE DE TEMPS");
   const facturerConfigSheet = facturerSpreadsheet.getSheetByName("CONFIG");
+  const facturerGestionSheet = facturerSpreadsheet.getSheetByName("GESTION");
   const facturerModelSheet = facturerSpreadsheet.getSheetByName("MODÈLE");
   const facturerTrackingSheet = facturerSpreadsheet.getSheetByName("FACTURATION");
+  const isMissingValue = (value) => value === null || value === undefined || (typeof value === "string" ? value.trim() === "" : value === "");
+
+  if (!facturerTimeSheet || !facturerConfigSheet || !facturerGestionSheet || !facturerModelSheet || !facturerTrackingSheet) {
+    return { success: false, message: "Erreur : Feuilles requises manquantes." };
+  }
+
+  const facturerLastRow = facturerTimeSheet.getLastRow();
+  const facturerTimeData = facturerLastRow >= 7 ? facturerTimeSheet.getRange(`A7:T${facturerLastRow}`).getValues() : [];
+  const facturerCheckedRows = facturerTimeData.map((row, index) => ({ row: row, index: index + 7 }))
+    .filter(row => row.row[0] === true);
+
+  if (facturerCheckedRows.length === 0) {
+    return { success: false, message: "Aucune ligne sélectionnée. Veuillez recommencer." };
+  }
+
+  const folderId = String(facturerGestionSheet.getRange("E2").getValue() || "").trim();
+  if (!folderId) {
+    return { success: false, message: "Dossier Drive invalide. Veuillez vérifier la configuration." };
+  }
+
+  let facturerDriveFolder;
+  try {
+    facturerDriveFolder = DriveApp.getFolderById(folderId);
+  } catch (e) {
+    return { success: false, message: "Dossier Drive invalide. Veuillez vérifier la configuration." };
+  }
+
+  const validationCategories = new Set();
+  const distinctClients = new Set();
+
+  facturerCheckedRows.forEach(({ row }) => {
+    const client = String(row[1] || "").trim();
+    distinctClients.add(client);
+
+    if ([row[1], row[2], row[3], row[4], row[19]].some(isMissingValue)) {
+      validationCategories.add("required_fields");
+    }
+
+    if (isMissingValue(row[7])) {
+      validationCategories.add("task_running");
+    }
+
+    if (row[14] === true) {
+      validationCategories.add("already_invoiced");
+    }
+  });
+
+  if (distinctClients.size > 1) {
+    validationCategories.add("same_client");
+  }
+
+  if (validationCategories.size > 1) {
+    return { success: false, message: "Entrée non valide. Veuillez recommencer." };
+  }
+
+  if (validationCategories.size === 1) {
+    const [category] = Array.from(validationCategories);
+    const validationMessages = {
+      same_client: "Un seul client par facture.",
+      required_fields: "Des champs obligatoires sont manquants. Veuillez recommencer.",
+      task_running: "Une tâche est encore en cours. Veuillez compléter la tâche puis recommencer.",
+      already_invoiced: "Une activité sélectionnée a déjà été facturée. Veuillez recommencer."
+    };
+    return { success: false, message: validationMessages[category] };
+  }
+
+  return {
+    success: true,
+    facturerSpreadsheet,
+    facturerTimeSheet,
+    facturerConfigSheet,
+    facturerModelSheet,
+    facturerTrackingSheet,
+    facturerDriveFolder,
+    facturerCheckedRows
+  };
+}
+
+function exportInvoiceSheetPdfBlob_(spreadsheetId, sheetId, fileName) {
+  const exportParams = {
+    format: "pdf",
+    gid: sheetId,
+    size: "A4",
+    portrait: "true",
+    fitw: "true",
+    sheetnames: "false",
+    printtitle: "false",
+    pagenumbers: "false",
+    gridlines: "false",
+    fzr: "false"
+  };
+  const exportQuery = Object.keys(exportParams)
+    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(exportParams[key])}`)
+    .join("&");
+  const exportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?${exportQuery}`;
+  const response = UrlFetchApp.fetch(exportUrl, {
+    headers: {
+      Authorization: `Bearer ${ScriptApp.getOAuthToken()}`
+    },
+    muteHttpExceptions: true
+  });
+
+  if (response.getResponseCode() !== 200) {
+    throw new Error("PDF_EXPORT_FAILED");
+  }
+
+  return response.getBlob().setName(fileName);
+}
+
+function submitFacturerForm(contact, activityType, invoicePrefix, invoiceNumber) {
+  const extractInvoiceParts = (value) => {
+    const invoiceValue = String(value || "").trim();
+    const match = invoiceValue.match(/^(.*?)(\d+)$/);
+    if (!match) return null;
+    const rawPrefix = (match[1] || "").trim().replace(/[-\s]+$/, "");
+    return {
+      prefix: rawPrefix === "#" ? "" : rawPrefix,
+      numberText: match[2],
+      number: Number(match[2])
+    };
+  };
+  const formatInvoiceNumber = (prefix, number, padLength) => {
+    const formattedNumber = String(number).padStart(padLength, "0");
+    return prefix ? `${prefix}-${formattedNumber}` : formattedNumber;
+  };
+  const validationResult = validateInvoiceGeneration_();
+  if (!validationResult.success) {
+    return validationResult;
+  }
+  const {
+    facturerSpreadsheet,
+    facturerTimeSheet,
+    facturerConfigSheet,
+    facturerModelSheet,
+    facturerTrackingSheet,
+    facturerDriveFolder,
+    facturerCheckedRows
+  } = validationResult;
   const facturerUi = SpreadsheetApp.getUi();
 
   if (contact === "Sélectionnez un contact" || activityType === "Sélectionnez une activité") {
@@ -298,17 +462,33 @@ function submitFacturerForm(contact, activityType, invoiceNumber) {
     facturerConfigSheet.getRange(`C${facturerLastActivityRow}`).setValue(activityType.trim());
   }
 
-  const configA2Value = facturerConfigSheet.getRange("A2").getValue();
-  const facturerNewInvoiceNumber = invoiceNumber !== null ? invoiceNumber : (Number(configA2Value) + 1 || 1);
-  facturerConfigSheet.getRange("A2").setValue(facturerNewInvoiceNumber);
+  const facturerTrackingLastRow = facturerTrackingSheet.getLastRow();
+  const existingInvoiceValues = facturerTrackingLastRow >= 6
+    ? facturerTrackingSheet.getRange(`B6:B${facturerTrackingLastRow}`).getValues().flat().map(value => String(value || "").trim()).filter(String)
+    : [];
+  let facturerFullInvoiceNumber;
+  if (existingInvoiceValues.length === 0) {
+    if (!Number.isInteger(invoiceNumber) || invoiceNumber <= 0) {
+      return { success: false, message: "Le numéro de départ doit être un entier positif." };
+    }
+    const normalizedPrefix = String(invoicePrefix || "").trim().replace(/[-\s]+$/, "");
+    const padLength = Math.max(3, String(invoiceNumber).length);
+    facturerFullInvoiceNumber = formatInvoiceNumber(normalizedPrefix, invoiceNumber, padLength);
+  } else {
+    const parsedInvoices = existingInvoiceValues.map(extractInvoiceParts);
+    if (parsedInvoices.some(parts => parts === null || Number.isNaN(parts.number))) {
+      return { success: false, message: "Impossible de générer le prochain numéro : FACTURATION!B contient une valeur invalide." };
+    }
+    const highestInvoiceParts = parsedInvoices.reduce((currentMax, currentInvoice) => {
+      return currentInvoice.number > currentMax.number ? currentInvoice : currentMax;
+    });
+    const facturerNextInvoiceNumber = highestInvoiceParts.number + 1;
+    const padLength = Math.max(3, highestInvoiceParts.numberText.length, String(facturerNextInvoiceNumber).length);
+    facturerFullInvoiceNumber = formatInvoiceNumber(highestInvoiceParts.prefix, facturerNextInvoiceNumber, padLength);
+  }
 
-  facturerModelSheet.showSheet();
-  const facturerTempSheet = facturerModelSheet.copyTo(facturerSpreadsheet).setName(`Facture${facturerNewInvoiceNumber}`);
-  facturerModelSheet.hideSheet();
+  const facturerTempSheet = facturerModelSheet.copyTo(facturerSpreadsheet).setName(facturerFullInvoiceNumber);
 
-  const facturerTimeData = facturerTimeSheet.getRange("A7:Q" + facturerTimeSheet.getLastRow()).getValues();
-  const facturerCheckedRows = facturerTimeData.map((row, index) => ({ row: row, index: index + 7 }))
-    .filter(row => row.row[0] === true);
   const facturerItems = [];
   facturerCheckedRows.forEach(row => {
     const facturerClient = row.row[1];
@@ -331,8 +511,12 @@ function submitFacturerForm(contact, activityType, invoiceNumber) {
   });
 
   const facturerTotalAmount = facturerItems.reduce((sum, item) => sum + item.totalPrice, 0).toFixed(2);
+  const facturerClientName = String(facturerCheckedRows[0].row[1] || "");
+  const facturerScopeSummary = facturerItems
+    .map(item => `${item.campaign} (${item.projects.join(", ")})`)
+    .join(" | ");
 
-  facturerTempSheet.getRange("L1").setValue(`#${facturerNewInvoiceNumber}`);
+  facturerTempSheet.getRange("L1").setValue(facturerFullInvoiceNumber);
   facturerTempSheet.getRange("C7").setValue(Utilities.formatDate(new Date(), "EDT", "yyyy-MM-dd"));
   facturerTempSheet.getRange("C10").setValue(contact);
   facturerTempSheet.getRange("C12").setValue([...new Set(facturerCheckedRows.map(row => row.row[1]))].join(", "));
@@ -356,112 +540,65 @@ function submitFacturerForm(contact, activityType, invoiceNumber) {
     facturerCurrentRow += 3;
   });
 
-  const folderId = String(SpreadsheetApp.getActiveSpreadsheet().getSheetByName("GESTION").getRange("E2").getValue() || "");
-  let facturerDriveFolder;
-  try {
-    facturerDriveFolder = DriveApp.getFolderById(folderId);
-  } catch (e) {
-    throw new Error("Erreur : Impossible d’accéder au dossier Drive défini dans GESTION!E2.");
-  }
-  const facturerFileName = `Facture${facturerNewInvoiceNumber}.pdf`;
+  const facturerFileName = `${facturerFullInvoiceNumber}.pdf`;
   const facturerExistingFiles = facturerDriveFolder.getFilesByName(facturerFileName);
+  let facturerExistingFile = null;
   if (facturerExistingFiles.hasNext()) {
+    facturerExistingFile = facturerExistingFiles.next();
     const response = facturerUi.alert(`Le fichier ${facturerFileName} existe déjà dans Google Drive. Remplacer ?`, SpreadsheetApp.getUi().ButtonSet.YES_NO);
     if (response === SpreadsheetApp.getUi().Button.NO) {
       facturerSpreadsheet.deleteSheet(facturerTempSheet);
       return { success: false, message: "Processus annulé : fichier existant non remplacé." };
     }
-    facturerExistingFiles.next().setTrashed(true);
   }
 
-  facturerTimeSheet.hideSheet();
-  facturerTrackingSheet.hideSheet();
-  facturerSpreadsheet.getSheets().forEach(sheet => {
-    if (sheet.getName() !== `Facture${facturerNewInvoiceNumber}`) {
-      sheet.hideSheet();
-    } else {
-      sheet.showSheet();
-    }
-  });
   SpreadsheetApp.flush();
-  Utilities.sleep(1000);
 
+  let facturerPdfFile = null;
   try {
-    const facturerPdfBlob = facturerSpreadsheet.getAs("application/pdf").setName(facturerFileName);
-    const facturerPdfFile = facturerDriveFolder.createFile(facturerPdfBlob);
+    const facturerPdfBlob = exportInvoiceSheetPdfBlob_(facturerSpreadsheet.getId(), facturerTempSheet.getSheetId(), facturerFileName);
+    if (facturerExistingFile) {
+      facturerPdfFile = facturerDriveFolder.createFile(facturerPdfBlob);
+      facturerExistingFile.setTrashed(true);
+    } else {
+      facturerPdfFile = facturerDriveFolder.createFile(facturerPdfBlob);
+    }
     const facturerPdfUrl = facturerPdfFile.getUrl();
-
-    let attempts = 0;
-    const maxAttempts = 5;
-    let fileExists = false;
-    while (attempts < maxAttempts && !fileExists) {
-      try {
-        const file = DriveApp.getFileById(facturerPdfFile.getId());
-        if (file.getUrl()) {
-          fileExists = true;
-        }
-      } catch (e) {
-        Utilities.sleep(1000);
-        attempts++;
-      }
-    }
-    if (!fileExists) {
-      facturerSpreadsheet.deleteSheet(facturerTempSheet);
-      return { success: false, message: "Erreur : Impossible de vérifier la sauvegarde du PDF après plusieurs tentatives." };
-    }
-
-    facturerSpreadsheet.getSheets().forEach(sheet => {
-      if (["FEUILLE DE TEMPS", "FACTURATION"].includes(sheet.getName())) {
-        sheet.showSheet();
-      } else {
-        sheet.hideSheet();
-      }
-    });
 
     facturerCheckedRows.forEach(row => {
       const facturerRowIndex = row.index;
       facturerTimeSheet.getRange(`A${facturerRowIndex}`).setValue(false);
       facturerTimeSheet.getRange(`O${facturerRowIndex}`).setValue(true);
-      facturerTimeSheet.getRange(`P${facturerRowIndex}`).setValue(facturerNewInvoiceNumber);
-      facturerTimeSheet.getRange(`Q${facturerRowIndex}`).setValue(Utilities.formatDate(new Date(), "EDT", "dd MM yyyy"));
+      facturerTimeSheet.getRange(`P${facturerRowIndex}`).setValue(facturerFullInvoiceNumber);
     });
 
     const facturerTrackingRow = facturerTrackingSheet.getLastRow() + 1 >= 6 ? facturerTrackingSheet.getLastRow() + 1 : 6;
-    facturerTrackingSheet.getRange(`B${facturerTrackingRow}`).setValue(`#${facturerNewInvoiceNumber}`).setNumberFormat("@");
-    facturerTrackingSheet.getRange(`C${facturerTrackingRow}`).setValue(Utilities.formatDate(new Date(), "EDT", "dd MM yyyy"));
-    facturerTrackingSheet.getRange(`D${facturerTrackingRow}`).setValue(contact);
-    facturerTrackingSheet.getRange(`E${facturerTrackingRow}`).setValue([...new Set(facturerCheckedRows.map(row => row.row[1]))].join(", "));
-    facturerTrackingSheet.getRange(`F${facturerTrackingRow}`).setValue(facturerTotalAmount + " $");
-    facturerTrackingSheet.getRange(`G${facturerTrackingRow}`).setFormula(`=HYPERLINK("${facturerPdfUrl}"; "Voir PDF")`);
-    facturerTrackingSheet.getRange(`U${facturerTrackingRow}`).setValue("");
+    facturerTrackingSheet.getRange(`A${facturerTrackingRow}:I${facturerTrackingRow}`).setValues([[
+      false,
+      facturerFullInvoiceNumber,
+      Utilities.formatDate(new Date(), "EDT", "dd MM yyyy"),
+      facturerClientName,
+      facturerScopeSummary,
+      facturerTotalAmount + " $",
+      `=HYPERLINK("${facturerPdfUrl}"; "Voir PDF")`,
+      "",
+      ""
+    ]]);
+    facturerTrackingSheet.getRange(`B${facturerTrackingRow}`).setNumberFormat("@");
 
     facturerSpreadsheet.deleteSheet(facturerTempSheet);
-    facturerSpreadsheet.setActiveSheet(facturerTrackingSheet);
-    const selectionRange = facturerTrackingSheet.getRange(`B${facturerTrackingRow}:G${facturerTrackingRow}`);
-    facturerTrackingSheet.setActiveSelection(selectionRange);
-    SpreadsheetApp.flush();
-
-    // 🔒 Supprimer toute feuille non prévue dans la configuration standard
-    const feuillesAutorisees = ["FEUILLE DE TEMPS", "FACTURATION", "MODÈLE", "GESTION", "CONFIG"];
-    facturerSpreadsheet.getSheets().forEach(sheet => {
-      const nom = sheet.getName();
-      if (!feuillesAutorisees.includes(nom)) {
-        facturerSpreadsheet.deleteSheet(sheet);
-      }
-    });
-
     return { success: true, pdfUrl: facturerPdfUrl };
   } catch (e) {
     Logger.log(`Exception: ${e.message}`);
-    facturerSpreadsheet.getSheets().forEach(sheet => {
-      if (["FEUILLE DE TEMPS", "FACTURATION"].includes(sheet.getName())) {
-        sheet.showSheet();
-      } else {
-        sheet.hideSheet();
+    if (facturerPdfFile) {
+      try {
+        facturerPdfFile.setTrashed(true);
+      } catch (trashError) {
+        Logger.log(`Cleanup exception: ${trashError.message}`);
       }
-    });
+    }
     facturerSpreadsheet.deleteSheet(facturerTempSheet);
-    return { success: false, message: `Erreur inattendue : ${e.message}` };
+    return { success: false, message: "Erreur lors de la génération du PDF." };
   }
 }
 
@@ -868,8 +1005,6 @@ function info() {
   const address4 = String(addressLines[3] || "");
   const email = String(sheetModele.getRange("L16").getValue() || "");
   const website = String(sheetModele.getRange("L17").getValue() || "");
-  const folderId = String(sheetGestion.getRange("E2").getValue() || "");
-  const folderUrl = folderId ? `https://drive.google.com/drive/folders/${folderId}` : "";
 
   const nextInvoice = String(sheetGestion.getRange("A2").getValue() || "");
 
@@ -881,7 +1016,6 @@ function info() {
   html.address4 = address4;
   html.email = email;
   html.website = website;
-  html.folderUrl = folderUrl;
   html.nextInvoice = nextInvoice;
 
   SpreadsheetApp.getUi().showModalDialog(
@@ -890,7 +1024,7 @@ function info() {
   );
 }
 
-function submitInfoForm(name, address1, address2, address3, address4, email, website, folderUrl, nextInvoice) {
+function submitInfoForm(name, address1, address2, address3, address4, email, website, nextInvoice) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("CONFIG");
   if (!sheet) throw new Error("Feuille CONFIG introuvable.");
@@ -903,15 +1037,6 @@ function submitInfoForm(name, address1, address2, address3, address4, email, web
   sheet.getRange("B6").setValue(address4);
   sheet.getRange("B7").setValue(email);
   sheet.getRange("B8").setValue(website);
-  sheet.getRange("B9").setValue(folderUrl);
-
-  // Comparer et mettre à jour A2 si nécessaire
-  const currentInvoice = sheet.getRange("A2").getValue();
-  const parsedNextInvoice = parseInt(nextInvoice, 10);
-
-  if (!isNaN(parsedNextInvoice) && parsedNextInvoice !== currentInvoice) {
-    sheet.getRange("A2").setValue(parsedNextInvoice - 1);
-  }
 }
 
 // DOSSIER : Ouvre le dossier avec les PDF
@@ -927,7 +1052,7 @@ function dossier() {
 
   const folderId = String(sheetGestion.getRange("E2").getValue() || "");
   if (!folderId) {
-    SpreadsheetApp.getUi().alert("Erreur : Aucun dossier Google Drive configuré dans GESTION!E2. Veuillez configurer via le menu Configuration.");
+    SpreadsheetApp.getUi().alert("Erreur : Aucun dossier configuré.");
     return;
   }
 
@@ -937,7 +1062,7 @@ function dossier() {
     const html = `<script>window.open('${url}', '_blank'); google.script.host.close();</script>`;
     SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(1).setHeight(1), "Ouvrir le dossier");
   } catch (e) {
-    SpreadsheetApp.getUi().alert("Erreur : L’ID du dossier dans GESTION!E2 est invalide.");
+    SpreadsheetApp.getUi().alert("Erreur : ID de dossier invalide.");
   }
 }
 
@@ -974,5 +1099,3 @@ function ouvrirCigaleEtFourmi() {
     .setHeight(800);
   SpreadsheetApp.getUi().showModelessDialog(html, 'La Cigale et la Fourmi');
 }
-
-

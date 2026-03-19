@@ -178,10 +178,6 @@
         <div class="label">Adresse Ligne 4 :</div>
         <input type="text" id="address4" value="<?!= address4 || '' ?>">
       </div>
-      <div class="url-field">
-        <div class="label">URL du dossier Google Drive où sauver les factures :</div>
-        <input type="text" id="folderUrl" value="<?!= folderUrl || '' ?>">
-      </div>
     </div>
 
     <div id="loader" class="loader">
@@ -203,24 +199,14 @@
   <script>
     function validateForm() {
       const address1 = document.getElementById('address1');
-      const folderUrl = document.getElementById('folderUrl');
       const isAddress1Valid = address1.value.trim() !== "";
       address1.classList.toggle("invalid", !isAddress1Valid);
 
-      let isFolderUrlValid = true;
-      if (folderUrl.value.trim() !== "") {
-        const folderRegex = /\/folders\/([a-zA-Z0-9_-]+)/;
-        isFolderUrlValid = folderRegex.test(folderUrl.value);
-        folderUrl.classList.toggle("invalid", !isFolderUrlValid);
-      }
-
       if (!isAddress1Valid) {
         alert("Veuillez remplir Adresse Ligne 1.");
-      } else if (!isFolderUrlValid && folderUrl.value.trim() !== "") {
-        alert("Veuillez entrer une URL valide de dossier Google Drive.");
       }
 
-      return isAddress1Valid && isFolderUrlValid;
+      return isAddress1Valid;
     }
 
     function submitForm() {
@@ -233,7 +219,6 @@
       const address4 = document.getElementById('address4').value.trim();
       const email = document.getElementById('email').value.trim();
       const website = document.getElementById('website').value.trim();
-      const folderUrl = document.getElementById('folderUrl').value.trim();
       const nextInvoice = document.getElementById('nextInvoice').value.trim();
 
       document.getElementById('formContainer').style.display = 'none';
@@ -248,7 +233,7 @@
           document.getElementById('footer').style.display = 'flex';
           document.getElementById('loader').style.display = 'none';
         })
-        .submitInfoForm(name, address1, address2, address3, address4, email, website, folderUrl, nextInvoice);
+        .submitInfoForm(name, address1, address2, address3, address4, email, website, nextInvoice);
     }
   </script>
 </body>
