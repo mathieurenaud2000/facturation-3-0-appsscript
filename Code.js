@@ -237,15 +237,8 @@ function Facturer() {
     return;
   }
 
-  if (checkInvoiceNumberingSetup().requiresInitialInvoiceSetup) {
-    const facturerInitialNumberHtml = HtmlService.createHtmlOutputFromFile("popupInvoiceNumber")
-      .setWidth(420)
-      .setHeight(220);
-    facturerUi.showModalDialog(facturerInitialNumberHtml, "Numéro de facture");
-    return;
-  }
-
-  showFacturerPopup(facturerContacts, facturerActivityTypes, null);
+  const invoiceNumberingSetup = checkInvoiceNumberingSetup();
+  showFacturerPopup(facturerContacts, facturerActivityTypes, null, invoiceNumberingSetup.requiresInitialInvoiceSetup);
 }
 
 function checkInvoiceNumberingSetup() {
@@ -261,25 +254,14 @@ function checkInvoiceNumberingSetup() {
   return { requiresInitialInvoiceSetup: existingInvoiceValues.length === 0 };
 }
 
-function showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumber) {
+function showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumber, requiresInitialInvoiceSetup) {
   const facturerUi = SpreadsheetApp.getUi();
   const facturerHtml = HtmlService.createHtmlOutputFromFile("popup")
     .setWidth(400)
     .setHeight(350);
   facturerHtml.addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  facturerHtml.append(`<script>var contacts = ${JSON.stringify(facturerContacts)}; var activityTypes = ${JSON.stringify(facturerActivityTypes)}; var initialInvoiceNumber = ${JSON.stringify(invoiceNumber)};</script>`);
+  facturerHtml.append(`<script>var contacts = ${JSON.stringify(facturerContacts)}; var activityTypes = ${JSON.stringify(facturerActivityTypes)}; var initialInvoiceNumber = ${JSON.stringify(invoiceNumber)}; var requiresInitialInvoiceSetup = ${JSON.stringify(requiresInitialInvoiceSetup)};</script>`);
   facturerUi.showModelessDialog(facturerHtml, "Nouvelle facture");
-}
-
-function openFacturerPopupFromInitialSetup(invoiceNumber) {
-  const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const facturerConfigSheet = facturerSpreadsheet.getSheetByName("CONFIG");
-  if (!facturerConfigSheet) {
-    throw new Error("La feuille 'CONFIG' est manquante.");
-  }
-  const facturerContacts = facturerConfigSheet.getRange("B2:B" + facturerConfigSheet.getLastRow()).getValues().flat().filter(String);
-  const facturerActivityTypes = facturerConfigSheet.getRange("C2:C" + facturerConfigSheet.getLastRow()).getValues().flat().filter(String);
-  showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumber);
 }
 
 function validateInvoiceGeneration_() {

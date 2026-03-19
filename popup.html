@@ -37,6 +37,11 @@
       padding: 40px 0 0 0;
     }
 
+    .invoice-number-view {
+      justify-content: flex-start;
+      padding: 40px 0 0 0;
+    }
+
     .status-view {
       flex-direction: column;
       justify-content: flex-start;
@@ -171,10 +176,31 @@
       text-align: center;
       margin-bottom: 20px;
     }
+
+    .inline-error {
+      width: 100%;
+      color: #b00020;
+      font-size: 11pt;
+      text-align: left;
+      margin-top: 10px;
+      display: none;
+    }
+
+    .inline-error.active {
+      display: block;
+    }
   </style>
 </head>
 <body>
   <div class="container">
+    <!-- Vue numéro initial -->
+    <div id="invoiceNumberView" class="popup-view invoice-number-view">
+      <div class="message-title">Numéro de facture</div>
+      <div class="message-sub">Par quel numéro de facture doit-on commencer?</div>
+      <div class="label invoice-number-label">Numéro</div>
+      <input type="number" id="initialNumber" inputmode="numeric" min="1" step="1" oninput="validateInitialInvoiceNumber()">
+      <div id="invoiceNumberError" class="inline-error" aria-live="polite"></div>
+    </div>
     <!-- Formulaire initial -->
     <div id="formView" class="popup-view form-view active">
       <div class="label">Contact :</div>
@@ -207,7 +233,7 @@
     </div>
     <!-- Pied de page -->
     <div class="footer">
-      <button id="submit" class="btn btn-green" disabled onclick="submit()">Générer la facture</button>
+      <button id="submit" class="btn btn-green" disabled onclick="handlePrimaryAction()">Générer la facture</button>
       <button id="close" class="btn btn-white" style="display:none;" onclick="google.script.host.close()">Fermer</button>
       <button id="openPdf" class="btn btn-green" style="display:none;" onclick="openPdfAndClose()">Ouvrir le PDF</button>
     </div>
@@ -215,9 +241,13 @@
 
   <script>
     let pdfUrl = '';
-    const popupViewIds = ["formView", "loadingView", "successView", "errorView"];
+    let currentPrimaryAction = null;
+    const popupViewIds = ["invoiceNumberView", "formView", "loadingView", "successView", "errorView"];
     if (typeof window.initialInvoiceNumber === "undefined") {
       window.initialInvoiceNumber = null;
+    }
+    if (typeof window.requiresInitialInvoiceSetup === "undefined") {
+      window.requiresInitialInvoiceSetup = false;
     }
 
     function setActiveView(viewId) {
@@ -226,10 +256,51 @@
       });
     }
 
-    function setFooterButtons({ submit, openPdf, close }) {
+    function setFooterButtons({ submit, openPdf, close, submitLabel }) {
       document.getElementById("submit").style.display = submit;
       document.getElementById("openPdf").style.display = openPdf;
       document.getElementById("close").style.display = close;
+      if (typeof submitLabel !== "undefined") {
+        document.getElementById("submit").textContent = submitLabel;
+      }
+    }
+
+    function handlePrimaryAction() {
+      if (typeof currentPrimaryAction === "function") {
+        currentPrimaryAction();
+      }
+    }
+
+    function showInvoiceNumberInlineError(message) {
+      const errorElement = document.getElementById("invoiceNumberError");
+      errorElement.textContent = message;
+      errorElement.classList.add("active");
+    }
+
+    function clearInvoiceNumberInlineError() {
+      const errorElement = document.getElementById("invoiceNumberError");
+      errorElement.textContent = "";
+      errorElement.classList.remove("active");
+    }
+
+    function validateInitialInvoiceNumber() {
+      const initialNumberInput = document.getElementById("initialNumber");
+      const isValid = /^\d+$/.test(initialNumberInput.value.trim());
+      initialNumberInput.classList.toggle("invalid", !isValid);
+      if (!isValid) {
+        showInvoiceNumberInlineError("Veuillez saisir un numéro valide.");
+      } else {
+        clearInvoiceNumberInlineError();
+      }
+      return isValid;
+    }
+
+    function submitInitialInvoiceNumber() {
+      if (!validateInitialInvoiceNumber()) return;
+      window.initialInvoiceNumber = Number(document.getElementById("initialNumber").value.trim());
+      clearInvoiceNumberInlineError();
+      showFormView();
+      validateForm();
     }
 
     // Remplir les menus déroulants avec les données injectées
@@ -265,8 +336,6 @@
       contactSelect.selectedIndex = contactSelect.options.length > 1 ? 1 : 0;
       activityTypeSelect.selectedIndex = activityTypeSelect.options.length > 1 ? 1 : 0;
 
-      // Valider le formulaire initialement
-      validateForm();
     }
 
     function validateForm() {
@@ -297,7 +366,18 @@
     function showFormView() {
       document.getElementById("errorMessage").textContent = "";
       setActiveView("formView");
-      setFooterButtons({ submit: "block", openPdf: "none", close: "none" });
+      setFooterButtons({ submit: "block", openPdf: "none", close: "none", submitLabel: "Générer la facture" });
+      currentPrimaryAction = submit;
+    }
+
+    function showInvoiceNumberView() {
+      clearInvoiceNumberInlineError();
+      document.getElementById("errorMessage").textContent = "";
+      setActiveView("invoiceNumberView");
+      setFooterButtons({ submit: "block", openPdf: "none", close: "none", submitLabel: "OK" });
+      document.getElementById("submit").disabled = false;
+      currentPrimaryAction = submitInitialInvoiceNumber;
+      document.getElementById("initialNumber").focus();
     }
 
     function showLoadingView() {
@@ -350,8 +430,13 @@
 
     // Remplir les menus déroulants au chargement
     document.addEventListener("DOMContentLoaded", () => {
-      showFormView();
       populateDropdowns();
+      if (window.initialInvoiceNumber === null && window.requiresInitialInvoiceSetup) {
+        showInvoiceNumberView();
+      } else {
+        showFormView();
+        validateForm();
+      }
     });
   </script>
 </body>
