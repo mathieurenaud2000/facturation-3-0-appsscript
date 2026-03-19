@@ -264,17 +264,6 @@ function showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumbe
   facturerUi.showModelessDialog(facturerHtml, "Nouvelle facture");
 }
 
-function openFacturerPopupFromInitialSetup(invoiceNumber) {
-  const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const facturerConfigSheet = facturerSpreadsheet.getSheetByName("CONFIG");
-  if (!facturerConfigSheet) {
-    throw new Error("La feuille 'CONFIG' est manquante.");
-  }
-  const facturerContacts = facturerConfigSheet.getRange("B2:B" + facturerConfigSheet.getLastRow()).getValues().flat().filter(String);
-  const facturerActivityTypes = facturerConfigSheet.getRange("C2:C" + facturerConfigSheet.getLastRow()).getValues().flat().filter(String);
-  showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumber, false);
-}
-
 function validateInvoiceGeneration_() {
   const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const facturerTimeSheet = facturerSpreadsheet.getSheetByName("FEUILLE DE TEMPS");
