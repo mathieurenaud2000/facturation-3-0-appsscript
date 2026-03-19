@@ -47,6 +47,11 @@
       padding: 40px 0 0 0;
     }
 
+    .message-view {
+      justify-content: flex-start;
+      padding: 40px 0 0 0;
+    }
+
     .status-view {
       flex-direction: column;
       justify-content: flex-start;
@@ -211,6 +216,11 @@
       <div class="message-title" id="confirmTitle"></div>
       <div class="message-sub" id="confirmMessage"></div>
     </div>
+    <!-- Vue message -->
+    <div id="messageView" class="popup-view message-view">
+      <div class="message-title" id="messageViewTitle"></div>
+      <div class="message-sub" id="messageViewMessage"></div>
+    </div>
     <!-- Formulaire initial -->
     <div id="formView" class="popup-view form-view active">
       <div class="label">Contact :</div>
@@ -253,7 +263,7 @@
     let pdfUrl = '';
     let currentPrimaryAction = null;
     let currentSecondaryAction = null;
-    const popupViewIds = ["invoiceNumberView", "confirmView", "formView", "loadingView", "successView", "errorView"];
+    const popupViewIds = ["invoiceNumberView", "confirmView", "messageView", "formView", "loadingView", "successView", "errorView"];
     if (typeof window.initialInvoiceNumber === "undefined") {
       window.initialInvoiceNumber = null;
     }
@@ -268,6 +278,15 @@
     }
     if (typeof window.confirmViewMessage === "undefined") {
       window.confirmViewMessage = "";
+    }
+    if (typeof window.showStandaloneMessage === "undefined") {
+      window.showStandaloneMessage = false;
+    }
+    if (typeof window.messageViewTitle === "undefined") {
+      window.messageViewTitle = "";
+    }
+    if (typeof window.messageViewMessage === "undefined") {
+      window.messageViewMessage = "";
     }
 
     function setActiveView(viewId) {
@@ -347,6 +366,25 @@
       document.getElementById("submit").disabled = false;
       currentPrimaryAction = onConfirm;
       currentSecondaryAction = onCancel;
+    }
+
+    function showMessageView({ title, message, onClose }) {
+      const safeTitle = typeof title === "string" && title.trim() !== "" ? title : "Information";
+      const safeMessage = typeof message === "string" && message.trim() !== ""
+        ? message
+        : "Une erreur est survenue.";
+      document.getElementById("messageViewTitle").textContent = safeTitle;
+      document.getElementById("messageViewMessage").textContent = safeMessage;
+      document.getElementById("errorMessage").textContent = "";
+      setActiveView("messageView");
+      setFooterButtons({
+        submit: "none",
+        openPdf: "none",
+        close: "block",
+        closeLabel: "Fermer"
+      });
+      currentPrimaryAction = null;
+      currentSecondaryAction = typeof onClose === "function" ? onClose : () => google.script.host.close();
     }
 
     // Remplir les menus déroulants avec les données injectées
@@ -496,9 +534,18 @@
           onConfirm: () => {
             google.script.run
               .withSuccessHandler(() => google.script.host.close())
+              .withFailureHandler(error => {
+                showErrorView(error && error.message ? error.message : null);
+              })
               .supprimerLignesCochées();
           },
           onCancel: () => google.script.host.close()
+        });
+      } else if (window.showStandaloneMessage) {
+        showMessageView({
+          title: window.messageViewTitle,
+          message: window.messageViewMessage,
+          onClose: () => google.script.host.close()
         });
       } else if (window.initialInvoiceNumber === null && window.requiresInitialInvoiceSetup) {
         showInvoiceNumberView();

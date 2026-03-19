@@ -1,5 +1,15 @@
 // GÉNÉRAL
 
+function showPopupMessage_(message, title = "Erreur", options = {}) {
+  const { width = 400, height = 220 } = options;
+  const html = HtmlService.createHtmlOutputFromFile("popup")
+    .setWidth(width)
+    .setHeight(height);
+  html.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  html.append(`<script>var contacts = []; var activityTypes = []; var initialInvoiceNumber = null; var requiresInitialInvoiceSetup = false; var showConfirmDelete = false; var confirmViewTitle = ""; var confirmViewMessage = ""; var showStandaloneMessage = true; var messageViewTitle = ${JSON.stringify(title)}; var messageViewMessage = ${JSON.stringify(message)};</script>`);
+  SpreadsheetApp.getUi().showModelessDialog(html, title);
+}
+
 function ouvrirPopup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getActiveSheet();
@@ -11,7 +21,7 @@ function ouvrirPopup() {
   }
 
   if (checkedRows.length === 0) {
-    SpreadsheetApp.getUi().alert("Aucune ligne cochée.");
+    showPopupMessage_("Aucune ligne cochée.", "Information");
     return;
   }
 
@@ -77,7 +87,7 @@ function onOpen() {
   Logger.log('onOpen triggered at: ' + new Date());
   if (!sheetGestion) {
     Logger.log('Erreur: GESTION manquante');
-    ui.alert("Erreur : La feuille 'GESTION' est manquante.");
+    showPopupMessage_("Erreur : La feuille 'GESTION' est manquante.");
     return;
   }
 
@@ -133,13 +143,13 @@ function Facturer() {
   const facturerUi = SpreadsheetApp.getUi();
 
   if (!facturerTimeSheet || !facturerConfigSheet || !facturerModelSheet || !facturerTrackingSheet || !facturerGestionSheet) {
-    facturerUi.alert("Erreur : Une ou plusieurs feuilles nécessaires sont manquantes.", SpreadsheetApp.getUi().ButtonSet.OK);
+    showPopupMessage_("Erreur : Une ou plusieurs feuilles nécessaires sont manquantes.");
     return;
   }
 
   const folderId = String(facturerGestionSheet.getRange("E2").getValue() || "");
   if (!folderId) {
-    facturerUi.alert("Erreur : Aucun dossier configuré.", SpreadsheetApp.getUi().ButtonSet.OK);
+    showPopupMessage_("Erreur : Aucun dossier configuré.");
     return;
   }
 
@@ -147,7 +157,7 @@ function Facturer() {
   try {
     facturerDriveFolder = DriveApp.getFolderById(folderId);
   } catch (e) {
-    facturerUi.alert("Erreur : ID de dossier invalide.", SpreadsheetApp.getUi().ButtonSet.OK);
+    showPopupMessage_("Erreur : ID de dossier invalide.");
     return;
   }
 
@@ -155,12 +165,12 @@ function Facturer() {
   const facturerActivityTypes = facturerConfigSheet.getRange("C2:C" + facturerConfigSheet.getLastRow()).getValues().flat().filter(String);
 
   if (facturerContacts.length === 0 || facturerActivityTypes.length === 0) {
-    facturerUi.alert("Erreur : La feuille CONFIG doit contenir au moins un contact (B2:B) et un type d'activité (C2:C).", SpreadsheetApp.getUi().ButtonSet.OK);
+    showPopupMessage_("Erreur : La feuille CONFIG doit contenir au moins un contact (B2:B) et un type d'activité (C2:C).");
     return;
   }
 
   if (facturerContacts.some(c => c.includes("${c}")) || facturerActivityTypes.some(a => a.includes("${a}"))) {
-    facturerUi.alert("Erreur : Les colonnes B (contacts) ou C (types d'activité) dans CONFIG contiennent des données invalides (ex. : ${c}, ${a}). Veuillez corriger.", SpreadsheetApp.getUi().ButtonSet.OK);
+    showPopupMessage_("Erreur : Les colonnes B (contacts) ou C (types d'activité) dans CONFIG contiennent des données invalides (ex. : ${c}, ${a}). Veuillez corriger.");
     return;
   }
 
@@ -169,7 +179,7 @@ function Facturer() {
     .filter(row => row.row[0] === true);
 
   if (facturerCheckedRows.length === 0) {
-    facturerUi.alert("Aucune ligne cochée en colonne A, veuillez sélectionner des activités.", SpreadsheetApp.getUi().ButtonSet.OK);
+    showPopupMessage_("Aucune ligne cochée en colonne A, veuillez sélectionner des activités.", "Information");
     return;
   }
 
@@ -199,7 +209,7 @@ function Facturer() {
   });
 
   if (facturerErrors.length > 0) {
-    facturerUi.alert("Données manquantes ou invalides :\n" + facturerErrors.join("\n"), SpreadsheetApp.getUi().ButtonSet.OK);
+    showPopupMessage_("Données manquantes ou invalides :\n" + facturerErrors.join("\n"));
     return;
   }
 
@@ -233,7 +243,7 @@ function Facturer() {
   });
 
   if (facturerItems.length > 7) {
-    facturerUi.alert("Erreur : Plus de 7 items client/campagne sélectionnés. Maximum autorisé : 7.", SpreadsheetApp.getUi().ButtonSet.OK);
+    showPopupMessage_("Erreur : Plus de 7 items client/campagne sélectionnés. Maximum autorisé : 7.");
     return;
   }
 
@@ -585,7 +595,7 @@ function newTimeEntry() {
   const facturerGestionSheet = facturerSpreadsheet.getSheetByName("GESTION");
 
   if (!facturerTimeSheet || !facturerGestionSheet) {
-    SpreadsheetApp.getUi().alert("Erreur : La feuille 'FEUILLE DE TEMPS' ou 'GESTION' est manquante.", SpreadsheetApp.getUi().ButtonSet.OK);
+    showPopupMessage_("Erreur : La feuille 'FEUILLE DE TEMPS' ou 'GESTION' est manquante.");
     return;
   }
 
@@ -597,7 +607,7 @@ function newTimeEntry() {
     rates = facturerGestionSheet.getRange("C2:C" + Math.max(2, lastRowGestion)).getValues().flat().filter(String);
     if (rates.length === 0) rates = ['0'];
   } catch (e) {
-    SpreadsheetApp.getUi().alert("Erreur : Impossible de lire les taux dans GESTION!C2:C. Valeur par défaut utilisée.", SpreadsheetApp.getUi().ButtonSet.OK);
+    showPopupMessage_("Erreur : Impossible de lire les taux dans GESTION!C2:C. Valeur par défaut utilisée.", "Information");
   }
 
   const lastRow = facturerTimeSheet.getLastRow();
@@ -613,7 +623,7 @@ function newTimeEntry() {
   }
 
   if (checkedIndexes.length > 1) {
-    SpreadsheetApp.getUi().alert("Sélectionne une ligne max.");
+    showPopupMessage_("Sélectionne une ligne max.", "Information");
     return;
   }
 
@@ -655,8 +665,7 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
   const sheetGestion = ss.getSheetByName("GESTION");
 
   if (!sheetTime || !sheetGestion) {
-    SpreadsheetApp.getUi().alert("Erreur : La feuille 'FEUILLE DE TEMPS' ou 'GESTION' est manquante.");
-    return;
+    throw new Error("Erreur : La feuille 'FEUILLE DE TEMPS' ou 'GESTION' est manquante.");
   }
 
   // Ajouter le nouveau client à la colonne B de GESTION
@@ -787,7 +796,7 @@ function FeuilleDeTemps() {
     sheet.showSheet();
     sheet.activate();
   } else {
-    SpreadsheetApp.getUi().alert("La feuille 'FEUILLE DE TEMPS' est introuvable.");
+    showPopupMessage_("La feuille 'FEUILLE DE TEMPS' est introuvable.");
   }
 }
 
@@ -814,8 +823,7 @@ function supprimerLignesCochées() {
   const sheet = ss.getActiveSheet();
 
   if (sheet.getName() !== "FEUILLE DE TEMPS") {
-    SpreadsheetApp.getUi().alert("Cette fonction ne peut être utilisée que dans la feuille 'FEUILLE DE TEMPS'.");
-    return;
+    throw new Error("Cette fonction ne peut être utilisée que dans la feuille 'FEUILLE DE TEMPS'.");
   }
 
   const data = sheet.getRange("A1:A" + sheet.getLastRow()).getValues();
@@ -828,8 +836,7 @@ function supprimerLignesCochées() {
   }
 
   if (lignesASupprimer.length === 0) {
-    SpreadsheetApp.getUi().alert("Aucune ligne cochée à supprimer.");
-    return;
+    throw new Error("Aucune ligne cochée à supprimer.");
   }
 
   // 🟫 Effet visuel gris temporaire
@@ -867,7 +874,7 @@ function showFacturation() {
 
   // Vérifier si la feuille FACTURATION existe
   if (!facturerTrackingSheet) {
-    SpreadsheetApp.getUi().alert("Erreur : La feuille FACTURATION n'existe pas.");
+    showPopupMessage_("Erreur : La feuille FACTURATION n'existe pas.");
     return;
   }
 
@@ -902,14 +909,14 @@ function checkAndSetTime() {
   const sheetTime = ss.getSheetByName("FEUILLE DE TEMPS");
   
   if (!sheetTime) {
-    SpreadsheetApp.getUi().alert("Erreur : La feuille 'FEUILLE DE TEMPS' est manquante.");
+    showPopupMessage_("Erreur : La feuille 'FEUILLE DE TEMPS' est manquante.");
     return;
   }
 
   // Obtenir les cases cochées dans la colonne A à partir de A7
   const lastRow = sheetTime.getLastRow();
   if (lastRow < 7) {
-    SpreadsheetApp.getUi().alert("Erreur : Aucune donnée à partir de la ligne 7.");
+    showPopupMessage_("Erreur : Aucune donnée à partir de la ligne 7.");
     return;
   }
 
@@ -920,12 +927,12 @@ function checkAndSetTime() {
 
   // Vérifier si exactement une ligne est cochée
   if (checkedRows.length > 1) {
-    SpreadsheetApp.getUi().alert("Ne cocher qu'une seule ligne.");
+    showPopupMessage_("Ne cocher qu'une seule ligne.", "Information");
     return;
   }
 
   if (checkedRows.length === 0) {
-    SpreadsheetApp.getUi().alert("Erreur : Aucune ligne cochée.");
+    showPopupMessage_("Erreur : Aucune ligne cochée.");
     return;
   }
 
@@ -951,11 +958,7 @@ function checkAndSetTime() {
       SpreadsheetApp.flush();
     } else {
       // Cellule H non vide, afficher popup
-      SpreadsheetApp.getUi().alert(
-        "Action impossible sur cette ligne",
-        "La cellule H de la ligne cochée contient déjà une valeur.",
-        SpreadsheetApp.getUi().ButtonSet.OK
-      );
+      showPopupMessage_("La cellule H de la ligne cochée contient déjà une valeur.", "Action impossible sur cette ligne");
     }
   }
 }
@@ -968,7 +971,7 @@ function info() {
   const sheetGestion = ss.getSheetByName("GESTION");
 
   if (!sheetModele || !sheetGestion) {
-    SpreadsheetApp.getUi().alert("Erreur : La feuille 'MODÈLE' ou 'GESTION' est manquante.");
+    showPopupMessage_("Erreur : La feuille 'MODÈLE' ou 'GESTION' est manquante.");
     return;
   }
 
@@ -1023,13 +1026,13 @@ function dossier() {
   const sheetGestion = ss.getSheetByName("GESTION");
 
   if (!sheetGestion) {
-    SpreadsheetApp.getUi().alert("Erreur : La feuille 'GESTION' est manquante.");
+    showPopupMessage_("Erreur : La feuille 'GESTION' est manquante.");
     return;
   }
 
   const folderId = String(sheetGestion.getRange("E2").getValue() || "");
   if (!folderId) {
-    SpreadsheetApp.getUi().alert("Erreur : Aucun dossier configuré.");
+    showPopupMessage_("Erreur : Aucun dossier configuré.");
     return;
   }
 
@@ -1039,7 +1042,7 @@ function dossier() {
     const html = `<script>window.open('${url}', '_blank'); google.script.host.close();</script>`;
     SpreadsheetApp.getUi().showModelessDialog(HtmlService.createHtmlOutput(html).setWidth(1).setHeight(1), "Ouvrir le dossier");
   } catch (e) {
-    SpreadsheetApp.getUi().alert("Erreur : ID de dossier invalide.");
+    showPopupMessage_("Erreur : ID de dossier invalide.");
   }
 }
 
