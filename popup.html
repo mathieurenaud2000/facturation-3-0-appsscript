@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      font-family: Roboto, sans-serif;
+    }
+
+    .container {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-container {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 40px 0 0 0;
+    }
+
+    .loading-container, .success-container {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 60px 0 0 0;
+    }
+
+    .error-container {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 40px 0 0 0;
+    }
+
+    .form-container.active, .loading-container.active, .success-container.active, .error-container.active {
+      display: flex;
+    }
+
+    .label {
+      margin: 0;
+      padding: 5px 0;
+      font-size: 10pt;
+      color: #888;
+      width: 100%;
+    }
+
+    .activity-label, .invoice-number-label {
+      padding-top: 20px;
+    }
+
+    select, input {
+      width: 100%;
+      margin: 0;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 0;
+      font-size: 13pt;
+      color: #000;
+    }
+
+    select.invalid, input.invalid {
+      border: 1px solid #ff0000;
+    }
+
+    .footer {
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      height: 80px;
+      width: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      padding-bottom: 0;
+      padding-right: 0;
+    }
+
+    .btn {
+      margin-right: 0;
+      margin-left: 20px;
+      padding: 15px 25px;
+      border-radius: 10px;
+      cursor: pointer;
+      border: none;
+      font-size: 18px;
+      text-align: center;
+    }
+
+    .footer .btn:first-child {
+      margin-left: 0;
+    }
+
+    .btn-green {
+      background-color: #4CAF50;
+      color: white;
+      border: 1px solid #4CAF50;
+    }
+
+    .btn-green:hover {
+      background-color: #45a049;
+      border: 1px solid #45a049;
+    }
+
+    .btn-white {
+      background-color: #ffffff;
+      color: #000000;
+      border: 1px solid #000000;
+    }
+
+    .btn-white:hover {
+      background-color: #f0f0f0;
+    }
+
+    .btn:disabled {
+      background-color: #cccccc;
+      border: 1px solid #cccccc;
+      cursor: not-allowed;
+    }
+
+    .loading-spinner {
+      border: 8px solid #f3f3f3;
+      border-top: 8px solid #4CAF50;
+      border-radius: 50%;
+      width: 90px;
+      height: 90px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .message-title {
+      font-size: 16pt;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 5px;
+    }
+
+    .message-sub {
+      font-size: 14pt;
+      text-align: center;
+    }
+
+    .success-icon {
+      color: #4CAF50;
+      font-size: 90px;
+      margin-bottom: 15px;
+    }
+
+    .message {
+      font-size: 14pt;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Formulaire initial -->
+    <div class="form-container active">
+      <div class="label">Contact :</div>
+      <select id="contact" onchange="validateForm()">
+        <option>Sélectionnez un contact</option>
+        <option>Autre</option>
+      </select>
+      <input type="text" id="newContact" placeholder="Entrez un nouveau contact" style="display:none;" oninput="validateForm()">
+      <div class="label activity-label">Type d’activité générale :</div>
+      <select id="activityType" onchange="validateForm()">
+        <option>Sélectionnez une activité</option>
+        <option>Autre</option>
+      </select>
+      <input type="text" id="newActivityType" placeholder="Entrez une nouvelle activité" style="display:none;" oninput="validateForm()">
+      <div class="label invoice-number-label" id="invoiceNumberLabel" style="display:none;">Numéro de facture :</div>
+      <input type="number" id="invoiceNumber" placeholder="Entrez le numéro de facture" style="display:none;" min="1" step="1" oninput="validateForm()">
+    </div>
+    <!-- État de chargement -->
+    <div class="loading-container">
+      <div class="loading-spinner"></div>
+      <div class="message-title">Création de la facture</div>
+      <div class="message-sub">Veuillez patienter...</div>
+    </div>
+    <!-- État de succès -->
+    <div class="success-container">
+      <i class="fas fa-check-circle success-icon"></i>
+      <div class="message">Facture créée avec succès !</div>
+    </div>
+    <!-- État d'erreur -->
+    <div class="error-container">
+      <div class="message" id="errorMessage"></div>
+    </div>
+    <!-- Pied de page -->
+    <div class="footer">
+      <button id="submit" class="btn btn-green" disabled onclick="submit()">Générer la facture</button>
+      <button id="close" class="btn btn-white" style="display:none;" onclick="google.script.host.close()">Fermer</button>
+      <button id="openPdf" class="btn btn-green" style="display:none;" onclick="openPdfAndClose()">Ouvrir le PDF</button>
+    </div>
+  </div>
+
+  <script>
+    let pdfUrl = '';
+    let showInvoiceNumberField = false;
+
+    // Vérifier si CONFIG!A2 est vide
+    google.script.run
+      .withSuccessHandler(result => {
+        showInvoiceNumberField = result.isConfigA2Empty;
+        document.getElementById("invoiceNumberLabel").style.display = showInvoiceNumberField ? "block" : "none";
+        document.getElementById("invoiceNumber").style.display = showInvoiceNumberField ? "block" : "none";
+        populateDropdowns();
+      })
+      .withFailureHandler(error => {
+        showError(`Erreur lors de la vérification de CONFIG!A2 : ${error.message}`);
+      })
+      .checkConfigA2();
+
+    // Remplir les menus déroulants avec les données injectées
+    function populateDropdowns() {
+      const contactSelect = document.getElementById("contact");
+      const activityTypeSelect = document.getElementById("activityType");
+
+      // Vider les options existantes sauf les par défaut
+      while (contactSelect.options.length > 2) contactSelect.remove(1);
+      while (activityTypeSelect.options.length > 2) activityTypeSelect.remove(1);
+
+      // Ajouter les contacts
+      if (contacts && Array.isArray(contacts)) {
+        contacts.forEach(contact => {
+          const option = document.createElement("option");
+          option.text = contact;
+          option.value = contact;
+          contactSelect.add(option, contactSelect.options[contactSelect.options.length - 1]);
+        });
+      }
+
+      // Ajouter les types d'activité
+      if (activityTypes && Array.isArray(activityTypes)) {
+        activityTypes.forEach(activity => {
+          const option = document.createElement("option");
+          option.text = activity;
+          option.value = activity;
+          activityTypeSelect.add(option, activityTypeSelect.options[activityTypeSelect.options.length - 1]);
+        });
+      }
+
+      // Sélectionner automatiquement la deuxième option
+      contactSelect.selectedIndex = contactSelect.options.length > 1 ? 1 : 0;
+      activityTypeSelect.selectedIndex = activityTypeSelect.options.length > 1 ? 1 : 0;
+
+      // Valider le formulaire initialement
+      validateForm();
+    }
+
+    function validateForm() {
+      const contactSelect = document.getElementById("contact");
+      const newContact = document.getElementById("newContact");
+      const activitySelect = document.getElementById("activityType");
+      const newActivityType = document.getElementById("newActivityType");
+      const invoiceNumber = document.getElementById("invoiceNumber");
+      const submitBtn = document.getElementById("submit");
+
+      // Afficher/masquer les champs "Autre"
+      newContact.style.display = contactSelect.value === "Autre" ? "block" : "none";
+      newActivityType.style.display = activitySelect.value === "Autre" ? "block" : "none";
+
+      // Valider les champs
+      const isContactValid = contactSelect.value !== "Sélectionnez un contact" && 
+        (contactSelect.value !== "Autre" || (newContact.value.trim() !== ""));
+      const isActivityValid = activitySelect.value !== "Sélectionnez une activité" && 
+        (activitySelect.value !== "Autre" || (newActivityType.value.trim() !== ""));
+      const isInvoiceNumberValid = !showInvoiceNumberField || 
+        (invoiceNumber.value.trim() !== "" && Number.isInteger(Number(invoiceNumber.value)) && Number(invoiceNumber.value) > 0);
+
+      contactSelect.classList.toggle("invalid", !isContactValid);
+      newContact.classList.toggle("invalid", contactSelect.value === "Autre" && newContact.value.trim() === "");
+      activitySelect.classList.toggle("invalid", !isActivityValid);
+      newActivityType.classList.toggle("invalid", activitySelect.value === "Autre" && newActivityType.value.trim() === "");
+      invoiceNumber.classList.toggle("invalid", showInvoiceNumberField && !isInvoiceNumberValid);
+
+      submitBtn.disabled = !(isContactValid && isActivityValid && isInvoiceNumberValid);
+    }
+
+    function showLoading() {
+      document.querySelector(".form-container").classList.remove("active");
+      document.querySelector(".loading-container").classList.add("active");
+      document.querySelector(".success-container").classList.remove("active");
+      document.querySelector(".error-container").classList.remove("active");
+      document.getElementById("submit").style.display = "none";
+      document.getElementById("openPdf").style.display = "none";
+      document.getElementById("close").style.display = "none";
+    }
+
+    function showSuccess() {
+      document.querySelector(".form-container").classList.remove("active");
+      document.querySelector(".loading-container").classList.remove("active");
+      document.querySelector(".success-container").classList.add("active");
+      document.querySelector(".error-container").classList.remove("active");
+      document.getElementById("submit").style.display = "none";
+      document.getElementById("openPdf").style.display = "block";
+      document.getElementById("close").style.display = "block";
+    }
+
+    function showError(message) {
+      document.querySelector(".form-container").classList.remove("active");
+      document.querySelector(".loading-container").classList.remove("active");
+      document.querySelector(".success-container").classList.remove("active");
+      document.querySelector(".error-container").classList.add("active");
+      document.getElementById("errorMessage").textContent = message;
+      document.getElementById("submit").style.display = "none";
+      document.getElementById("openPdf").style.display = "none";
+      document.getElementById("close").style.display = "block";
+    }
+
+    function openPdfAndClose() {
+      window.open(pdfUrl, '_blank');
+      google.script.host.close();
+    }
+
+    function submit() {
+      const contact = document.getElementById("contact").value === "Autre" ? 
+        document.getElementById("newContact").value.trim() : 
+        document.getElementById("contact").value;
+      const activityType = document.getElementById("activityType").value === "Autre" ? 
+        document.getElementById("newActivityType").value.trim() : 
+        document.getElementById("activityType").value;
+      const invoiceNumber = showInvoiceNumberField ? Number(document.getElementById("invoiceNumber").value) : null;
+
+      showLoading();
+
+      google.script.run
+        .withSuccessHandler(result => {
+          if (result.success) {
+            pdfUrl = result.pdfUrl;
+            showSuccess();
+          } else {
+            showError(result.message);
+          }
+        })
+        .withFailureHandler(error => {
+          showError(`Erreur inattendue : ${error.message}`);
+        })
+        .submitFacturerForm(contact, activityType, invoiceNumber);
+    }
+
+    // Remplir les menus déroulants au chargement
+    document.addEventListener("DOMContentLoaded", populateDropdowns);
+  </script>
+</body>
+</html>

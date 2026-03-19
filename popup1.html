@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html, body {
+        width: 100%;
+        height: 100%;
+        font-family: Roboto, sans-serif;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: auto;
+      }
+
+      td {
+        vertical-align: top;
+        white-space: nowrap;
+      }
+
+      .col1, .col2, .col3 {
+        padding-right: 30px;
+      }
+
+      .col4 {
+        width: 100%;
+        text-align: right;
+      }
+
+      .row-haut td {
+        padding-top: 10px;
+      }
+
+      .label {
+        font-size: 10pt;
+        color: #888;
+        font-weight: normal;
+      }
+
+      .data {
+        font-size: 13pt;
+        font-weight: normal;
+        color: #000;
+      }
+
+      .data.active {
+        color: #4CAF50;
+      }
+
+      .row-tache td {
+        padding-top: 20px;
+      }
+
+      .footer {
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+      }
+
+      .btn {
+        font-size: 18px;
+        padding: 10px 20px;
+        margin: 0;
+        border-radius: 5px;
+        cursor: pointer;
+        border: none;
+      }
+
+      .btn-green {
+        background-color: #4CAF50;
+        color: white;
+      }
+
+      .btn-green:hover {
+        background-color: #45a049;
+      }
+
+      .btn-white {
+        background-color: white;
+        border: 1px solid #ccc;
+        color: #000;
+      }
+
+      .btn-white:hover {
+        background-color: #f3f3f3;
+      }
+
+      .btn-white.active-border {
+        border: 1px solid #4CAF50;
+      }
+    </style>
+  </head>
+  <body>
+    <table>
+      <tr class="row-haut">
+        <td class="col1">
+          <div class="label">Client</div>
+          <div class="data" id="clientContent"><?= client ?></div>
+        </td>
+        <td class="col2">
+          <div class="label">Campagne</div>
+          <div class="data" id="campagneContent"><?= campagne ?></div>
+        </td>
+        <td class="col3">
+          <div class="label">Projet</div>
+          <div class="data" id="projetContent"><?= projet ?></div>
+        </td>
+        <td class="col4">
+          <div class="label">Prix</div>
+          <div class="data" id="prix"><span id="prixContent"><?= prix ?></span></div>
+        </td>
+      </tr>
+      <tr class="row-tache">
+        <td colspan="4">
+          <div class="label">Tâche</div>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="4" class="data" id="taches"><span id="tacheContent"><?= taches ?></span></td>
+      </tr>
+    </table>
+
+    <div class="footer">
+      <button id="btnTout" class="btn btn-white"
+              onmousedown="this.classList.add('active-border')"
+              onmouseup="this.classList.remove('active-border')"
+              onclick="copierTout()">Copier tout</button>
+
+      <button id="btnProjet" class="btn btn-white"
+              onmousedown="this.classList.add('active-border')"
+              onmouseup="this.classList.remove('active-border')"
+              onclick="copierProjet()">Copier le projet</button>
+
+      <button id="btnTache" class="btn btn-white"
+              onmousedown="this.classList.add('active-border')"
+              onmouseup="this.classList.remove('active-border')"
+              onclick="copierEtMarquer('taches')">Copier la tâche</button>
+
+      <button id="btnPrix" class="btn btn-white"
+              onmousedown="this.classList.add('active-border')"
+              onmouseup="this.classList.remove('active-border')"
+              onclick="copierEtMarquer('prix')">Copier le prix</button>
+
+      <button class="btn btn-green" onclick="google.script.host.close()">Fermer</button>
+    </div>
+
+    <script>
+      function resetAll() {
+        document.getElementById('prixContent').innerText = "<?= prix ?>";
+        document.getElementById('prixContent').parentElement.classList.remove("active");
+
+        document.getElementById('tacheContent').innerText = "<?= taches ?>";
+        document.getElementById('tacheContent').parentElement.classList.remove("active");
+
+        document.getElementById('campagneContent').innerText = "<?= campagne ?>";
+        document.getElementById('campagneContent').classList.remove("active");
+
+        document.getElementById('projetContent').innerText = "<?= projet ?>";
+        document.getElementById('projetContent').classList.remove("active");
+
+        document.getElementById('clientContent').innerText = "<?= client ?>";
+        document.getElementById('clientContent').classList.remove("active");
+      }
+
+      function copierEtMarquer(type) {
+        resetAll();
+        if (type === 'prix') {
+          document.getElementById('prixContent').innerText = '✓  <?= prix ?>';
+          document.getElementById('prixContent').parentElement.classList.add("active");
+          navigator.clipboard.writeText("<?= prix ?>");
+        }
+
+        if (type === 'taches') {
+          document.getElementById('tacheContent').innerText = "<?= taches ?>" + '  ✓';
+          document.getElementById('tacheContent').parentElement.classList.add("active");
+          navigator.clipboard.writeText("<?= taches ?>");
+        }
+      }
+
+      function copierProjet() {
+        resetAll();
+        const campagne = "<?= campagne ?>";
+        const projet = "<?= projet ?>";
+        document.getElementById('campagneContent').classList.add("active");
+        document.getElementById('projetContent').innerText = projet + "  ✓";
+        document.getElementById('projetContent').classList.add("active");
+        navigator.clipboard.writeText(campagne + " - " + projet);
+      }
+
+      function copierTout() {
+        resetAll();
+        const client = "<?= client ?>";
+        const campagne = "<?= campagne ?>";
+        const projet = "<?= projet ?>";
+        const prix = "<?= prix ?>";
+        const taches = "<?= taches ?>";
+
+        const sommeHeures = taches.match(/[\d.,]+/g)?.reduce((acc, h) => acc + parseFloat(h.replace(',', '.')), 0).toFixed(2) + " h" || "";
+
+        const ligne1 = `${client} : ${campagne} (${projet})\t${sommeHeures}\t${prix}`;
+        const ligne2 = `\t${taches}`;
+        const texte = ligne1 + "\n" + ligne2;
+
+        // mise en vert + crochets aux bons endroits
+        document.getElementById('clientContent').classList.add("active");
+        document.getElementById('campagneContent').classList.add("active");
+        document.getElementById('projetContent').innerText = projet + "  ✓";
+        document.getElementById('projetContent').classList.add("active");
+        document.getElementById('prixContent').innerText = '✓  ' + prix;
+        document.getElementById('prixContent').parentElement.classList.add("active");
+        document.getElementById('tacheContent').innerText = taches + "  ✓";
+        document.getElementById('tacheContent').parentElement.classList.add("active");
+
+        navigator.clipboard.writeText(texte);
+      }
+    </script>
+  </body>
+</html>

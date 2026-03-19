@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; font-family: Roboto, sans-serif; }
+
+    .container {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 0;
+    }
+
+    .label {
+      margin: 0;
+      padding: 5px 0;
+      font-size: 10pt;
+      color: #888;
+      width: 100%;
+    }
+
+    select, input {
+      width: 100%;
+      margin: 0;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 0;
+      font-size: 13pt;
+      color: #000;
+    }
+
+    select option:not([value=""]) { color: #000000; }
+    select.invalid, input.invalid { border: 1px solid #ff0000; }
+
+    #rate { border: 0px; width: 50px; text-align: left; padding: 0px; margin: 0px; color: #888; }
+    #rate option { padding: 0px; margin: 0px; color: #888; }
+
+    .footer {
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      height: 80px;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 40% 60%;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 0px;
+    }
+
+    .rate-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 0px;
+    }
+
+    .btn-container {
+      display: flex;
+      justify-content: flex-end;
+      padding: 0px;
+    }
+
+    .btn {
+      margin-left: 20px;
+      padding: 12px 120px;
+      border-radius: 10px;
+      cursor: pointer;
+      border: none;
+      font-size: 18px;
+      text-align: center;
+    }
+
+    .btn-green {
+      background-color: #4CAF50;
+      color: white;
+      border: 1px solid #4CAF50;
+    }
+
+    .btn-green:hover {
+      background-color: #45a049;
+      border: 1px solid #45a049;
+    }
+
+    .loader {
+      display: none;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      flex: 1;
+      margin-top: 75px;
+    }
+
+    .spinner {
+      border: 16px solid #f3f3f3;
+      border-top: 16px solid #4CAF50;
+      border-radius: 50%;
+      width: 120px;
+      height: 120px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="formContainer" class="form-container">
+      <div class="label" id="clientLabel">Client :</div>
+      <select id="clientSelect" onchange="handleClientChange()">
+        <option value="">Sélectionnez un client</option>
+        <?!= Array.isArray(clients) ? clients.map(client => `<option value="${client}" ${client === (clientSelected || '') ? 'selected' : ''}>${client}</option>`).join('') : '' ?>
+        <option value="__autre__">Autre...</option>
+      </select>
+      <input type="text" id="newClientInput" placeholder="Entrez un nouveau client" style="display:none;">
+      <div class="label">Campagne :</div>
+      <input type="text" id="campaign" value="<?!= typeof campaign === 'string' ? campaign : '' ?>">
+      <div class="label">Projet :</div>
+      <input type="text" id="project" value="<?!= typeof project === 'string' ? project : '' ?>">
+      <div class="label" id="activityLabel">Activité :</div>
+      <select id="activitySelect" onchange="handleActivityChange()">
+        <option value="">Sélectionnez une activité</option>
+        <?!= Array.isArray(activities) ? activities.map(activity => `<option value="${activity}" ${activity === (activitySelected || '') ? 'selected' : ''}>${activity}</option>`).join('') : '' ?>
+        <option value="__autre__">Autre...</option>
+      </select>
+      <input type="text" id="newActivityInput" placeholder="Entrez une nouvelle activité" style="display:none;">
+    </div>
+
+    <div id="loader" class="loader">
+      <div class="spinner"></div>
+    </div>
+
+    <div class="footer" id="footer">
+      <div class="rate-container">
+        <div class="label">Taux :</div>
+        <select id="rate"></select>
+        <div id="newRateContainer" style="display: none; flex-direction: row; align-items: center; width: 100%;">
+          <input type="number" id="newRateInput" min="1" max="1000" style="width: 70px; font-size: 13pt; padding: 8px; border: 1px solid #ccc; border-radius: 0;" />
+          <span style="margin-left: 10px; font-size: 10pt; color: #888;">$/h</span>
+        </div>
+      </div>
+      <div class="btn-container">
+        <button id="submit" class="btn btn-green" onclick="submitForm()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let rates = <?!= JSON.stringify(rates || ['0']) ?>;
+    if (!Array.isArray(rates)) rates = ['0'];
+
+    const rateSelect = document.getElementById('rate');
+    rates.forEach((rate, index) => {
+      const option = document.createElement('option');
+      option.value = rate;
+      option.text = rate === '0' ? 'Aucun taux disponible' : rate;
+      if (index === 0) option.selected = true;
+      rateSelect.appendChild(option);
+    });
+
+    const plusOption = document.createElement('option');
+    plusOption.value = '__ajouter__';
+    plusOption.text = '+';
+    rateSelect.appendChild(plusOption);
+
+    rateSelect.addEventListener('change', () => {
+      if (rateSelect.value === '__ajouter__') {
+        rateSelect.style.display = 'none';
+        document.getElementById('newRateContainer').style.display = 'flex';
+      }
+    });
+
+    function handleClientChange() {
+      const select = document.getElementById('clientSelect');
+      const input = document.getElementById('newClientInput');
+      const label = document.getElementById('clientLabel');
+
+      if (select.value === "__autre__") {
+        select.style.display = "none";
+        input.style.display = "block";
+        label.textContent = "Nouveau client :";
+      }
+    }
+
+    function handleActivityChange() {
+      const select = document.getElementById('activitySelect');
+      const input = document.getElementById('newActivityInput');
+      const label = document.getElementById('activityLabel');
+
+      if (select.value === "__autre__") {
+        select.style.display = "none";
+        input.style.display = "block";
+        label.textContent = "Nouvelle activité :";
+      }
+    }
+
+    function validateForm() {
+      const clientSelect = document.getElementById('clientSelect');
+      const newClientInput = document.getElementById('newClientInput');
+      const campaign = document.getElementById('campaign');
+      const project = document.getElementById('project');
+      const activitySelect = document.getElementById('activitySelect');
+      const newActivityInput = document.getElementById('newActivityInput');
+
+      const usingNewClient = newClientInput.style.display !== "none";
+      const usingNewActivity = newActivityInput.style.display !== "none";
+
+      const isClientValid = usingNewClient ? newClientInput.value.trim() !== "" : clientSelect.value !== "";
+      const isCampaignValid = campaign.value.trim() !== "";
+      const isProjectValid = project.value.trim() !== "";
+      const isActivityValid = usingNewActivity ? newActivityInput.value.trim() !== "" : activitySelect.value !== "";
+
+      clientSelect.classList.toggle("invalid", !isClientValid);
+      newClientInput.classList.toggle("invalid", usingNewClient && !isClientValid);
+      campaign.classList.toggle("invalid", !isCampaignValid);
+      project.classList.toggle("invalid", !isProjectValid);
+      activitySelect.classList.toggle("invalid", !isActivityValid);
+      newActivityInput.classList.toggle("invalid", usingNewActivity && !isActivityValid);
+
+      return isClientValid && isCampaignValid && isProjectValid && isActivityValid;
+    }
+
+    function submitForm() {
+      if (!validateForm()) return;
+
+      const client = document.getElementById('clientSelect').value;
+      const newClient = document.getElementById('newClientInput').value.trim();
+      const campaign = document.getElementById('campaign').value.trim();
+      const project = document.getElementById('project').value.trim();
+      const activity = document.getElementById('activitySelect').value;
+      const newActivity = document.getElementById('newActivityInput').value.trim();
+
+      let rate = document.getElementById('rate').value;
+      if (rate === '__ajouter__') {
+        rate = document.getElementById('newRateInput').value.trim().replace(/[^0-9]/g, '');
+      }
+
+      const finalClient = client === "__autre__" ? newClient : client;
+      const finalActivity = activity === "__autre__" ? newActivity : activity;
+
+      document.getElementById('formContainer').style.display = 'none';
+      document.getElementById('footer').style.display = 'none';
+      document.getElementById('loader').style.display = 'flex';
+
+      google.script.run
+        .withSuccessHandler(() => {
+          google.script.host.close();
+          google.script.run.showBeepPopup();
+        })
+        .submitTimeEntryForm(
+          finalClient,
+          campaign,
+          project,
+          finalActivity,
+          <?!= typeof newRow === 'number' ? newRow : 7 ?>,
+          <?!= typeof checkedRowIndex === 'number' ? checkedRowIndex : -1 ?>,
+          client === "__autre__" ? newClient : null,
+          activity === "__autre__" ? newActivity : null,
+          rate
+        );
+    }
+  </script>
+</body>
+</html>
