@@ -213,14 +213,6 @@ function Facturer() {
     return;
   }
 
-  if (facturerAlreadyInvoiced.length > 0) {
-    const response = facturerUi.alert("Lignes déjà facturées :\n" + facturerAlreadyInvoiced.join("\n"), 
-      "Voulez-vous continuer (Oui) ou arrêter (Non) ?", SpreadsheetApp.getUi().ButtonSet.YES_NO);
-    if (response === SpreadsheetApp.getUi().Button.NO) {
-      return;
-    }
-  }
-
   const facturerItems = [];
   facturerCheckedRows.forEach(row => {
     const facturerClient = row.row[1];
@@ -248,6 +240,18 @@ function Facturer() {
   }
 
   const invoiceNumberingSetup = checkInvoiceNumberingSetup();
+  if (facturerAlreadyInvoiced.length > 0) {
+    showFacturerPopup(facturerContacts, facturerActivityTypes, null, invoiceNumberingSetup.requiresInitialInvoiceSetup, {
+      showStartupConfirm: true,
+      confirmViewTitle: "Activités déjà facturées",
+      confirmViewMessage: "Lignes déjà facturées :\n" + facturerAlreadyInvoiced.join("\n") + "\n\nVoulez-vous continuer ?",
+      confirmAction: "facturer_continue",
+      confirmPrimaryLabel: "Continuer",
+      confirmSecondaryLabel: "Annuler"
+    });
+    return;
+  }
+
   showFacturerPopup(facturerContacts, facturerActivityTypes, null, invoiceNumberingSetup.requiresInitialInvoiceSetup);
 }
 
@@ -264,13 +268,21 @@ function checkInvoiceNumberingSetup() {
   return { requiresInitialInvoiceSetup: existingInvoiceValues.length === 0 };
 }
 
-function showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumber, requiresInitialInvoiceSetup) {
+function showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumber, requiresInitialInvoiceSetup, popupContext = {}) {
   const facturerUi = SpreadsheetApp.getUi();
   const facturerHtml = HtmlService.createHtmlOutputFromFile("popup")
     .setWidth(400)
     .setHeight(350);
+  const normalizedPopupContext = Object.assign({
+    showStartupConfirm: false,
+    confirmViewTitle: "",
+    confirmViewMessage: "",
+    confirmAction: "",
+    confirmPrimaryLabel: "",
+    confirmSecondaryLabel: ""
+  }, popupContext || {});
   facturerHtml.addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  facturerHtml.append(`<script>var contacts = ${JSON.stringify(facturerContacts)}; var activityTypes = ${JSON.stringify(facturerActivityTypes)}; var initialInvoiceNumber = ${JSON.stringify(invoiceNumber)}; var requiresInitialInvoiceSetup = ${JSON.stringify(requiresInitialInvoiceSetup)};</script>`);
+  facturerHtml.append(`<script>var contacts = ${JSON.stringify(facturerContacts)}; var activityTypes = ${JSON.stringify(facturerActivityTypes)}; var initialInvoiceNumber = ${JSON.stringify(invoiceNumber)}; var requiresInitialInvoiceSetup = ${JSON.stringify(requiresInitialInvoiceSetup)}; var showStartupConfirm = ${JSON.stringify(normalizedPopupContext.showStartupConfirm)}; var confirmViewTitle = ${JSON.stringify(normalizedPopupContext.confirmViewTitle)}; var confirmViewMessage = ${JSON.stringify(normalizedPopupContext.confirmViewMessage)}; var confirmAction = ${JSON.stringify(normalizedPopupContext.confirmAction)}; var confirmPrimaryLabel = ${JSON.stringify(normalizedPopupContext.confirmPrimaryLabel)}; var confirmSecondaryLabel = ${JSON.stringify(normalizedPopupContext.confirmSecondaryLabel)};</script>`);
   facturerUi.showModelessDialog(facturerHtml, "Nouvelle facture");
 }
 
@@ -390,7 +402,7 @@ function exportInvoiceSheetPdfBlob_(spreadsheetId, sheetId, fileName) {
   return response.getBlob().setName(fileName);
 }
 
-function submitFacturerForm(contact, activityType, invoiceNumber) {
+function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExistingFile) {
   const extractInvoiceNumberParts = (value) => {
     const invoiceValue = String(value || "").trim();
     if (!/^\d+$/.test(invoiceValue)) return null;
@@ -413,7 +425,6 @@ function submitFacturerForm(contact, activityType, invoiceNumber) {
     facturerDriveFolder,
     facturerCheckedRows
   } = validationResult;
-  const facturerUi = SpreadsheetApp.getUi();
 
   if (contact === "Sélectionnez un contact" || activityType === "Sélectionnez une activité") {
     return { success: false, message: "Veuillez sélectionner un contact et une activité générale." };
@@ -472,6 +483,24 @@ function submitFacturerForm(contact, activityType, invoiceNumber) {
     facturerFullInvoiceNumber = formatInvoiceNumber(facturerNextInvoiceNumber, padLength);
   }
 
+  const facturerFileName = `${facturerFullInvoiceNumber}.pdf`;
+  const facturerExistingFiles = facturerDriveFolder.getFilesByName(facturerFileName);
+  let facturerExistingFile = null;
+  if (facturerExistingFiles.hasNext()) {
+    facturerExistingFile = facturerExistingFiles.next();
+    if (!overwriteExistingFile) {
+      return {
+        success: false,
+        requiresConfirmation: true,
+        confirmAction: "replace_pdf",
+        confirmTitle: "Remplacer le PDF ?",
+        message: `Le fichier ${facturerFileName} existe déjà dans Google Drive. Remplacer ?`,
+        confirmPrimaryLabel: "Remplacer",
+        confirmSecondaryLabel: "Annuler"
+      };
+    }
+  }
+
   const facturerTempSheet = facturerModelSheet.copyTo(facturerSpreadsheet).setName(facturerFullInvoiceNumber);
 
   const facturerItems = [];
@@ -524,18 +553,6 @@ function submitFacturerForm(contact, activityType, invoiceNumber) {
       .setFontFamily("Roboto").setFontSize(11).setFontColor("#999999");
     facturerCurrentRow += 3;
   });
-
-  const facturerFileName = `${facturerFullInvoiceNumber}.pdf`;
-  const facturerExistingFiles = facturerDriveFolder.getFilesByName(facturerFileName);
-  let facturerExistingFile = null;
-  if (facturerExistingFiles.hasNext()) {
-    facturerExistingFile = facturerExistingFiles.next();
-    const response = facturerUi.alert(`Le fichier ${facturerFileName} existe déjà dans Google Drive. Remplacer ?`, SpreadsheetApp.getUi().ButtonSet.YES_NO);
-    if (response === SpreadsheetApp.getUi().Button.NO) {
-      facturerSpreadsheet.deleteSheet(facturerTempSheet);
-      return { success: false, message: "Processus annulé : fichier existant non remplacé." };
-    }
-  }
 
   SpreadsheetApp.flush();
 
@@ -813,7 +830,7 @@ function trash() {
     .setWidth(400)
     .setHeight(220);
   output.addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  output.append(`<script>var showConfirmDelete = true; var confirmViewTitle = ${JSON.stringify(confirmTitle)}; var confirmViewMessage = ${JSON.stringify(confirmMessage)};</script>`);
+  output.append(`<script>var contacts = []; var activityTypes = []; var initialInvoiceNumber = null; var requiresInitialInvoiceSetup = false; var showStartupConfirm = true; var confirmViewTitle = ${JSON.stringify(confirmTitle)}; var confirmViewMessage = ${JSON.stringify(confirmMessage)}; var confirmAction = "delete_rows"; var confirmPrimaryLabel = "Supprimer"; var confirmSecondaryLabel = "Annuler";</script>`);
 
   SpreadsheetApp.getUi().showModalDialog(output, confirmTitle);
 }

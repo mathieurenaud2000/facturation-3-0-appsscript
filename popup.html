@@ -173,6 +173,7 @@
     .message-sub {
       font-size: 14pt;
       text-align: center;
+      white-space: pre-line;
     }
 
     .success-icon {
@@ -263,6 +264,7 @@
     let pdfUrl = '';
     let currentPrimaryAction = null;
     let currentSecondaryAction = null;
+    let pendingInvoiceSubmission = null;
     const popupViewIds = ["invoiceNumberView", "confirmView", "messageView", "formView", "loadingView", "successView", "errorView"];
     if (typeof window.contacts === "undefined") {
       window.contacts = [];
@@ -276,14 +278,23 @@
     if (typeof window.requiresInitialInvoiceSetup === "undefined") {
       window.requiresInitialInvoiceSetup = false;
     }
-    if (typeof window.showConfirmDelete === "undefined") {
-      window.showConfirmDelete = false;
+    if (typeof window.showStartupConfirm === "undefined") {
+      window.showStartupConfirm = false;
     }
     if (typeof window.confirmViewTitle === "undefined") {
       window.confirmViewTitle = "";
     }
     if (typeof window.confirmViewMessage === "undefined") {
       window.confirmViewMessage = "";
+    }
+    if (typeof window.confirmAction === "undefined") {
+      window.confirmAction = "";
+    }
+    if (typeof window.confirmPrimaryLabel === "undefined") {
+      window.confirmPrimaryLabel = "";
+    }
+    if (typeof window.confirmSecondaryLabel === "undefined") {
+      window.confirmSecondaryLabel = "";
     }
     if (typeof window.showStandaloneMessage === "undefined") {
       window.showStandaloneMessage = false;
@@ -357,7 +368,54 @@
       validateForm();
     }
 
-    function showConfirmView({ title, message, onConfirm, onCancel }) {
+    function handleConfirmAction(action, confirmed) {
+      if (action === "delete_rows") {
+        if (!confirmed) {
+          google.script.host.close();
+          return;
+        }
+        google.script.run
+          .withSuccessHandler(() => google.script.host.close())
+          .withFailureHandler(error => {
+            showErrorView(error && error.message ? error.message : null);
+          })
+          .supprimerLignesCochées();
+        return;
+      }
+
+      if (action === "facturer_continue") {
+        if (!confirmed) {
+          google.script.host.close();
+          return;
+        }
+        if (window.initialInvoiceNumber === null && window.requiresInitialInvoiceSetup) {
+          showInvoiceNumberView();
+        } else {
+          showFormView();
+          validateForm();
+        }
+        return;
+      }
+
+      if (action === "replace_pdf") {
+        if (!confirmed) {
+          pendingInvoiceSubmission = null;
+          showFormView();
+          validateForm();
+          return;
+        }
+        if (!pendingInvoiceSubmission) {
+          showErrorView(null);
+          return;
+        }
+        submitInvoiceRequest(pendingInvoiceSubmission, true);
+        return;
+      }
+
+      google.script.host.close();
+    }
+
+    function showConfirmView({ title, message, action, confirmLabel, cancelLabel }) {
       document.getElementById("confirmTitle").textContent = title;
       document.getElementById("confirmMessage").textContent = message;
       document.getElementById("errorMessage").textContent = "";
@@ -366,12 +424,12 @@
         submit: "block",
         openPdf: "none",
         close: "block",
-        submitLabel: "Supprimer",
-        closeLabel: "Annuler"
+        submitLabel: confirmLabel || "Confirmer",
+        closeLabel: cancelLabel || "Annuler"
       });
       document.getElementById("submit").disabled = false;
-      currentPrimaryAction = onConfirm;
-      currentSecondaryAction = onCancel;
+      currentPrimaryAction = () => handleConfirmAction(action, true);
+      currentSecondaryAction = () => handleConfirmAction(action, false);
     }
 
     function showMessageView({ title, message }) {
@@ -505,6 +563,36 @@
       google.script.host.close();
     }
 
+    function submitInvoiceRequest(submissionData, overwriteExistingFile) {
+      showLoadingView();
+
+      google.script.run
+        .withSuccessHandler(result => {
+          if (result.success) {
+            pendingInvoiceSubmission = null;
+            pdfUrl = result.pdfUrl;
+            showSuccessView();
+          } else if (result.requiresConfirmation && result.confirmAction === "replace_pdf") {
+            pendingInvoiceSubmission = submissionData;
+            showConfirmView({
+              title: result.confirmTitle,
+              message: result.message,
+              action: result.confirmAction,
+              confirmLabel: result.confirmPrimaryLabel,
+              cancelLabel: result.confirmSecondaryLabel
+            });
+          } else {
+            pendingInvoiceSubmission = null;
+            showErrorView(result.message);
+          }
+        })
+        .withFailureHandler(error => {
+          pendingInvoiceSubmission = null;
+          showErrorView(error && error.message ? `Erreur inattendue : ${error.message}` : null);
+        })
+        .submitFacturerForm(submissionData.contact, submissionData.activityType, window.initialInvoiceNumber, overwriteExistingFile);
+    }
+
     function submit() {
       const contact = document.getElementById("contact").value === "Autre" ? 
         document.getElementById("newContact").value.trim() : 
@@ -513,39 +601,20 @@
         document.getElementById("newActivityType").value.trim() : 
         document.getElementById("activityType").value;
 
-      showLoadingView();
-
-      google.script.run
-        .withSuccessHandler(result => {
-          if (result.success) {
-            pdfUrl = result.pdfUrl;
-            showSuccessView();
-          } else {
-            showErrorView(result.message);
-          }
-        })
-        .withFailureHandler(error => {
-          showErrorView(error && error.message ? `Erreur inattendue : ${error.message}` : null);
-        })
-        .submitFacturerForm(contact, activityType, window.initialInvoiceNumber);
+      pendingInvoiceSubmission = { contact, activityType };
+      submitInvoiceRequest(pendingInvoiceSubmission, false);
     }
 
     // Remplir les menus déroulants au chargement
     document.addEventListener("DOMContentLoaded", () => {
       populateDropdowns();
-      if (window.showConfirmDelete) {
+      if (window.showStartupConfirm) {
         showConfirmView({
           title: window.confirmViewTitle,
           message: window.confirmViewMessage,
-          onConfirm: () => {
-            google.script.run
-              .withSuccessHandler(() => google.script.host.close())
-              .withFailureHandler(error => {
-                showErrorView(error && error.message ? error.message : null);
-              })
-              .supprimerLignesCochées();
-          },
-          onCancel: () => google.script.host.close()
+          action: window.confirmAction,
+          confirmLabel: window.confirmPrimaryLabel,
+          cancelLabel: window.confirmSecondaryLabel
         });
       } else if (window.showStandaloneMessage) {
         showMessageView({
