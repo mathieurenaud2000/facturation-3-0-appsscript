@@ -25,34 +25,30 @@
       flex-direction: column;
     }
 
-    .form-container {
+    .popup-view {
       flex: 1;
       display: none;
       flex-direction: column;
-      justify-content: flex-start;
       align-items: center;
+    }
+
+    .form-view {
+      justify-content: flex-start;
       padding: 40px 0 0 0;
     }
 
-    .loading-container, .success-container {
-      flex: 1;
-      display: none;
+    .status-view {
       flex-direction: column;
       justify-content: flex-start;
-      align-items: center;
       padding: 60px 0 0 0;
     }
 
-    .error-container {
-      flex: 1;
-      display: none;
-      flex-direction: column;
+    .error-view {
       justify-content: flex-start;
-      align-items: center;
       padding: 40px 0 0 0;
     }
 
-    .form-container.active, .loading-container.active, .success-container.active, .error-container.active {
+    .popup-view.active {
       display: flex;
     }
 
@@ -180,7 +176,7 @@
 <body>
   <div class="container">
     <!-- Formulaire initial -->
-    <div class="form-container active">
+    <div id="formView" class="popup-view form-view active">
       <div class="label">Contact :</div>
       <select id="contact" onchange="validateForm()">
         <option>Sélectionnez un contact</option>
@@ -195,18 +191,18 @@
       <input type="text" id="newActivityType" placeholder="Entrez une nouvelle activité" style="display:none;" oninput="validateForm()">
     </div>
     <!-- État de chargement -->
-    <div class="loading-container">
+    <div id="loadingView" class="popup-view status-view">
       <div class="loading-spinner"></div>
       <div class="message-title">Création de la facture</div>
       <div class="message-sub">Veuillez patienter...</div>
     </div>
     <!-- État de succès -->
-    <div class="success-container">
+    <div id="successView" class="popup-view status-view">
       <i class="fas fa-check-circle success-icon"></i>
       <div class="message">Facture créée avec succès !</div>
     </div>
     <!-- État d'erreur -->
-    <div class="error-container">
+    <div id="errorView" class="popup-view error-view">
       <div class="message" id="errorMessage"></div>
     </div>
     <!-- Pied de page -->
@@ -219,8 +215,21 @@
 
   <script>
     let pdfUrl = '';
+    const popupViewIds = ["formView", "loadingView", "successView", "errorView"];
     if (typeof window.initialInvoiceNumber === "undefined") {
       window.initialInvoiceNumber = null;
+    }
+
+    function setActiveView(viewId) {
+      popupViewIds.forEach(id => {
+        document.getElementById(id).classList.toggle("active", id === viewId);
+      });
+    }
+
+    function setFooterButtons({ submit, openPdf, close }) {
+      document.getElementById("submit").style.display = submit;
+      document.getElementById("openPdf").style.display = openPdf;
+      document.getElementById("close").style.display = close;
     }
 
     // Remplir les menus déroulants avec les données injectées
@@ -285,35 +294,28 @@
       submitBtn.disabled = !(isContactValid && isActivityValid);
     }
 
-    function showLoading() {
-      document.querySelector(".form-container").classList.remove("active");
-      document.querySelector(".loading-container").classList.add("active");
-      document.querySelector(".success-container").classList.remove("active");
-      document.querySelector(".error-container").classList.remove("active");
-      document.getElementById("submit").style.display = "none";
-      document.getElementById("openPdf").style.display = "none";
-      document.getElementById("close").style.display = "none";
+    function showFormView() {
+      document.getElementById("errorMessage").textContent = "";
+      setActiveView("formView");
+      setFooterButtons({ submit: "block", openPdf: "none", close: "none" });
     }
 
-    function showSuccess() {
-      document.querySelector(".form-container").classList.remove("active");
-      document.querySelector(".loading-container").classList.remove("active");
-      document.querySelector(".success-container").classList.add("active");
-      document.querySelector(".error-container").classList.remove("active");
-      document.getElementById("submit").style.display = "none";
-      document.getElementById("openPdf").style.display = "block";
-      document.getElementById("close").style.display = "block";
+    function showLoadingView() {
+      document.getElementById("errorMessage").textContent = "";
+      setActiveView("loadingView");
+      setFooterButtons({ submit: "none", openPdf: "none", close: "none" });
     }
 
-    function showError(message) {
-      document.querySelector(".form-container").classList.remove("active");
-      document.querySelector(".loading-container").classList.remove("active");
-      document.querySelector(".success-container").classList.remove("active");
-      document.querySelector(".error-container").classList.add("active");
+    function showSuccessView() {
+      document.getElementById("errorMessage").textContent = "";
+      setActiveView("successView");
+      setFooterButtons({ submit: "none", openPdf: "block", close: "block" });
+    }
+
+    function showErrorView(message) {
       document.getElementById("errorMessage").textContent = message;
-      document.getElementById("submit").style.display = "none";
-      document.getElementById("openPdf").style.display = "none";
-      document.getElementById("close").style.display = "block";
+      setActiveView("errorView");
+      setFooterButtons({ submit: "none", openPdf: "none", close: "block" });
     }
 
     function openPdfAndClose() {
@@ -329,25 +331,28 @@
         document.getElementById("newActivityType").value.trim() : 
         document.getElementById("activityType").value;
 
-      showLoading();
+      showLoadingView();
 
       google.script.run
         .withSuccessHandler(result => {
           if (result.success) {
             pdfUrl = result.pdfUrl;
-            showSuccess();
+            showSuccessView();
           } else {
-            showError(result.message);
+            showErrorView(result.message);
           }
         })
         .withFailureHandler(error => {
-          showError(`Erreur inattendue : ${error.message}`);
+          showErrorView(`Erreur inattendue : ${error.message}`);
         })
         .submitFacturerForm(contact, activityType, window.initialInvoiceNumber);
     }
 
     // Remplir les menus déroulants au chargement
-    document.addEventListener("DOMContentLoaded", populateDropdowns);
+    document.addEventListener("DOMContentLoaded", () => {
+      showFormView();
+      populateDropdowns();
+    });
   </script>
 </body>
 </html>
