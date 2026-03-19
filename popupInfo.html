@@ -62,6 +62,21 @@
       border: 1px solid #ff0000;
     }
 
+    .error-message {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid #ff0000;
+      color: #b00020;
+      background-color: #fff4f4;
+      font-size: 11pt;
+      grid-column: 1 / -1;
+    }
+
+    .error-message.active {
+      display: block;
+    }
+
     .footer {
       position: fixed;
       bottom: 0;
@@ -178,6 +193,7 @@
         <div class="label">Adresse Ligne 4 :</div>
         <input type="text" id="address4" value="<?!= address4 || '' ?>">
       </div>
+      <div id="errorMessage" class="error-message" aria-live="polite"></div>
     </div>
 
     <div id="loader" class="loader">
@@ -197,13 +213,27 @@
   </div>
 
   <script>
+    function showError(message) {
+      const errorMessage = document.getElementById('errorMessage');
+      errorMessage.textContent = message;
+      errorMessage.classList.add('active');
+    }
+
+    function clearError() {
+      const errorMessage = document.getElementById('errorMessage');
+      errorMessage.textContent = '';
+      errorMessage.classList.remove('active');
+    }
+
     function validateForm() {
       const address1 = document.getElementById('address1');
       const isAddress1Valid = address1.value.trim() !== "";
       address1.classList.toggle("invalid", !isAddress1Valid);
 
       if (!isAddress1Valid) {
-        alert("Veuillez remplir Adresse Ligne 1.");
+        showError("Veuillez remplir Adresse Ligne 1.");
+      } else {
+        clearError();
       }
 
       return isAddress1Valid;
@@ -221,6 +251,7 @@
       const website = document.getElementById('website').value.trim();
       const nextInvoice = document.getElementById('nextInvoice').value.trim();
 
+      clearError();
       document.getElementById('formContainer').style.display = 'none';
       document.getElementById('footer').style.display = 'none';
       document.getElementById('loader').style.display = 'flex';
@@ -228,10 +259,10 @@
       google.script.run
         .withSuccessHandler(() => google.script.host.close())
         .withFailureHandler((error) => {
-          alert('Erreur lors de la soumission : ' + error.message);
           document.getElementById('formContainer').style.display = 'block';
           document.getElementById('footer').style.display = 'flex';
           document.getElementById('loader').style.display = 'none';
+          showError('Erreur lors de la soumission : ' + error.message);
         })
         .submitInfoForm(name, address1, address2, address3, address4, email, website, nextInvoice);
     }
