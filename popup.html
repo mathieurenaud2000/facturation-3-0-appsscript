@@ -219,9 +219,6 @@
 
   <script>
     let pdfUrl = '';
-    if (typeof window.initialInvoicePrefix === "undefined") {
-      window.initialInvoicePrefix = null;
-    }
     if (typeof window.initialInvoiceNumber === "undefined") {
       window.initialInvoiceNumber = null;
     }
@@ -346,7 +343,7 @@
         .withFailureHandler(error => {
           showError(`Erreur inattendue : ${error.message}`);
         })
-        .submitFacturerForm(contact, activityType, window.initialInvoicePrefix, window.initialInvoiceNumber);
+        .submitFacturerForm(contact, activityType, window.initialInvoiceNumber);
     }
 
     // Remplir les menus déroulants au chargement

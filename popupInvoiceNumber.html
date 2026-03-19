@@ -30,12 +30,6 @@
       color: #000;
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-
     .label {
       margin-bottom: 6px;
       font-size: 10pt;
@@ -82,15 +76,9 @@
   <div class="container">
     <div class="message">Par quel numéro de facture doit-on commencer?</div>
 
-    <div class="grid">
-      <div>
-        <div class="label">Préfix</div>
-        <input type="text" id="prefix">
-      </div>
-      <div>
-        <div class="label">Numéro</div>
-        <input type="number" id="number" inputmode="numeric" min="1" step="1">
-      </div>
+    <div>
+      <div class="label">Numéro</div>
+      <input type="number" id="number" inputmode="numeric" min="1" step="1">
     </div>
 
     <div class="footer">
@@ -109,17 +97,16 @@
     function submitForm() {
       if (!validateForm()) return;
 
-      const prefix = document.getElementById("prefix").value.trim();
       const number = Number(document.getElementById("number").value.trim());
 
       google.script.run
         .withSuccessHandler(() => google.script.host.close())
         .withFailureHandler(error => alert("Erreur : " + error.message))
-        .openFacturerPopupFromInitialSetup(prefix, number);
+        .openFacturerPopupFromInitialSetup(number);
     }
 
     document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("prefix").focus();
+      document.getElementById("number").focus();
     });
   </script>
 </body>

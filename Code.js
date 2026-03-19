@@ -245,7 +245,7 @@ function Facturer() {
     return;
   }
 
-  showFacturerPopup(facturerContacts, facturerActivityTypes, null, null);
+  showFacturerPopup(facturerContacts, facturerActivityTypes, null);
 }
 
 function checkInvoiceNumberingSetup() {
@@ -261,17 +261,17 @@ function checkInvoiceNumberingSetup() {
   return { requiresInitialInvoiceSetup: existingInvoiceValues.length === 0 };
 }
 
-function showFacturerPopup(facturerContacts, facturerActivityTypes, invoicePrefix, invoiceNumber) {
+function showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumber) {
   const facturerUi = SpreadsheetApp.getUi();
   const facturerHtml = HtmlService.createHtmlOutputFromFile("popup")
     .setWidth(400)
     .setHeight(350);
   facturerHtml.addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  facturerHtml.append(`<script>var contacts = ${JSON.stringify(facturerContacts)}; var activityTypes = ${JSON.stringify(facturerActivityTypes)}; var initialInvoicePrefix = ${JSON.stringify(invoicePrefix)}; var initialInvoiceNumber = ${JSON.stringify(invoiceNumber)};</script>`);
+  facturerHtml.append(`<script>var contacts = ${JSON.stringify(facturerContacts)}; var activityTypes = ${JSON.stringify(facturerActivityTypes)}; var initialInvoiceNumber = ${JSON.stringify(invoiceNumber)};</script>`);
   facturerUi.showModelessDialog(facturerHtml, "Nouvelle facture");
 }
 
-function openFacturerPopupFromInitialSetup(invoicePrefix, invoiceNumber) {
+function openFacturerPopupFromInitialSetup(invoiceNumber) {
   const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const facturerConfigSheet = facturerSpreadsheet.getSheetByName("CONFIG");
   if (!facturerConfigSheet) {
@@ -279,7 +279,7 @@ function openFacturerPopupFromInitialSetup(invoicePrefix, invoiceNumber) {
   }
   const facturerContacts = facturerConfigSheet.getRange("B2:B" + facturerConfigSheet.getLastRow()).getValues().flat().filter(String);
   const facturerActivityTypes = facturerConfigSheet.getRange("C2:C" + facturerConfigSheet.getLastRow()).getValues().flat().filter(String);
-  showFacturerPopup(facturerContacts, facturerActivityTypes, invoicePrefix, invoiceNumber);
+  showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumber);
 }
 
 function validateInvoiceGeneration_() {
@@ -398,22 +398,16 @@ function exportInvoiceSheetPdfBlob_(spreadsheetId, sheetId, fileName) {
   return response.getBlob().setName(fileName);
 }
 
-function submitFacturerForm(contact, activityType, invoicePrefix, invoiceNumber) {
-  const extractInvoiceParts = (value) => {
+function submitFacturerForm(contact, activityType, invoiceNumber) {
+  const extractInvoiceNumberParts = (value) => {
     const invoiceValue = String(value || "").trim();
-    const match = invoiceValue.match(/^(.*?)(\d+)$/);
-    if (!match) return null;
-    const rawPrefix = (match[1] || "").trim().replace(/[-\s]+$/, "");
+    if (!/^\d+$/.test(invoiceValue)) return null;
     return {
-      prefix: rawPrefix === "#" ? "" : rawPrefix,
-      numberText: match[2],
-      number: Number(match[2])
+      numberText: invoiceValue,
+      number: Number(invoiceValue)
     };
   };
-  const formatInvoiceNumber = (prefix, number, padLength) => {
-    const formattedNumber = String(number).padStart(padLength, "0");
-    return prefix ? `${prefix}-${formattedNumber}` : formattedNumber;
-  };
+  const formatInvoiceNumber = (number, padLength) => String(number).padStart(padLength, "0");
   const validationResult = validateInvoiceGeneration_();
   if (!validationResult.success) {
     return validationResult;
@@ -471,11 +465,10 @@ function submitFacturerForm(contact, activityType, invoicePrefix, invoiceNumber)
     if (!Number.isInteger(invoiceNumber) || invoiceNumber <= 0) {
       return { success: false, message: "Le numéro de départ doit être un entier positif." };
     }
-    const normalizedPrefix = String(invoicePrefix || "").trim().replace(/[-\s]+$/, "");
     const padLength = Math.max(3, String(invoiceNumber).length);
-    facturerFullInvoiceNumber = formatInvoiceNumber(normalizedPrefix, invoiceNumber, padLength);
+    facturerFullInvoiceNumber = formatInvoiceNumber(invoiceNumber, padLength);
   } else {
-    const parsedInvoices = existingInvoiceValues.map(extractInvoiceParts);
+    const parsedInvoices = existingInvoiceValues.map(extractInvoiceNumberParts);
     if (parsedInvoices.some(parts => parts === null || Number.isNaN(parts.number))) {
       return { success: false, message: "Impossible de générer le prochain numéro : FACTURATION!B contient une valeur invalide." };
     }
@@ -484,7 +477,7 @@ function submitFacturerForm(contact, activityType, invoicePrefix, invoiceNumber)
     });
     const facturerNextInvoiceNumber = highestInvoiceParts.number + 1;
     const padLength = Math.max(3, highestInvoiceParts.numberText.length, String(facturerNextInvoiceNumber).length);
-    facturerFullInvoiceNumber = formatInvoiceNumber(highestInvoiceParts.prefix, facturerNextInvoiceNumber, padLength);
+    facturerFullInvoiceNumber = formatInvoiceNumber(facturerNextInvoiceNumber, padLength);
   }
 
   const facturerTempSheet = facturerModelSheet.copyTo(facturerSpreadsheet).setName(facturerFullInvoiceNumber);
