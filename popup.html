@@ -240,13 +240,13 @@
     <!-- État de chargement -->
     <div id="loadingView" class="popup-view status-view">
       <div class="loading-spinner"></div>
-      <div class="message-title">Création de la facture</div>
-      <div class="message-sub">Veuillez patienter...</div>
+      <div class="message-title" id="loadingTitle">Création de la facture</div>
+      <div class="message-sub" id="loadingMessage">Veuillez patienter...</div>
     </div>
     <!-- État de succès -->
     <div id="successView" class="popup-view status-view">
       <i class="fas fa-check-circle success-icon"></i>
-      <div class="message">Facture créée avec succès !</div>
+      <div class="message" id="successMessage">Facture créée avec succès !</div>
     </div>
     <!-- État d'erreur -->
     <div id="errorView" class="popup-view error-view">
@@ -256,15 +256,18 @@
     <div class="footer">
       <button id="submit" class="btn btn-green" disabled onclick="handlePrimaryAction()">Générer la facture</button>
       <button id="close" class="btn btn-white" style="display:none;" onclick="handleSecondaryAction()">Fermer</button>
-      <button id="openPdf" class="btn btn-green" style="display:none;" onclick="handlePrimaryAction()">Ouvrir le PDF</button>
+      <button id="openPdf" class="btn btn-green" style="display:none;" onclick="handleOpenPdfAction()">Ouvrir le PDF</button>
     </div>
   </div>
 
   <script>
     let pdfUrl = '';
+    let currentInvoiceNumber = '';
     let currentPrimaryAction = null;
     let currentSecondaryAction = null;
+    let currentOpenPdfAction = null;
     let pendingInvoiceSubmission = null;
+    let emailSendCompleted = false;
     const popupViewIds = ["invoiceNumberView", "confirmView", "messageView", "formView", "loadingView", "successView", "errorView"];
     if (typeof window.contacts === "undefined") {
       window.contacts = [];
@@ -340,11 +343,14 @@
       message,
       footer,
       primaryAction,
-      secondaryAction
+      secondaryAction,
+      openPdfAction
     }) {
       if (view === "formView") {
         pdfUrl = "";
+        currentInvoiceNumber = "";
         pendingInvoiceSubmission = null;
+        emailSendCompleted = false;
       }
 
       if (view === "confirmView") {
@@ -361,7 +367,6 @@
         const safeMessage = typeof message === "string" && message.trim() !== ""
           ? message
           : "Une erreur est survenue.";
-        pdfUrl = "";
         document.getElementById("errorMessage").textContent = safeMessage;
       }
 
@@ -374,6 +379,7 @@
       document.getElementById("submit").disabled = !footer || !footer.primary || !footer.primary.visible;
       currentPrimaryAction = typeof primaryAction === "function" ? primaryAction : null;
       currentSecondaryAction = typeof secondaryAction === "function" ? secondaryAction : null;
+      currentOpenPdfAction = typeof openPdfAction === "function" ? openPdfAction : null;
     }
 
     function handlePrimaryAction() {
@@ -385,6 +391,12 @@
     function handleSecondaryAction() {
       if (typeof currentSecondaryAction === "function") {
         currentSecondaryAction();
+      }
+    }
+
+    function handleOpenPdfAction() {
+      if (typeof currentOpenPdfAction === "function") {
+        currentOpenPdfAction();
       }
     }
 
@@ -493,7 +505,8 @@
           openPdf: { visible: false }
         },
         primaryAction: null,
-        secondaryAction: () => google.script.host.close()
+        secondaryAction: () => google.script.host.close(),
+        openPdfAction: null
       });
     }
 
@@ -566,7 +579,8 @@
           openPdf: { visible: false }
         },
         primaryAction: submit,
-        secondaryAction: () => google.script.host.close()
+        secondaryAction: () => google.script.host.close(),
+        openPdfAction: null
       });
     }
 
@@ -580,13 +594,16 @@
           openPdf: { visible: false }
         },
         primaryAction: submitInitialInvoiceNumber,
-        secondaryAction: () => google.script.host.close()
+        secondaryAction: () => google.script.host.close(),
+        openPdfAction: null
       });
       document.getElementById("submit").disabled = false;
       document.getElementById("initialNumber").focus();
     }
 
-    function showLoadingView() {
+    function showLoadingView(title = "Création de la facture", message = "Veuillez patienter...") {
+      document.getElementById("loadingTitle").textContent = title;
+      document.getElementById("loadingMessage").textContent = message;
       setPopupState({
         view: "loadingView",
         footer: {
@@ -595,34 +612,46 @@
           openPdf: { visible: false }
         },
         primaryAction: null,
-        secondaryAction: null
+        secondaryAction: null,
+        openPdfAction: null
       });
     }
 
-    function showSuccessView() {
+    function showSuccessView(options = {}) {
+      const emailSent = Boolean(options.emailSent);
+      document.getElementById("successMessage").textContent = emailSent
+        ? "Facture créée et courriel envoyé !"
+        : "Facture créée avec succès !";
       setPopupState({
         view: "successView",
         footer: {
-          primary: { label: "", visible: false },
+          primary: { label: "Envoyer par courriel", visible: !emailSent },
           secondary: { label: "Fermer", visible: true },
           openPdf: { visible: true }
         },
-        primaryAction: openPdfAndClose,
-        secondaryAction: () => google.script.host.close()
+        primaryAction: emailSent ? null : sendInvoiceEmailFromPopup,
+        secondaryAction: () => google.script.host.close(),
+        openPdfAction: openPdfAndClose
       });
+      document.getElementById("submit").disabled = emailSent;
     }
 
-    function showErrorView(message) {
+    function showErrorView(message, options = {}) {
+      if (!options.preserveInvoiceContext) {
+        pdfUrl = "";
+        currentInvoiceNumber = "";
+      }
       setPopupState({
         view: "errorView",
         message,
         footer: {
           primary: { label: "", visible: false },
-          secondary: { label: "Retour", visible: true },
+          secondary: { label: options.secondaryLabel || "Retour", visible: true },
           openPdf: { visible: false }
         },
         primaryAction: null,
-        secondaryAction: showFormView
+        secondaryAction: typeof options.secondaryAction === "function" ? options.secondaryAction : showFormView,
+        openPdfAction: null
       });
     }
 
@@ -631,15 +660,47 @@
       google.script.host.close();
     }
 
+    function sendInvoiceEmailFromPopup() {
+      if (!currentInvoiceNumber || !pdfUrl || emailSendCompleted) {
+        return;
+      }
+
+      showLoadingView("Envoi du courriel", "Veuillez patienter...");
+
+      google.script.run
+        .withSuccessHandler(result => {
+          if (result && result.success) {
+            emailSendCompleted = true;
+            showSuccessView({ emailSent: true });
+          } else {
+            showErrorView(result && result.message ? result.message : null, {
+              preserveInvoiceContext: true,
+              secondaryAction: () => showSuccessView({ emailSent: false }),
+              secondaryLabel: "Retour"
+            });
+          }
+        })
+        .withFailureHandler(error => {
+          showErrorView(error && error.message ? error.message : null, {
+            preserveInvoiceContext: true,
+            secondaryAction: () => showSuccessView({ emailSent: false }),
+            secondaryLabel: "Retour"
+          });
+        })
+        .sendInvoiceEmail(currentInvoiceNumber, pdfUrl);
+    }
+
     function submitInvoiceRequest(submissionData, overwriteExistingFile) {
-      showLoadingView();
+      showLoadingView("Création de la facture", "Veuillez patienter...");
 
       google.script.run
         .withSuccessHandler(result => {
           if (result.success) {
             pendingInvoiceSubmission = null;
             pdfUrl = result.pdfUrl;
-            showSuccessView();
+            currentInvoiceNumber = result.invoiceNumber || "";
+            emailSendCompleted = false;
+            showSuccessView({ emailSent: false });
           } else if (result.requiresConfirmation && result.confirmAction === "replace_pdf") {
             pendingInvoiceSubmission = submissionData;
             showConfirmView({

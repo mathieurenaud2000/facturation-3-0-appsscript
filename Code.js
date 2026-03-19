@@ -402,6 +402,133 @@ function exportInvoiceSheetPdfBlob_(spreadsheetId, sheetId, fileName) {
   return response.getBlob().setName(fileName);
 }
 
+function extractDriveFileIdFromUrl_(url) {
+  const urlString = String(url || "").trim();
+  const match = urlString.match(/[-\w]{25,}/);
+  return match ? match[0] : "";
+}
+
+function sendInvoiceEmail(invoiceNumber, pdfUrl) {
+  return sendInvoiceEmail_(invoiceNumber, pdfUrl);
+}
+
+function sendInvoiceEmail_(invoiceNumber, pdfUrl) {
+  const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const facturerTimeSheet = facturerSpreadsheet.getSheetByName("FEUILLE DE TEMPS");
+  const facturerTrackingSheet = facturerSpreadsheet.getSheetByName("FACTURATION");
+  const clientsSheet = facturerSpreadsheet.getSheetByName("CLIENTS");
+
+  if (!facturerTimeSheet || !facturerTrackingSheet || !clientsSheet) {
+    return { success: false, message: "Erreur lors de l’envoi du courriel." };
+  }
+
+  const normalizedInvoiceNumber = String(invoiceNumber || "").trim();
+  const fileId = extractDriveFileIdFromUrl_(pdfUrl);
+  if (!normalizedInvoiceNumber || !fileId) {
+    return { success: false, message: "Erreur lors de l’envoi du courriel." };
+  }
+
+  let pdfFile;
+  try {
+    pdfFile = DriveApp.getFileById(fileId);
+  } catch (e) {
+    Logger.log(`Email attachment lookup failed: ${e.message}`);
+    return { success: false, message: "Erreur lors de l’envoi du courriel." };
+  }
+
+  const facturerTrackingLastRow = facturerTrackingSheet.getLastRow();
+  const trackingValues = facturerTrackingLastRow >= 6
+    ? facturerTrackingSheet.getRange(`A6:I${facturerTrackingLastRow}`).getValues()
+    : [];
+  const trackingIndex = trackingValues.findIndex(row => String(row[1] || "").trim() === normalizedInvoiceNumber);
+  if (trackingIndex === -1) {
+    return { success: false, message: "Erreur lors de l’envoi du courriel." };
+  }
+
+  const trackingRowNumber = trackingIndex + 6;
+  const clientName = String(trackingValues[trackingIndex][3] || "").trim();
+  if (!clientName) {
+    return { success: false, message: "Erreur lors de l’envoi du courriel." };
+  }
+
+  const clientsLastRow = clientsSheet.getLastRow();
+  const clientRows = clientsLastRow >= 2
+    ? clientsSheet.getRange(`A2:I${clientsLastRow}`).getValues()
+    : [];
+  const clientEntry = clientRows.find(row => String(row[0] || "").trim().toLowerCase() === clientName.toLowerCase());
+  if (!clientEntry) {
+    return { success: false, message: "Erreur lors de l’envoi du courriel." };
+  }
+
+  const billingContactName = String(clientEntry[5] || "").trim();
+  const billingEmail = String(clientEntry[6] || "").trim();
+  const ccEmail = String(clientEntry[8] || "").trim();
+  if (!billingEmail) {
+    return { success: false, message: "Erreur lors de l’envoi du courriel." };
+  }
+
+  const facturerTimeLastRow = facturerTimeSheet.getLastRow();
+  const timeValues = facturerTimeLastRow >= 7
+    ? facturerTimeSheet.getRange(`A7:Q${facturerTimeLastRow}`).getValues()
+    : [];
+  const matchingTimeRows = timeValues
+    .map((row, index) => ({ row, index: index + 7 }))
+    .filter(entry => String(entry.row[15] || "").trim() === normalizedInvoiceNumber);
+  if (matchingTimeRows.length === 0) {
+    return { success: false, message: "Erreur lors de l’envoi du courriel." };
+  }
+
+  const uniquePairs = [];
+  const seenPairs = new Set();
+  matchingTimeRows.forEach(({ row }) => {
+    const campaign = String(row[2] || "").trim();
+    const project = String(row[3] || "").trim();
+    const pairKey = `${campaign}:::${project}`;
+    if (!campaign || !project || seenPairs.has(pairKey)) return;
+    seenPairs.add(pairKey);
+    uniquePairs.push({ campaign, project });
+  });
+  if (uniquePairs.length === 0) {
+    return { success: false, message: "Erreur lors de l’envoi du courriel." };
+  }
+
+  const recipientName = billingContactName || clientName;
+  const emailSubject = `Facture ${normalizedInvoiceNumber} de Mathieu Renaud`;
+  const emailBody = [
+    `Bonjour ${recipientName},`,
+    "",
+    `vous trouverez en attachement la facture ${normalizedInvoiceNumber} de Mathieu Renaud couvrant :`,
+    "",
+    ...uniquePairs.map(pair => `- ${pair.campaign} : ${pair.project}`),
+    "",
+    "Merci d'accuser la réception de cette facture et de confirmer la conformité des informations détaillées.",
+    "",
+    "Bien à vous",
+    "Mathieu Renaud"
+  ].join("\n");
+
+  try {
+    const mailOptions = {
+      attachments: [pdfFile.getBlob()]
+    };
+    if (ccEmail) {
+      mailOptions.cc = ccEmail;
+    }
+    MailApp.sendEmail(billingEmail, emailSubject, emailBody, mailOptions);
+  } catch (e) {
+    Logger.log(`Email send failed: ${e.message}`);
+    return { success: false, message: "Erreur lors de l’envoi du courriel." };
+  }
+
+  const todayString = Utilities.formatDate(new Date(), "EDT", "dd MM yyyy");
+  matchingTimeRows.forEach(({ index }) => {
+    facturerTimeSheet.getRange(`Q${index}`).setValue(todayString);
+  });
+  facturerTrackingSheet.getRange(`H${trackingRowNumber}`).setValue(todayString);
+
+  return { success: true };
+}
+
 function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExistingFile) {
   const extractInvoiceNumberParts = (value) => {
     const invoiceValue = String(value || "").trim();
@@ -589,7 +716,7 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
     facturerTrackingSheet.getRange(`B${facturerTrackingRow}`).setNumberFormat("@");
 
     facturerSpreadsheet.deleteSheet(facturerTempSheet);
-    return { success: true, pdfUrl: facturerPdfUrl };
+    return { success: true, pdfUrl: facturerPdfUrl, invoiceNumber: facturerFullInvoiceNumber };
   } catch (e) {
     Logger.log(`Exception: ${e.message}`);
     if (facturerPdfFile) {
