@@ -408,6 +408,22 @@ function extractDriveFileIdFromUrl_(url) {
   return match ? match[0] : "";
 }
 
+function normalizeString_(str) {
+  return String(str || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function logSendInvoiceEmailError_(step, error) {
+  Logger.log(JSON.stringify({
+    context: "sendInvoiceEmail",
+    step: step,
+    error: error
+  }));
+}
+
 function sendInvoiceEmail(invoiceNumber, pdfUrl) {
   return sendInvoiceEmail_(invoiceNumber, pdfUrl);
 }
@@ -432,7 +448,7 @@ function sendInvoiceEmail_(invoiceNumber, pdfUrl) {
   try {
     pdfFile = DriveApp.getFileById(fileId);
   } catch (e) {
-    Logger.log(`Email attachment lookup failed: ${e.message}`);
+    logSendInvoiceEmailError_("file_lookup", e.message);
     return { success: false, message: "Erreur lors de l’envoi du courriel." };
   }
 
@@ -446,8 +462,14 @@ function sendInvoiceEmail_(invoiceNumber, pdfUrl) {
   }
 
   const trackingRowNumber = trackingIndex + 6;
+  const existingSendDate = trackingValues[trackingIndex][7];
+  if (existingSendDate) {
+    return { success: false, message: "Courriel déjà envoyé." };
+  }
+
   const clientName = String(trackingValues[trackingIndex][3] || "").trim();
   if (!clientName) {
+    logSendInvoiceEmailError_("tracking_client_lookup", "missing client name");
     return { success: false, message: "Erreur lors de l’envoi du courriel." };
   }
 
@@ -455,8 +477,9 @@ function sendInvoiceEmail_(invoiceNumber, pdfUrl) {
   const clientRows = clientsLastRow >= 2
     ? clientsSheet.getRange(`A2:I${clientsLastRow}`).getValues()
     : [];
-  const clientEntry = clientRows.find(row => String(row[0] || "").trim().toLowerCase() === clientName.toLowerCase());
+  const clientEntry = clientRows.find(row => normalizeString_(row[0]) === normalizeString_(clientName));
   if (!clientEntry) {
+    logSendInvoiceEmailError_("client_lookup", `client not found for ${clientName}`);
     return { success: false, message: "Erreur lors de l’envoi du courriel." };
   }
 
@@ -464,6 +487,7 @@ function sendInvoiceEmail_(invoiceNumber, pdfUrl) {
   const billingEmail = String(clientEntry[6] || "").trim();
   const ccEmail = String(clientEntry[8] || "").trim();
   if (!billingEmail) {
+    logSendInvoiceEmailError_("billing_email_lookup", `missing billing email for ${clientName}`);
     return { success: false, message: "Erreur lors de l’envoi du courriel." };
   }
 
@@ -475,6 +499,7 @@ function sendInvoiceEmail_(invoiceNumber, pdfUrl) {
     .map((row, index) => ({ row, index: index + 7 }))
     .filter(entry => String(entry.row[15] || "").trim() === normalizedInvoiceNumber);
   if (matchingTimeRows.length === 0) {
+    logSendInvoiceEmailError_("time_rows_lookup", `no rows found for invoice ${normalizedInvoiceNumber}`);
     return { success: false, message: "Erreur lors de l’envoi du courriel." };
   }
 
@@ -489,6 +514,7 @@ function sendInvoiceEmail_(invoiceNumber, pdfUrl) {
     uniquePairs.push({ campaign, project });
   });
   if (uniquePairs.length === 0) {
+    logSendInvoiceEmailError_("scope_build", `no campaign/project pairs for invoice ${normalizedInvoiceNumber}`);
     return { success: false, message: "Erreur lors de l’envoi du courriel." };
   }
 
@@ -516,11 +542,11 @@ function sendInvoiceEmail_(invoiceNumber, pdfUrl) {
     }
     MailApp.sendEmail(billingEmail, emailSubject, emailBody, mailOptions);
   } catch (e) {
-    Logger.log(`Email send failed: ${e.message}`);
+    logSendInvoiceEmailError_("email_send", e.message);
     return { success: false, message: "Erreur lors de l’envoi du courriel." };
   }
 
-  const todayString = Utilities.formatDate(new Date(), "EDT", "dd MM yyyy");
+  const todayString = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd MM yyyy");
   matchingTimeRows.forEach(({ index }) => {
     facturerTimeSheet.getRange(`Q${index}`).setValue(todayString);
   });
