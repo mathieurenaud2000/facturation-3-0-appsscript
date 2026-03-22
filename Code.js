@@ -1111,6 +1111,44 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
   const buildHoursCumulativeFormula = (rowNumber) => `=IF(H${rowNumber}<>""; SUM($I$7:I${rowNumber}); "")`;
   const buildAmountFormula = (rowNumber) => `=IF(H${rowNumber}<>""; I${rowNumber}*T${rowNumber}; "")`;
   const buildAmountCumulativeFormula = (rowNumber) => `=IF(H${rowNumber}<>""; SUM($K$7:K${rowNumber}); "")`;
+  const applyTimeEntryRowFormatting = (rowNumber) => {
+    sheetTime.getRange(`A${rowNumber}:U${rowNumber}`)
+      .setFontFamily("Roboto")
+      .setFontSize(10)
+      .setFontColor("#000000")
+      .setBackground("#ffffff")
+      .setVerticalAlignment("middle")
+      .setBorder(false, false, false, false, false, false);
+
+    sheetTime.getRange(`A${rowNumber}`).setHorizontalAlignment("center");
+    sheetTime.getRange(`B${rowNumber}:D${rowNumber}`).setHorizontalAlignment("left");
+    sheetTime.getRange(`E${rowNumber}`).setHorizontalAlignment("left").setFontWeight("bold");
+    sheetTime.getRange(`F${rowNumber}`).setHorizontalAlignment("right").setNumberFormat("d mmmm yyyy");
+    sheetTime.getRange(`G${rowNumber}`).setHorizontalAlignment("center").setNumberFormat("HH:mm");
+    sheetTime.getRange(`H${rowNumber}`).setHorizontalAlignment("left").setNumberFormat("HH:mm");
+    sheetTime.getRange(`I${rowNumber}:J${rowNumber}`).setHorizontalAlignment("center").setNumberFormat("0.00");
+    sheetTime.getRange(`K${rowNumber}`).setHorizontalAlignment("right").setNumberFormat("0.00 $").setFontWeight("bold");
+    sheetTime.getRange(`L${rowNumber}`).setHorizontalAlignment("right").setNumberFormat("0.00 $");
+    sheetTime.getRange(`N${rowNumber}:P${rowNumber}`).setHorizontalAlignment("center");
+    sheetTime.getRange(`Q${rowNumber}`).setHorizontalAlignment("center").setNumberFormat("dd MM yyyy");
+    sheetTime.getRange(`R${rowNumber}`).setHorizontalAlignment("center");
+    sheetTime.getRange(`S${rowNumber}`).setHorizontalAlignment("center").setNumberFormat("dd MM yyyy");
+    sheetTime.getRange(`T${rowNumber}`).setHorizontalAlignment("center").setNumberFormat("0.00").setFontColor("#9a9a9a");
+    sheetTime.getRange(`U${rowNumber}`).setHorizontalAlignment("left");
+
+    ["E", "M", "N", "Q", "S"].forEach(columnLetter => {
+      sheetTime.getRange(`${columnLetter}${rowNumber}`).setBorder(
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        "#acacac",
+        SpreadsheetApp.BorderStyle.DOTTED
+      );
+    });
+  };
 
   if (checkedRowIndex !== -1) {
     // Insertion après ligne cochée
@@ -1141,6 +1179,7 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
     sheetTime.getRange(`S${targetRow}`).clearContent();
     sheetTime.getRange(`T${targetRow}`).setValue(rate);
     sheetTime.getRange(`U${targetRow}`).setValue(note);
+    applyTimeEntryRowFormatting(targetRow);
 
     sheetTime.getRange(`A${checkedRowIndex}`).setValue(false);
 
@@ -1179,6 +1218,7 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
     sheetTime.getRange("T7").setValue(rate);
     sheetTime.getRange("U7").setValue(note);
     sheetTime.getRange("A7").setValue(true);
+    applyTimeEntryRowFormatting(7);
 
     const rangeEffet = sheetTime.getRange("A7:Z7");
     rangeEffet.setBackground("#f1f6ee");
