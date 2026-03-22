@@ -136,6 +136,13 @@
       border: 1px solid #45a049;
     }
 
+    .btn-green:disabled {
+      background-color: #efefef;
+      border: 1px solid #efefef;
+      color: #ffffff;
+      cursor: not-allowed;
+    }
+
     .btn-cancel {
       background-color: #ffffff;
       color: #000;
@@ -225,9 +232,17 @@
       errorMessage.classList.remove('active');
     }
 
+    function updateSubmitState() {
+      const address1 = document.getElementById('address1');
+      const submit = document.getElementById('submit');
+      const isAddress1Valid = address1.value.trim() !== "";
+      submit.disabled = !isAddress1Valid;
+      return isAddress1Valid;
+    }
+
     function validateForm() {
       const address1 = document.getElementById('address1');
-      const isAddress1Valid = address1.value.trim() !== "";
+      const isAddress1Valid = updateSubmitState();
       address1.classList.toggle("invalid", !isAddress1Valid);
 
       if (!isAddress1Valid) {
@@ -266,6 +281,12 @@
         })
         .submitInfoForm(name, address1, address2, address3, address4, email, website, nextInvoice);
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const address1 = document.getElementById('address1');
+      updateSubmitState();
+      address1.addEventListener('input', updateSubmitState);
+    });
   </script>
 </body>
 </html>

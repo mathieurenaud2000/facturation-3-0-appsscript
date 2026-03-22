@@ -644,14 +644,75 @@
       getFieldRefs().submit.disabled = disabled;
     }
 
+    function getNewClientSubmitButton() {
+      return document.querySelector('#newClientView .btn-container .btn-green');
+    }
+
+    function setNewClientSubmitDisabled(disabled) {
+      const button = getNewClientSubmitButton();
+      if (button) {
+        button.disabled = disabled;
+      }
+    }
+
+    function getTimeEntryRequiredState() {
+      const {
+        clientSelect,
+        campaign,
+        project,
+        activitySelect,
+        rateSelect,
+        customCampaign,
+        customProject,
+        customActivity,
+        customRate
+      } = getFieldRefs();
+
+      const isClientValid = clientSelect.value !== '' && clientSelect.value !== '__autre__';
+      const isCampaignValid = isCustomFieldActive('campaign')
+        ? customCampaign.value.trim() !== ''
+        : campaign.value !== '' && campaign.value !== '__autre__';
+      const isProjectValid = isCustomFieldActive('project')
+        ? customProject.value.trim() !== ''
+        : project.value !== '' && project.value !== '__autre__';
+      const isActivityValid = isCustomFieldActive('activity')
+        ? customActivity.value.trim() !== ''
+        : activitySelect.value !== '' && activitySelect.value !== '__autre__';
+      const isRateValid = isCustomFieldActive('rate')
+        ? /^\d+$/.test(customRate.value.trim())
+        : rateSelect.value !== '' && rateSelect.value !== '__autre__';
+
+      return {
+        isClientValid,
+        isCampaignValid,
+        isProjectValid,
+        isActivityValid,
+        isRateValid,
+        isFormReady: isClientValid && isCampaignValid && isProjectValid && isActivityValid && isRateValid
+      };
+    }
+
+    function getNewClientRequiredState() {
+      const companyName = document.getElementById('clientCompanyName').value.trim();
+      const primaryContactName = document.getElementById('clientPrimaryContactName').value.trim();
+      const primaryContactEmail = document.getElementById('clientPrimaryContactEmail').value.trim();
+      return {
+        companyName,
+        primaryContactName,
+        primaryContactEmail,
+        isReady: companyName !== '' && primaryContactName !== '' && primaryContactEmail !== ''
+      };
+    }
+
     function showFormView() {
       isSubmitting = false;
-      setSubmitDisabled(false);
       setActiveView('formView', 'form-complex');
+      updateLiveValidation();
     }
 
     function showNewClientView() {
       setActiveView('newClientView', 'form-complex');
+      updateNewClientValidation();
       document.getElementById('clientCompanyName').focus();
     }
 
@@ -670,7 +731,7 @@
         ? message
         : "Une erreur est survenue.";
       isSubmitting = false;
-      setSubmitDisabled(false);
+      setSubmitDisabled(true);
       document.getElementById('errorMessage').textContent = safeMessage;
       setActiveView('errorView', 'alert');
     }
@@ -882,7 +943,6 @@
         campaign,
         project,
         activitySelect,
-        note,
         rateSelect,
         customCampaign,
         customProject,
@@ -890,26 +950,21 @@
         customRate
       } = getFieldRefs();
 
-      const isClientValid = clientSelect.value !== '' && clientSelect.value !== '__autre__';
-      const isCampaignValid = isCustomFieldActive('campaign')
-        ? customCampaign.value.trim() !== ''
-        : campaign.value !== '' && campaign.value !== '__autre__';
-      const isProjectValid = isCustomFieldActive('project')
-        ? customProject.value.trim() !== ''
-        : project.value !== '' && project.value !== '__autre__';
-      const isActivityValid = isCustomFieldActive('activity')
-        ? customActivity.value.trim() !== ''
-        : activitySelect.value !== '' && activitySelect.value !== '__autre__';
-      const isRateValid = isCustomFieldActive('rate')
-        ? /^\d+$/.test(customRate.value.trim())
-        : rateSelect.value !== '' && rateSelect.value !== '__autre__';
-      const isNoteValid = note.value.trim() !== '';
+      const {
+        isClientValid,
+        isCampaignValid,
+        isProjectValid,
+        isActivityValid,
+        isRateValid,
+        isFormReady
+      } = getTimeEntryRequiredState();
 
       updateSelectPlaceholderState(clientSelect);
       updateSelectPlaceholderState(campaign);
       updateSelectPlaceholderState(project);
       updateSelectPlaceholderState(activitySelect);
       updateSelectPlaceholderState(rateSelect);
+      setSubmitDisabled(isSubmitting || !isFormReady);
 
       if (!formValidationActivated) {
         return;
@@ -924,10 +979,12 @@
       customActivity.classList.toggle('invalid', isCustomFieldActive('activity') && !isActivityValid);
       rateSelect.classList.toggle('invalid', !isCustomFieldActive('rate') && !isRateValid);
       customRate.classList.toggle('invalid', isCustomFieldActive('rate') && !isRateValid);
-      note.classList.toggle('invalid', !isNoteValid);
     }
 
     function updateNewClientValidation() {
+      const { isReady } = getNewClientRequiredState();
+      setNewClientSubmitDisabled(!isReady);
+
       if (!newClientValidationActivated) {
         return;
       }
@@ -1140,32 +1197,13 @@
       updateLiveValidation();
 
       const {
-        clientSelect,
-        campaign,
-        project,
-        activitySelect,
-        note,
-        rateSelect,
-        customCampaign,
-        customProject,
-        customActivity,
-        customRate
-      } = getFieldRefs();
-
-      const isClientValid = clientSelect.value !== '' && clientSelect.value !== '__autre__';
-      const isCampaignValid = isCustomFieldActive('campaign')
-        ? customCampaign.value.trim() !== ''
-        : campaign.value !== '' && campaign.value !== '__autre__';
-      const isProjectValid = isCustomFieldActive('project')
-        ? customProject.value.trim() !== ''
-        : project.value !== '' && project.value !== '__autre__';
-      const isActivityValid = isCustomFieldActive('activity')
-        ? customActivity.value.trim() !== ''
-        : activitySelect.value !== '' && activitySelect.value !== '__autre__';
-      const isRateValid = isCustomFieldActive('rate')
-        ? /^\d+$/.test(customRate.value.trim())
-        : rateSelect.value !== '' && rateSelect.value !== '__autre__';
-      const isNoteValid = note.value.trim() !== '';
+        isClientValid,
+        isCampaignValid,
+        isProjectValid,
+        isActivityValid,
+        isRateValid,
+        isFormReady
+      } = getTimeEntryRequiredState();
 
       let message = "";
       if (!isClientValid) {
@@ -1176,14 +1214,12 @@
         message = "Veuillez saisir un projet.";
       } else if (!isActivityValid) {
         message = "Veuillez sélectionner ou saisir une activité.";
-      } else if (!isNoteValid) {
-        message = "Veuillez saisir une note.";
       } else if (!isRateValid) {
         message = "Veuillez sélectionner ou saisir un taux valide.";
       }
 
       return {
-        isValid: isClientValid && isCampaignValid && isProjectValid && isActivityValid && isRateValid && isNoteValid,
+        isValid: isFormReady,
         message
       };
     }
@@ -1264,6 +1300,7 @@
       newClientValidationActivated = false;
       clearValidationState();
       showFormView();
+      updateNewClientValidation();
       updateLiveValidation();
     });
   </script>
