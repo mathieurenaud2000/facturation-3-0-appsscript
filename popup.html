@@ -104,22 +104,6 @@
       display: flex;
     }
 
-    .label {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-
-    .activity-label, .invoice-number-label {
-      padding-top: 20px;
-    }
-
     select, input {
       width: 100%;
       margin: 0;
@@ -271,7 +255,6 @@
     <div id="invoiceNumberView" class="popup-view invoice-number-view">
       <div class="message-title">Numéro de facture</div>
       <div class="message-sub">Par quel numéro de facture doit-on commencer?</div>
-      <div class="label invoice-number-label">Numéro</div>
       <input type="number" id="initialNumber" inputmode="numeric" min="1" step="1" placeholder="Numéro de facture" oninput="validateInitialInvoiceNumber()">
       <div id="invoiceNumberError" class="inline-error" aria-live="polite"></div>
     </div>
@@ -287,13 +270,11 @@
     </div>
     <!-- Formulaire initial -->
     <div id="formView" class="popup-view form-view active">
-      <div class="label">Contact :</div>
       <select id="contact" onchange="validateForm()">
         <option value="">Contact</option>
         <option>Autre</option>
       </select>
       <input type="text" id="newContact" placeholder="Entrez un nouveau contact" style="display:none;" oninput="validateForm()">
-      <div class="label activity-label">Type d’activité générale :</div>
       <select id="activityType" onchange="validateForm()">
         <option value="">Type d’activité générale</option>
         <option>Autre</option>
@@ -339,6 +320,8 @@
     let currentOpenPdfAction = null;
     let pendingInvoiceSubmission = null;
     let emailSendCompleted = false;
+    let formValidationActivated = false;
+    let invoiceNumberValidationActivated = false;
     /* Le moteur supporte désormais une notion de type logique.
        Elle est ajoutée en parallèle des vues existantes pour préparer
        les futures migrations UI sans casser les appels actuels. */
@@ -594,9 +577,27 @@
       errorElement.classList.remove("active");
     }
 
-    function validateInitialInvoiceNumber() {
+    function clearFormValidationState() {
+      ["contact", "newContact", "activityType", "newActivityType", "initialNumber"].forEach(id => {
+        const field = document.getElementById(id);
+        if (field) {
+          field.classList.remove("invalid");
+        }
+      });
+      clearInvoiceNumberInlineError();
+    }
+
+    function validateInitialInvoiceNumber(activateValidation = false) {
+      if (activateValidation) {
+        invoiceNumberValidationActivated = true;
+      }
       const initialNumberInput = document.getElementById("initialNumber");
       const isValid = /^\d+$/.test(initialNumberInput.value.trim());
+      if (!invoiceNumberValidationActivated) {
+        initialNumberInput.classList.remove("invalid");
+        clearInvoiceNumberInlineError();
+        return isValid;
+      }
       initialNumberInput.classList.toggle("invalid", !isValid);
       if (!isValid) {
         showInvoiceNumberInlineError("Veuillez saisir un numéro valide.");
@@ -607,11 +608,10 @@
     }
 
     function submitInitialInvoiceNumber() {
-      if (!validateInitialInvoiceNumber()) return;
+      if (!validateInitialInvoiceNumber(true)) return;
       window.initialInvoiceNumber = Number(document.getElementById("initialNumber").value.trim());
       clearInvoiceNumberInlineError();
       showFormView();
-      validateForm();
     }
 
     function handleConfirmAction(action, confirmed) {
@@ -638,7 +638,6 @@
           showInvoiceNumberView();
         } else {
           showFormView();
-          validateForm();
         }
         return;
       }
@@ -647,7 +646,6 @@
         if (!confirmed) {
           pendingInvoiceSubmission = null;
           showFormView();
-          validateForm();
           return;
         }
         if (!pendingInvoiceSubmission) {
@@ -730,12 +728,14 @@
       updateSelectPlaceholderState(activityTypeSelect);
     }
 
-    function validateForm() {
+    function validateForm(activateValidation = false) {
+      if (activateValidation) {
+        formValidationActivated = true;
+      }
       const contactSelect = document.getElementById("contact");
       const newContact = document.getElementById("newContact");
       const activitySelect = document.getElementById("activityType");
       const newActivityType = document.getElementById("newActivityType");
-      const submitBtn = document.getElementById("submit");
 
       // Afficher/masquer les champs "Autre"
       newContact.style.display = contactSelect.value === "Autre" ? "block" : "none";
@@ -747,17 +747,31 @@
       const isActivityValid = activitySelect.value !== "" && 
         (activitySelect.value !== "Autre" || (newActivityType.value.trim() !== ""));
 
+      updateSelectPlaceholderState(contactSelect);
+      updateSelectPlaceholderState(activitySelect);
+
+      if (!formValidationActivated) {
+        contactSelect.classList.remove("invalid");
+        newContact.classList.remove("invalid");
+        activitySelect.classList.remove("invalid");
+        newActivityType.classList.remove("invalid");
+        return {
+          isValid: isContactValid && isActivityValid
+        };
+      }
+
       contactSelect.classList.toggle("invalid", !isContactValid);
       newContact.classList.toggle("invalid", contactSelect.value === "Autre" && newContact.value.trim() === "");
       activitySelect.classList.toggle("invalid", !isActivityValid);
       newActivityType.classList.toggle("invalid", activitySelect.value === "Autre" && newActivityType.value.trim() === "");
-      updateSelectPlaceholderState(contactSelect);
-      updateSelectPlaceholderState(activitySelect);
-
-      submitBtn.disabled = !(isContactValid && isActivityValid);
+      return {
+        isValid: isContactValid && isActivityValid
+      };
     }
 
     function showFormView() {
+      formValidationActivated = false;
+      clearFormValidationState();
       setPopupState({
         view: "formView",
         type: "form-simple",
@@ -773,6 +787,8 @@
     }
 
     function showInvoiceNumberView() {
+      invoiceNumberValidationActivated = false;
+      clearFormValidationState();
       clearInvoiceNumberInlineError();
       setPopupState({
         view: "invoiceNumberView",
@@ -984,6 +1000,10 @@
     }
 
     function submit() {
+      const validation = validateForm(true);
+      if (!validation.isValid) {
+        return;
+      }
       const contact = document.getElementById("contact").value === "Autre" ? 
         document.getElementById("newContact").value.trim() : 
         document.getElementById("contact").value;
@@ -1015,7 +1035,6 @@
         showInvoiceNumberView();
       } else {
         showFormView();
-        validateForm();
       }
     });
   </script>
