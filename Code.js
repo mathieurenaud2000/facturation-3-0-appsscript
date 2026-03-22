@@ -1133,7 +1133,7 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
     sheetTime.getRange(`Q${rowNumber}`).setHorizontalAlignment("center").setNumberFormat("dd MM yyyy");
     sheetTime.getRange(`R${rowNumber}`).setHorizontalAlignment("center");
     sheetTime.getRange(`S${rowNumber}`).setHorizontalAlignment("center").setNumberFormat("dd MM yyyy");
-    sheetTime.getRange(`T${rowNumber}`).setHorizontalAlignment("center").setNumberFormat("0.00").setFontColor("#9a9a9a");
+    sheetTime.getRange(`T${rowNumber}`).setHorizontalAlignment("center").setNumberFormat("0").setFontColor("#9a9a9a");
     sheetTime.getRange(`U${rowNumber}`).setHorizontalAlignment("left");
 
     ["E", "M", "N", "Q", "S"].forEach(columnLetter => {
