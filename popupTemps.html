@@ -402,7 +402,7 @@
                 <select id="campaign" onchange="handleCampaignInput()"></select>
               </div>
               <div id="campaignCustomWrapper" class="inline-field" style="display:none;">
-                <input type="text" id="customCampaign" placeholder="Entrez une campagne" oninput="handleCustomFieldInput('campaign')">
+                <input type="text" id="customCampaign" placeholder="Campagne" oninput="handleCustomFieldInput('campaign')">
                 <button type="button" class="icon-btn" onclick="closeCustomField('campaign')"><span class="material-symbols-outlined">close</span></button>
               </div>
               <div id="campaignExistsMessage" class="inline-warning"></div>
@@ -413,7 +413,7 @@
                 <select id="project" onchange="handleProjectChange()"></select>
               </div>
               <div id="projectCustomWrapper" class="inline-field" style="display:none;">
-                <input type="text" id="customProject" placeholder="Entrez un projet" oninput="handleCustomFieldInput('project')">
+                <input type="text" id="customProject" placeholder="Projet" oninput="handleCustomFieldInput('project')">
                 <button type="button" class="icon-btn" onclick="closeCustomField('project')"><span class="material-symbols-outlined">close</span></button>
               </div>
               <div id="projectExistsMessage" class="inline-warning"></div>
@@ -1039,7 +1039,7 @@
     }
 
     function handleCampaignInput() {
-      const { campaign } = getFieldRefs();
+      const { campaign, customProject } = getFieldRefs();
       if (campaign.value === '__autre__') {
         campaign.value = '';
         populateProjectOptions('');
@@ -1048,7 +1048,9 @@
         return;
       }
       populateProjectOptions('');
-      closeCustomField('project');
+      if (!(isCustomFieldActive('project') && customProject.value.trim() !== '')) {
+        closeCustomField('project');
+      }
       updateLiveValidation();
     }
 
