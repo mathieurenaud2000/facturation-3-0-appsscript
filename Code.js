@@ -946,8 +946,7 @@ function newTimeEntry() {
     openStandaloneMessageView_("Erreur : Impossible de lire les taux dans GESTION!C2:C. Valeur par défaut utilisée.", "Information");
   }
 
-  const lastRow = facturerTimeSheet.getLastRow();
-  if (lastRow < 7) return;
+  const lastRow = Math.max(7, facturerTimeSheet.getLastRow());
 
   const clientScopedRows = facturerTimeSheet.getRange("B7:D" + lastRow).getValues();
   const campaignOptionsByClient = {};
@@ -1108,30 +1107,36 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
   }
 
   const now = new Date();
+  const buildTimeFormula = (rowNumber) => `=IF(H${rowNumber}<>""; ROUND((IF(H${rowNumber}<G${rowNumber}; H${rowNumber}+1; H${rowNumber})-G${rowNumber})*96)/4; "")`;
+  const buildHoursCumulativeFormula = (rowNumber) => `=IF(H${rowNumber}<>""; SUM($I$7:I${rowNumber}); "")`;
+  const buildAmountFormula = (rowNumber) => `=IF(H${rowNumber}<>""; I${rowNumber}*T${rowNumber}; "")`;
+  const buildAmountCumulativeFormula = (rowNumber) => `=IF(H${rowNumber}<>""; SUM($K$7:K${rowNumber}); "")`;
 
   if (checkedRowIndex !== -1) {
     // Insertion après ligne cochée
     sheetTime.insertRowAfter(checkedRowIndex);
     const targetRow = checkedRowIndex + 1;
-    const sourceRange = sheetTime.getRange(`A${checkedRowIndex}:Z${checkedRowIndex}`);
-    const targetRange = sheetTime.getRange(`A${targetRow}:Z${targetRow}`);
-    sourceRange.copyTo(targetRange, SpreadsheetApp.CopyPasteType.PASTE_NORMAL, false);
-
-    sheetTime.getRange(`D${targetRow}:H${targetRow}`).clearContent();
-    sheetTime.getRange(`I${targetRow}`).setFormula(`=IF(H${targetRow}<>""; ROUND((IF(H${targetRow}<G${targetRow}; H${targetRow}+1; H${targetRow})-G${targetRow})*96)/4; "")`);
-    sheetTime.getRange(`J${targetRow}`).setFormula(`=IF(H${targetRow}<>""; J${targetRow-1}+I${targetRow}; "")`);
-    sheetTime.getRange(`K${targetRow}`).setFormula(`=IF(H${targetRow}<>""; I${targetRow}*T${targetRow}; "")`);
-    sheetTime.getRange(`L${targetRow}`).setFormula(`=IF(H${targetRow}<>""; L${targetRow-1}+K${targetRow}; "")`);
-
+    sheetTime.getRange(`A${targetRow}:U${targetRow}`).clearContent();
+    sheetTime.getRange(`A${targetRow}`).setValue(true);
     sheetTime.getRange(`B${targetRow}`).setValue(client);
     sheetTime.getRange(`C${targetRow}`).setValue(campaign);
     sheetTime.getRange(`D${targetRow}`).setValue(project);
     sheetTime.getRange(`E${targetRow}`).setValue(activity);
     sheetTime.getRange(`F${targetRow}`).setValue(now).setNumberFormat("d mmmm yyyy");
     sheetTime.getRange(`G${targetRow}`).setValue(now).setNumberFormat("HH:mm");
+    sheetTime.getRange(`H${targetRow}`).clearContent();
+    sheetTime.getRange(`I${targetRow}`).setFormula(buildTimeFormula(targetRow));
+    sheetTime.getRange(`J${targetRow}`).setFormula(buildHoursCumulativeFormula(targetRow));
+    sheetTime.getRange(`K${targetRow}`).setFormula(buildAmountFormula(targetRow));
+    sheetTime.getRange(`L${targetRow}`).setFormula(buildAmountCumulativeFormula(targetRow));
+    sheetTime.getRange(`N${targetRow}`).setValue(false);
+    sheetTime.getRange(`O${targetRow}`).setValue(false);
+    sheetTime.getRange(`P${targetRow}`).clearContent();
+    sheetTime.getRange(`Q${targetRow}`).clearContent();
+    sheetTime.getRange(`R${targetRow}`).setValue(false);
+    sheetTime.getRange(`S${targetRow}`).clearContent();
     sheetTime.getRange(`T${targetRow}`).setValue(rate);
     sheetTime.getRange(`U${targetRow}`).setValue(note);
-    sheetTime.getRange(`A${targetRow}`).setValue(true);
 
     sheetTime.getRange(`A${checkedRowIndex}`).setValue(false);
 
@@ -1144,28 +1149,27 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
   } else {
     // Aucune case cochée, insérer à ligne 7
     sheetTime.insertRowsAfter(6, 2);
-    sheetTime.getRange("A9:Z9").copyTo(sheetTime.getRange("A7:Z7"), SpreadsheetApp.CopyPasteType.PASTE_NORMAL, false);
-    sheetTime.getRange("B7:H7").clearContent();
-    sheetTime.getRange("P7").clearContent();
-    sheetTime.getRange("Q7").clearContent();
-    sheetTime.getRange("S7").clearContent();
-    sheetTime.getRange("U7").setValue(note);
-    sheetTime.getRange("N7").setValue(false);
-    sheetTime.getRange("O7").setValue(false);
-    sheetTime.getRange("R7").setValue(false);
-
-    sheetTime.getRange("I7").setFormula(`=IF(H7<>""; ROUND((IF(H7<G7; H7+1; H7)-G7)*96)/4; "")`);
-    sheetTime.getRange("J7").setFormula(`=IF(H7<>""; J6+I7; "")`);
-    sheetTime.getRange("K7").setFormula(`=IF(H7<>""; I7*T7; "")`);
-    sheetTime.getRange("L7").setFormula(`=IF(H7<>""; L6+K7; "")`);
-
+    sheetTime.getRange("A7:U7").clearContent();
+    sheetTime.getRange("A8:U8").clearContent();
+    sheetTime.getRange("H7").clearContent();
     sheetTime.getRange("B7").setValue(client);
     sheetTime.getRange("C7").setValue(campaign);
     sheetTime.getRange("D7").setValue(project);
     sheetTime.getRange("E7").setValue(activity);
     sheetTime.getRange("F7").setValue(now).setNumberFormat("d mmmm yyyy");
     sheetTime.getRange("G7").setValue(now).setNumberFormat("HH:mm");
+    sheetTime.getRange("I7").setFormula(buildTimeFormula(7));
+    sheetTime.getRange("J7").setFormula(buildHoursCumulativeFormula(7));
+    sheetTime.getRange("K7").setFormula(buildAmountFormula(7));
+    sheetTime.getRange("L7").setFormula(buildAmountCumulativeFormula(7));
+    sheetTime.getRange("N7").setValue(false);
+    sheetTime.getRange("O7").setValue(false);
+    sheetTime.getRange("P7").clearContent();
+    sheetTime.getRange("Q7").clearContent();
+    sheetTime.getRange("R7").setValue(false);
+    sheetTime.getRange("S7").clearContent();
     sheetTime.getRange("T7").setValue(rate);
+    sheetTime.getRange("U7").setValue(note);
     sheetTime.getRange("A7").setValue(true);
 
     const rangeEffet = sheetTime.getRange("A7:Z7");
