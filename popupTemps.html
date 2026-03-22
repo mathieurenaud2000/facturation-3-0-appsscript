@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <style>
+    :root {
+      --field-gap: 15px;
+      --control-height: 52px;
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; font-family: Roboto, sans-serif; }
 
@@ -39,7 +44,7 @@
     }
 
     .popup-type-form-complex .popup-view.active {
-      max-width: 560px;
+      max-width: 840px;
     }
 
     .popup-type-action .popup-view.active {
@@ -62,6 +67,10 @@
       padding-bottom: 88px;
     }
 
+    #formView.form-view {
+      padding-bottom: 0;
+    }
+
     .status-view {
       justify-content: flex-start;
       padding-top: 75px;
@@ -77,30 +86,39 @@
       width: 100%;
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      gap: var(--field-gap);
       justify-content: flex-start;
       align-items: stretch;
       overflow-y: auto;
       padding: 0;
     }
 
-    select, input {
+    select, input, textarea {
       width: 100%;
       padding: 10px;
       border: 1px solid #000000;
       border-radius: 7px;
       font-size: calc(13pt + 2px);
+      line-height: 1.2;
       color: #000;
       background: #fff;
     }
 
-    select:disabled, input:disabled {
+    select, input {
+      height: var(--control-height);
+    }
+
+    textarea {
+      resize: none;
+    }
+
+    select:disabled, input:disabled, textarea:disabled {
       border: 1px solid #f7f7f7;
       color: #9a9a9a;
       background: #f7f7f7;
     }
 
-    input::placeholder {
+    input::placeholder, textarea::placeholder {
       color: #c8c8c8;
       opacity: 1;
     }
@@ -127,7 +145,7 @@
 
     select option:not([value=""]) { color: #000000; }
     select option[value=""] { color: #c8c8c8; }
-    select.invalid, input.invalid { border: 1px solid #ff0000; }
+    select.invalid, input.invalid, textarea.invalid { border: 1px solid #ff0000; }
 
     .field-block {
       width: 100%;
@@ -188,8 +206,8 @@
     .rate-container {
       display: flex;
       flex-direction: column;
-      justify-content: flex-end;
       padding: 0;
+      width: 100%;
     }
 
     .btn-container {
@@ -278,7 +296,7 @@
       width: 100%;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 15px;
+      gap: var(--field-gap);
       padding-bottom: 88px;
     }
 
@@ -286,68 +304,126 @@
       grid-column: 1 / -1;
     }
 
+    .time-entry-layout {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .time-entry-column {
+      display: flex;
+      flex-direction: column;
+      gap: var(--field-gap);
+      min-width: 0;
+    }
+
+    .time-entry-rate-row {
+      display: grid;
+      grid-template-columns: 140px minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+      min-height: var(--control-height);
+    }
+
+    .time-entry-rate-label {
+      font-size: calc(13pt + 2px);
+      line-height: 1.2;
+      color: #000000;
+      white-space: nowrap;
+    }
+
+    .time-entry-note {
+      height: calc(var(--control-height) + var(--control-height) + var(--field-gap));
+      min-height: calc(var(--control-height) + var(--control-height) + var(--field-gap));
+    }
+
+    .time-entry-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-items: stretch;
+      min-height: var(--control-height);
+    }
+
+    .time-entry-actions .btn {
+      width: 100%;
+      height: 100%;
+      margin-left: 0;
+      padding: 12px 24px;
+    }
+
   </style>
 </head>
 <body>
   <div id="popupContainer" class="container">
     <div id="formView" class="popup-view form-view active">
-        <div id="formContainer" class="form-container">
-        <div class="field-block">
-          <select id="clientSelect" onchange="handleClientChange()"></select>
-        </div>
+      <div id="formContainer" class="form-container">
+        <div class="time-entry-layout">
+          <div class="time-entry-column">
+            <div class="field-block">
+              <select id="clientSelect" onchange="handleClientChange()"></select>
+            </div>
 
-        <div class="field-block">
-          <div id="campaignSelectWrapper">
-            <select id="campaign" onchange="handleCampaignInput()"></select>
-          </div>
-          <div id="campaignCustomWrapper" class="inline-field" style="display:none;">
-            <input type="text" id="customCampaign" placeholder="Entrez une campagne" oninput="handleCustomFieldInput('campaign')">
-            <button type="button" class="icon-btn" onclick="closeCustomField('campaign')">X</button>
-          </div>
-          <div id="campaignExistsMessage" class="inline-warning"></div>
-        </div>
+            <div class="field-block">
+              <div id="campaignSelectWrapper">
+                <select id="campaign" onchange="handleCampaignInput()"></select>
+              </div>
+              <div id="campaignCustomWrapper" class="inline-field" style="display:none;">
+                <input type="text" id="customCampaign" placeholder="Entrez une campagne" oninput="handleCustomFieldInput('campaign')">
+                <button type="button" class="icon-btn" onclick="closeCustomField('campaign')">X</button>
+              </div>
+              <div id="campaignExistsMessage" class="inline-warning"></div>
+            </div>
 
-        <div class="field-block">
-          <div id="projectSelectWrapper">
-            <select id="project" onchange="handleProjectChange()"></select>
-          </div>
-          <div id="projectCustomWrapper" class="inline-field" style="display:none;">
-            <input type="text" id="customProject" placeholder="Entrez un projet" oninput="handleCustomFieldInput('project')">
-            <button type="button" class="icon-btn" onclick="closeCustomField('project')">X</button>
-          </div>
-          <div id="projectExistsMessage" class="inline-warning"></div>
-        </div>
+            <div class="field-block">
+              <div id="projectSelectWrapper">
+                <select id="project" onchange="handleProjectChange()"></select>
+              </div>
+              <div id="projectCustomWrapper" class="inline-field" style="display:none;">
+                <input type="text" id="customProject" placeholder="Entrez un projet" oninput="handleCustomFieldInput('project')">
+                <button type="button" class="icon-btn" onclick="closeCustomField('project')">X</button>
+              </div>
+              <div id="projectExistsMessage" class="inline-warning"></div>
+            </div>
 
-        <div class="field-block">
-          <div id="activitySelectWrapper">
-            <select id="activitySelect" onchange="handleActivityChange()"></select>
+            <div class="field-block">
+              <div id="activitySelectWrapper">
+                <select id="activitySelect" onchange="handleActivityChange()"></select>
+              </div>
+              <div id="activityCustomWrapper" class="inline-field" style="display:none;">
+                <input type="text" id="customActivity" placeholder="Entrez une activité" oninput="handleCustomFieldInput('activity')">
+                <button type="button" class="icon-btn" onclick="closeCustomField('activity')">X</button>
+              </div>
+              <div id="activityExistsMessage" class="inline-warning"></div>
+            </div>
           </div>
-          <div id="activityCustomWrapper" class="inline-field" style="display:none;">
-            <input type="text" id="customActivity" placeholder="Entrez une activité" oninput="handleCustomFieldInput('activity')">
-            <button type="button" class="icon-btn" onclick="closeCustomField('activity')">X</button>
-          </div>
-          <div id="activityExistsMessage" class="inline-warning"></div>
-        </div>
 
-        <div class="field-block">
-          <input type="text" id="note" placeholder="Note" oninput="updateLiveValidation()">
-        </div>
-        <div class="rate-container">
-          <div id="rateSelectWrapper">
-            <select id="rate"></select>
-          </div>
-          <div id="rateCustomWrapper" class="inline-field" style="display:none; margin-top: 0;">
-            <input type="text" id="customRate" placeholder="Entrez un taux" oninput="handleCustomFieldInput('rate')">
-            <button type="button" class="icon-btn" onclick="closeCustomField('rate')">X</button>
-          </div>
-          <div id="rateExistsMessage" class="inline-warning"></div>
-        </div>
-      </div>
+          <div class="time-entry-column time-entry-right-column">
+            <div class="time-entry-rate-row">
+              <div class="time-entry-rate-label">Taux horaire :</div>
+              <div class="rate-container">
+                <div id="rateSelectWrapper">
+                  <select id="rate"></select>
+                </div>
+                <div id="rateCustomWrapper" class="inline-field" style="display:none; margin-top: 0;">
+                  <input type="text" id="customRate" placeholder="Entrez un taux" oninput="handleCustomFieldInput('rate')">
+                  <button type="button" class="icon-btn" onclick="closeCustomField('rate')">X</button>
+                </div>
+                <div id="rateExistsMessage" class="inline-warning"></div>
+              </div>
+            </div>
 
-      <div class="footer">
-        <div class="btn-container">
-          <button class="btn btn-secondary" onclick="google.script.host.close()">Fermer</button>
-          <button id="submit" class="btn btn-green" onclick="submitForm()">OK</button>
+            <div class="field-block">
+              <textarea id="note" class="time-entry-note" placeholder="Note" oninput="updateLiveValidation()"></textarea>
+            </div>
+
+            <div class="time-entry-actions">
+              <button class="btn btn-secondary" onclick="google.script.host.close()">Fermer</button>
+              <button id="submit" class="btn btn-green" onclick="submitForm()">OK</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -500,6 +576,28 @@
         document.getElementById(id).classList.toggle('active', id === viewId);
       });
       applyPopupType(resolvePopupType(viewId, type));
+      syncPopupSize(viewId);
+    }
+
+    function syncPopupSize(viewId) {
+      if (typeof google === 'undefined' || !google.script || !google.script.host) {
+        return;
+      }
+
+      const dimensionsByView = {
+        formView: { width: 690, height: 430 },
+        newClientView: { width: 690, height: 560 },
+        loadingView: { width: 460, height: 260 },
+        successView: { width: 460, height: 260 },
+        errorView: { width: 460, height: 260 }
+      };
+      const dimensions = dimensionsByView[viewId];
+      if (!dimensions) {
+        return;
+      }
+
+      google.script.host.setWidth(dimensions.width);
+      google.script.host.setHeight(dimensions.height);
     }
 
     function setSubmitDisabled(disabled) {
