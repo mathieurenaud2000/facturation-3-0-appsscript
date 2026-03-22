@@ -62,6 +62,10 @@
       display: flex;
     }
 
+    #formView.popup-view.active {
+      flex: 0 0 auto;
+    }
+
     .form-view {
       justify-content: flex-start;
       padding-bottom: 0;
@@ -356,7 +360,7 @@
       gap: 12px;
       align-items: stretch;
       min-height: var(--control-height);
-      transform: translateY(-3px);
+      transform: translateY(-4px);
     }
 
     .time-entry-actions .btn {
@@ -597,7 +601,7 @@
       }
 
       const dimensionsByView = {
-        formView: { width: 690, height: 340 },
+        formView: { width: 690, height: 300 },
         newClientView: { width: 690, height: 560 },
         loadingView: { width: 460, height: 260 },
         successView: { width: 460, height: 260 },
