@@ -933,9 +933,9 @@ function newTimeEntry() {
   }
 
   const lastRowGestion = facturerGestionSheet.getLastRow();
-  const lastRowClients = facturerClientsSheet.getLastRow();
+  const lastRow = Math.max(7, facturerTimeSheet.getLastRow());
   const clients = [...new Set(
-    facturerClientsSheet.getRange("A2:A" + Math.max(2, lastRowClients)).getValues().flat().map(value => String(value || "").trim()).filter(String)
+    facturerTimeSheet.getRange("B7:B" + lastRow).getValues().flat().map(value => String(value || "").trim()).filter(String)
   )];
   const activities = facturerGestionSheet.getRange("A2:A" + Math.max(2, lastRowGestion)).getValues().flat().filter(String);
   let rates = ['0']; // Valeur par défaut
@@ -945,8 +945,6 @@ function newTimeEntry() {
   } catch (e) {
     openStandaloneMessageView_("Erreur : Impossible de lire les taux dans GESTION!C2:C. Valeur par défaut utilisée.", "Information");
   }
-
-  const lastRow = Math.max(7, facturerTimeSheet.getLastRow());
 
   const clientScopedRows = facturerTimeSheet.getRange("B7:D" + lastRow).getValues();
   const campaignOptionsByClient = {};
