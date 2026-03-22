@@ -64,16 +64,17 @@
 
     .form-view {
       justify-content: flex-start;
-      padding-bottom: 88px;
+      padding-bottom: 0;
     }
 
-    #formView.form-view {
-      padding-bottom: 0;
+    #newClientView.form-view {
+      padding-bottom: 88px;
     }
 
     #formView .form-container {
       flex: 0 0 auto;
       overflow: visible;
+      padding-bottom: 0;
     }
 
     .status-view {
@@ -355,6 +356,7 @@
       gap: 12px;
       align-items: stretch;
       min-height: var(--control-height);
+      transform: translateY(-3px);
     }
 
     .time-entry-actions .btn {
@@ -813,7 +815,7 @@
       setSelectOptions(
         rateSelect,
         rateValues,
-        'Taux',
+        '',
         selectedValue,
         true
       );
