@@ -393,7 +393,7 @@
   <script>
     let clientOptions = <?!= JSON.stringify(Array.isArray(clients) ? clients : []) ?>;
     let campaignOptionsByClient = <?!= JSON.stringify(campaignOptionsByClient || {}) ?>;
-    let projectOptionsByClient = <?!= JSON.stringify(projectOptionsByClient || {}) ?>;
+    let projectOptionsByClientAndCampaign = <?!= JSON.stringify(projectOptionsByClientAndCampaign || {}) ?>;
     let activityOptions = <?!= JSON.stringify(Array.isArray(activities) ? activities : []) ?>;
     let rateOptions = <?!= JSON.stringify(rates || ['0']) ?>;
     if (!Array.isArray(rateOptions)) rateOptions = ['0'];
@@ -525,12 +525,18 @@
       return clientSelect.value;
     }
 
+    function getCurrentCampaignValue() {
+      const { campaign, customCampaign } = getFieldRefs();
+      return isCustomFieldActive('campaign') ? customCampaign.value.trim() : campaign.value;
+    }
+
     function getExistingOptionsForField(fieldName) {
       if (fieldName === 'campaign') {
         return campaignOptionsByClient[getCurrentClientValue()] || [];
       }
       if (fieldName === 'project') {
-        return projectOptionsByClient[getCurrentClientValue()] || [];
+        const projectKey = `${getCurrentClientValue()}|||${getCurrentCampaignValue()}`;
+        return projectOptionsByClientAndCampaign[projectKey] || [];
       }
       if (fieldName === 'activity') {
         return activityOptions.filter(option => option !== '0');
@@ -633,16 +639,18 @@
     function populateProjectOptions(selectedValue = '') {
       const { project } = getFieldRefs();
       const currentClientValue = getCurrentClientValue();
-      const hasClient = currentClientValue !== '';
-      const options = projectOptionsByClient[currentClientValue] || [];
+      const currentCampaignValue = getCurrentCampaignValue();
+      const hasClientAndCampaign = currentClientValue !== '' && currentCampaignValue !== '' && currentCampaignValue !== '__autre__';
+      const projectKey = `${currentClientValue}|||${currentCampaignValue}`;
+      const options = projectOptionsByClientAndCampaign[projectKey] || [];
       setSelectOptions(
         project,
         options,
         options.length === 0 ? 'Aucun projet disponible' : 'Sélectionnez un projet',
         selectedValue,
-        hasClient
+        hasClientAndCampaign
       );
-      project.disabled = !hasClient;
+      project.disabled = !hasClientAndCampaign;
     }
 
     function populateActivityOptions(selectedValue = '') {
@@ -796,9 +804,13 @@
       const { campaign } = getFieldRefs();
       if (campaign.value === '__autre__') {
         campaign.value = '';
+        populateProjectOptions('');
+        closeCustomField('project');
         openCustomField('campaign');
         return;
       }
+      populateProjectOptions('');
+      closeCustomField('project');
       updateLiveValidation();
     }
 

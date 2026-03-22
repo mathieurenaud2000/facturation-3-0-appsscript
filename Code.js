@@ -948,19 +948,20 @@ function newTimeEntry() {
 
   const clientScopedRows = facturerTimeSheet.getRange("B7:D" + lastRow).getValues();
   const campaignOptionsByClient = {};
-  const projectOptionsByClient = {};
+  const projectOptionsByClientAndCampaign = {};
   clientScopedRows.forEach(row => {
     const client = String(row[0] || "").trim();
     const campaign = String(row[1] || "").trim();
     const project = String(row[2] || "").trim();
     if (!client) return;
     if (!campaignOptionsByClient[client]) campaignOptionsByClient[client] = [];
-    if (!projectOptionsByClient[client]) projectOptionsByClient[client] = [];
     if (campaign && !campaignOptionsByClient[client].includes(campaign)) {
       campaignOptionsByClient[client].push(campaign);
     }
-    if (project && !projectOptionsByClient[client].includes(project)) {
-      projectOptionsByClient[client].push(project);
+    const projectKey = `${client}|||${campaign}`;
+    if (!projectOptionsByClientAndCampaign[projectKey]) projectOptionsByClientAndCampaign[projectKey] = [];
+    if (campaign && project && !projectOptionsByClientAndCampaign[projectKey].includes(project)) {
+      projectOptionsByClientAndCampaign[projectKey].push(project);
     }
   });
 
@@ -986,7 +987,7 @@ function newTimeEntry() {
   const html = HtmlService.createTemplateFromFile("popupTemps");
   html.clients = clients || [];
   html.campaignOptionsByClient = campaignOptionsByClient || {};
-  html.projectOptionsByClient = projectOptionsByClient || {};
+  html.projectOptionsByClientAndCampaign = projectOptionsByClientAndCampaign || {};
   html.activities = activities || [];
   html.rates = rates || ['0'];
   html.checkedRowIndex = checkedRowIndex;
