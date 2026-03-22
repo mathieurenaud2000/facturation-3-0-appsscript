@@ -25,6 +25,41 @@
       flex-direction: column;
     }
 
+    /* Base commune de typage des popups.
+       Ces classes vivent en parallèle de la structure actuelle pour préparer
+       une standardisation progressive, sans imposer une migration immédiate. */
+    .container[class*="popup-type-"] .popup-view.active {
+      width: 100%;
+      align-self: center;
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    /* alert = petit popup d'information ou d'erreur simple */
+    .popup-type-alert .popup-view.active {
+      max-width: 360px;
+    }
+
+    /* confirm = confirmation courte avec peu de contenu */
+    .popup-type-confirm .popup-view.active {
+      max-width: 380px;
+    }
+
+    /* form-simple = formulaire court à faible densité */
+    .popup-type-form-simple .popup-view.active {
+      max-width: 420px;
+    }
+
+    /* form-complex = formulaire plus riche, prévu pour des vues plus denses */
+    .popup-type-form-complex .popup-view.active {
+      max-width: 520px;
+    }
+
+    /* action = états de succès, téléchargement, envoi ou actions guidées */
+    .popup-type-action .popup-view.active {
+      max-width: 440px;
+    }
+
     .popup-view {
       flex: 1;
       display: none;
@@ -203,7 +238,7 @@
   </style>
 </head>
 <body>
-  <div class="container">
+  <div id="popupContainer" class="container">
     <!-- Vue numéro initial -->
     <div id="invoiceNumberView" class="popup-view invoice-number-view">
       <div class="message-title">Numéro de facture</div>
@@ -246,7 +281,14 @@
     <!-- État de succès -->
     <div id="successView" class="popup-view status-view">
       <i class="fas fa-check-circle success-icon"></i>
-      <div class="message" id="successMessage">Facture créée avec succès !</div>
+      <div class="message-title" id="successTitle">Bravo</div>
+      <div class="message" id="successMessage">La facture a été enregistrée avec succès.</div>
+    </div>
+    <!-- État d'envoi -->
+    <div id="sendInvoiceView" class="popup-view form-view">
+      <div class="message-title">Envoyer la facture à</div>
+      <select id="emailRecipient" onchange="validateSendInvoiceForm()"></select>
+      <select id="emailCc" onchange="validateSendInvoiceForm()"></select>
     </div>
     <!-- État d'erreur -->
     <div id="errorView" class="popup-view error-view">
@@ -256,19 +298,43 @@
     <div class="footer">
       <button id="submit" class="btn btn-green" disabled onclick="handlePrimaryAction()">Générer la facture</button>
       <button id="close" class="btn btn-white" style="display:none;" onclick="handleSecondaryAction()">Fermer</button>
-      <button id="openPdf" class="btn btn-green" style="display:none;" onclick="handleOpenPdfAction()">Ouvrir le PDF</button>
+      <button id="openPdf" class="btn btn-green" style="display:none;" onclick="handleOpenPdfAction()">Télécharger</button>
     </div>
   </div>
 
   <script>
     let pdfUrl = '';
     let currentInvoiceNumber = '';
+    let currentInvoiceRecipientOptions = [];
     let currentPrimaryAction = null;
     let currentSecondaryAction = null;
     let currentOpenPdfAction = null;
     let pendingInvoiceSubmission = null;
     let emailSendCompleted = false;
-    const popupViewIds = ["invoiceNumberView", "confirmView", "messageView", "formView", "loadingView", "successView", "errorView"];
+    /* Le moteur supporte désormais une notion de type logique.
+       Elle est ajoutée en parallèle des vues existantes pour préparer
+       les futures migrations UI sans casser les appels actuels. */
+    const popupTypeClasses = [
+      "popup-type-alert",
+      "popup-type-confirm",
+      "popup-type-form-simple",
+      "popup-type-form-complex",
+      "popup-type-action"
+    ];
+    /* Cette table classe les vues historiques dans les catégories communes.
+       Elle sert de fallback automatique : les appels existants n'ont donc pas
+       besoin d'être tous réécrits pour bénéficier du nouveau système. */
+    const popupTypeByView = {
+      invoiceNumberView: "form-simple",
+      confirmView: "confirm",
+      messageView: "alert",
+      formView: "form-simple",
+      loadingView: "action",
+      successView: "action",
+      sendInvoiceView: "form-simple",
+      errorView: "alert"
+    };
+    const popupViewIds = ["invoiceNumberView", "confirmView", "messageView", "formView", "loadingView", "successView", "sendInvoiceView", "errorView"];
     if (typeof window.contacts === "undefined") {
       window.contacts = [];
     }
@@ -337,8 +403,87 @@
       }
     }
 
+    /* Applique une catégorie visuelle/logique au conteneur principal.
+       Le fallback est volontairement neutre : si aucun type n'est fourni,
+       ou si le type est inconnu, on retire les classes de type et on laisse
+       la présentation historique fonctionner telle quelle. */
+    function applyPopupType(type) {
+      const popupContainer = document.getElementById("popupContainer");
+      popupTypeClasses.forEach(className => {
+        popupContainer.classList.remove(className);
+      });
+
+      if (typeof type !== "string" || type.trim() === "") {
+        return;
+      }
+
+      const normalizedType = `popup-type-${type.trim()}`;
+      if (popupTypeClasses.includes(normalizedType)) {
+        popupContainer.classList.add(normalizedType);
+      }
+    }
+
+    /* Résout le type final appliqué à une vue.
+       Priorité :
+       1. le type passé explicitement par le flux courant
+       2. le fallback défini par vue pour préserver l'existant
+       3. aucun type si rien n'est défini */
+    function resolvePopupType(type, view) {
+      if (typeof type === "string" && type.trim() !== "") {
+        return type.trim();
+      }
+      return popupTypeByView[view] || "";
+    }
+
+    function renderRecipientSelectOptions(selectElement, options, placeholder, selectedValue, allowEmptySelection) {
+      selectElement.innerHTML = "";
+
+      const placeholderOption = document.createElement("option");
+      placeholderOption.value = "";
+      placeholderOption.text = placeholder;
+      selectElement.appendChild(placeholderOption);
+
+      options.forEach(option => {
+        const optionElement = document.createElement("option");
+        optionElement.value = option.email;
+        optionElement.text = option.name || option.email;
+        optionElement.dataset.name = option.name || "";
+        selectElement.appendChild(optionElement);
+      });
+
+      if (allowEmptySelection) {
+        selectElement.value = selectedValue || "";
+      } else if (selectedValue && options.some(option => option.email === selectedValue)) {
+        selectElement.value = selectedValue;
+      } else if (options.length > 0) {
+        selectElement.value = options[0].email;
+      } else {
+        selectElement.value = "";
+      }
+    }
+
+    function validateSendInvoiceForm() {
+      const recipientSelect = document.getElementById("emailRecipient");
+      const isValid = recipientSelect.value.trim() !== "";
+      document.getElementById("submit").disabled = !isValid;
+      return isValid;
+    }
+
+    function getSelectedRecipient(selectId) {
+      const selectElement = document.getElementById(selectId);
+      const selectedOption = selectElement.options[selectElement.selectedIndex];
+      if (!selectedOption || selectedOption.value === "") {
+        return null;
+      }
+      return {
+        name: selectedOption.dataset.name || "",
+        email: selectedOption.value
+      };
+    }
+
     function setPopupState({
       view,
+      type,
       title,
       message,
       footer,
@@ -349,6 +494,7 @@
       if (view === "formView") {
         pdfUrl = "";
         currentInvoiceNumber = "";
+        currentInvoiceRecipientOptions = [];
         pendingInvoiceSubmission = null;
         emailSendCompleted = false;
       }
@@ -375,6 +521,7 @@
       }
 
       setActiveView(view);
+      applyPopupType(resolvePopupType(type, view));
       setFooterButtons(footer);
       document.getElementById("submit").disabled = !footer || !footer.primary || !footer.primary.visible;
       currentPrimaryAction = typeof primaryAction === "function" ? primaryAction : null;
@@ -482,6 +629,7 @@
     function showConfirmView({ title, message, action, confirmLabel, cancelLabel }) {
       setPopupState({
         view: "confirmView",
+        type: "confirm",
         title,
         message,
         footer: {
@@ -497,6 +645,7 @@
     function showMessageView({ title, message }) {
       setPopupState({
         view: "messageView",
+        type: "alert",
         title,
         message,
         footer: {
@@ -573,8 +722,9 @@
     function showFormView() {
       setPopupState({
         view: "formView",
+        type: "form-simple",
         footer: {
-          primary: { label: "Générer la facture", visible: true },
+          primary: { label: "Enregistrer", visible: true },
           secondary: { label: "Fermer", visible: false },
           openPdf: { visible: false }
         },
@@ -588,6 +738,7 @@
       clearInvoiceNumberInlineError();
       setPopupState({
         view: "invoiceNumberView",
+        type: "form-simple",
         footer: {
           primary: { label: "OK", visible: true },
           secondary: { label: "Fermer", visible: false },
@@ -606,6 +757,7 @@
       document.getElementById("loadingMessage").textContent = message;
       setPopupState({
         view: "loadingView",
+        type: "action",
         footer: {
           primary: { label: "", visible: false },
           secondary: { label: "", visible: false },
@@ -619,21 +771,53 @@
 
     function showSuccessView(options = {}) {
       const emailSent = Boolean(options.emailSent);
-      document.getElementById("successMessage").textContent = emailSent
-        ? "Facture créée et courriel envoyé !"
-        : "Facture créée avec succès !";
+      document.getElementById("successTitle").textContent = "Bravo";
+      document.getElementById("successMessage").textContent = "La facture a été enregistrée avec succès.";
       setPopupState({
         view: "successView",
+        type: "action",
         footer: {
-          primary: { label: "Envoyer par courriel", visible: !emailSent },
+          primary: { label: "Envoyer", visible: true },
           secondary: { label: "Fermer", visible: true },
           openPdf: { visible: true }
         },
-        primaryAction: emailSent ? null : sendInvoiceEmailFromPopup,
+        primaryAction: showSendInvoiceFlow,
         secondaryAction: () => google.script.host.close(),
         openPdfAction: openPdfAndClose
       });
       document.getElementById("submit").disabled = emailSent;
+    }
+
+    function showSendInvoiceView(defaultRecipientEmail) {
+      const recipientSelect = document.getElementById("emailRecipient");
+      const ccSelect = document.getElementById("emailCc");
+      renderRecipientSelectOptions(
+        recipientSelect,
+        currentInvoiceRecipientOptions,
+        "Sélectionnez un destinataire",
+        defaultRecipientEmail,
+        false
+      );
+      renderRecipientSelectOptions(
+        ccSelect,
+        currentInvoiceRecipientOptions,
+        "Aucun CC",
+        "",
+        true
+      );
+      setPopupState({
+        view: "sendInvoiceView",
+        type: "form-simple",
+        footer: {
+          primary: { label: "Envoyer", visible: true },
+          secondary: { label: "Fermer", visible: true },
+          openPdf: { visible: true }
+        },
+        primaryAction: sendInvoiceEmailFromPopup,
+        secondaryAction: () => google.script.host.close(),
+        openPdfAction: openPdfAndClose
+      });
+      validateSendInvoiceForm();
     }
 
     function showErrorView(message, options = {}) {
@@ -643,6 +827,7 @@
       }
       setPopupState({
         view: "errorView",
+        type: "alert",
         message,
         footer: {
           primary: { label: "", visible: false },
@@ -660,10 +845,48 @@
       google.script.host.close();
     }
 
+    function showSendInvoiceFlow() {
+      if (!currentInvoiceNumber || !pdfUrl || emailSendCompleted) {
+        return;
+      }
+
+      showLoadingView("Préparation de l’envoi", "Veuillez patienter...");
+
+      google.script.run
+        .withSuccessHandler(result => {
+          if (result && result.success) {
+            currentInvoiceRecipientOptions = Array.isArray(result.recipientOptions) ? result.recipientOptions : [];
+            showSendInvoiceView(result.defaultRecipientEmail || "");
+          } else {
+            showErrorView(result && result.message ? result.message : null, {
+              preserveInvoiceContext: true,
+              secondaryAction: () => showSuccessView({ emailSent: emailSendCompleted }),
+              secondaryLabel: "Retour"
+            });
+          }
+        })
+        .withFailureHandler(error => {
+          showErrorView(error && error.message ? error.message : null, {
+            preserveInvoiceContext: true,
+            secondaryAction: () => showSuccessView({ emailSent: emailSendCompleted }),
+            secondaryLabel: "Retour"
+          });
+        })
+        .getInvoiceRecipientOptions(currentInvoiceNumber);
+    }
+
     function sendInvoiceEmailFromPopup() {
       if (!currentInvoiceNumber || !pdfUrl || emailSendCompleted) {
         return;
       }
+      if (!validateSendInvoiceForm()) {
+        return;
+      }
+
+      document.getElementById("submit").disabled = true;
+
+      const recipient = getSelectedRecipient("emailRecipient");
+      const ccRecipient = getSelectedRecipient("emailCc");
 
       showLoadingView("Envoi du courriel", "Veuillez patienter...");
 
@@ -675,7 +898,7 @@
           } else {
             showErrorView(result && result.message ? result.message : null, {
               preserveInvoiceContext: true,
-              secondaryAction: () => showSuccessView({ emailSent: false }),
+              secondaryAction: () => showSendInvoiceView(recipient ? recipient.email : ""),
               secondaryLabel: "Retour"
             });
           }
@@ -683,11 +906,11 @@
         .withFailureHandler(error => {
           showErrorView(error && error.message ? error.message : null, {
             preserveInvoiceContext: true,
-            secondaryAction: () => showSuccessView({ emailSent: false }),
+            secondaryAction: () => showSendInvoiceView(recipient ? recipient.email : ""),
             secondaryLabel: "Retour"
           });
         })
-        .sendInvoiceEmail(currentInvoiceNumber, pdfUrl);
+        .sendInvoiceEmail(currentInvoiceNumber, pdfUrl, recipient, ccRecipient);
     }
 
     function submitInvoiceRequest(submissionData, overwriteExistingFile) {

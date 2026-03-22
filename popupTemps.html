@@ -9,12 +9,39 @@
     html, body { width: 100%; height: 100%; font-family: Roboto, sans-serif; }
 
     .container {
-      margin: 0;
-      padding: 0;
       width: 100%;
       height: 100%;
       display: flex;
       flex-direction: column;
+    }
+
+    /* Base visuelle commune : ces types restent compatibles avec la structure
+       propre à popupTemps, mais l'alignent avec les autres popups du projet. */
+    .container[class*="popup-type-"] .popup-view.active {
+      width: 100%;
+      align-self: center;
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    .popup-type-alert .popup-view.active {
+      max-width: 380px;
+    }
+
+    .popup-type-confirm .popup-view.active {
+      max-width: 400px;
+    }
+
+    .popup-type-form-simple .popup-view.active {
+      max-width: 420px;
+    }
+
+    .popup-type-form-complex .popup-view.active {
+      max-width: 560px;
+    }
+
+    .popup-type-action .popup-view.active {
+      max-width: 420px;
     }
 
     .popup-view {
@@ -30,6 +57,7 @@
 
     .form-view {
       justify-content: flex-start;
+      padding-bottom: 88px;
     }
 
     .status-view {
@@ -44,15 +72,16 @@
 
     .form-container {
       flex: 1;
+      width: 100%;
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
-      align-items: center;
+      align-items: stretch;
+      overflow-y: auto;
       padding: 0;
     }
 
     .label {
-      margin: 0;
       padding: 5px 0;
       font-size: 10pt;
       color: #888;
@@ -61,19 +90,55 @@
 
     select, input {
       width: 100%;
-      margin: 0;
       padding: 8px;
       border: 1px solid #ccc;
       border-radius: 0;
       font-size: 13pt;
       color: #000;
+      background: #fff;
     }
 
     select option:not([value=""]) { color: #000000; }
     select.invalid, input.invalid { border: 1px solid #ff0000; }
 
-    #rate { border: 0px; width: 50px; text-align: left; padding: 0px; margin: 0px; color: #888; }
-    #rate option { padding: 0px; margin: 0px; color: #888; }
+    .field-block {
+      width: 100%;
+      margin-bottom: 2px;
+    }
+
+    .inline-field {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .inline-field input {
+      flex: 1;
+    }
+
+    .inline-warning {
+      min-height: 16px;
+      margin-top: 4px;
+      font-size: 9pt;
+      color: #c62828;
+    }
+
+    .icon-btn {
+      width: 34px;
+      min-width: 34px;
+      height: 34px;
+      border: 1px solid #ccc;
+      background: #fff;
+      color: #666;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .icon-btn:hover {
+      background: #f3f3f3;
+    }
 
     .footer {
       position: fixed;
@@ -85,25 +150,24 @@
       grid-template-columns: 40% 60%;
       align-items: flex-end;
       justify-content: space-between;
-      padding: 0px;
+      background: #fff;
     }
 
     .rate-container {
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      padding: 0px;
+      padding: 0;
     }
 
     .btn-container {
       display: flex;
       justify-content: flex-end;
-      padding: 0px;
     }
 
     .btn {
       margin-left: 20px;
-      padding: 12px 120px;
+      padding: 12px 70px;
       border-radius: 10px;
       cursor: pointer;
       border: none;
@@ -120,6 +184,17 @@
     .btn-green:hover {
       background-color: #45a049;
       border: 1px solid #45a049;
+    }
+
+    .btn-secondary {
+      background-color: #ccc;
+      color: #000;
+      border: 1px solid #ccc;
+    }
+
+    .btn-secondary:hover {
+      background-color: #b3b3b3;
+      border: 1px solid #b3b3b3;
     }
 
     .spinner {
@@ -160,46 +235,136 @@
       justify-content: center;
     }
 
-    .micro-input {
-      margin-top: 8px;
+    .new-client-layout {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 16px;
+      padding-bottom: 88px;
     }
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
   </style>
 </head>
 <body>
-  <div class="container">
+  <div id="popupContainer" class="container">
     <div id="formView" class="popup-view form-view active">
       <div id="formContainer" class="form-container">
-        <div class="label" id="clientLabel">Client :</div>
-        <select id="clientSelect" onchange="handleClientChange()">
-          <option value="">Sélectionnez un client</option>
-          <?!= Array.isArray(clients) ? clients.map(client => `<option value="${client}" ${client === (clientSelected || '') ? 'selected' : ''}>${client}</option>`).join('') : '' ?>
-          <option value="__autre__">Autre...</option>
-        </select>
-        <input type="text" id="newClientInput" class="micro-input" placeholder="Entrez un nouveau client" style="display:none;" oninput="handleClientInput()">
-        <div class="label">Campagne :</div>
-        <input type="text" id="campaign" value="<?!= typeof campaign === 'string' ? campaign : '' ?>" oninput="handleCampaignInput()">
-        <div class="label">Projet :</div>
-        <input type="text" id="project" value="<?!= typeof project === 'string' ? project : '' ?>" oninput="clearValidationState()">
-        <div class="label" id="activityLabel">Activité :</div>
-        <select id="activitySelect" onchange="handleActivityChange()">
-          <option value="">Sélectionnez une activité</option>
-          <?!= Array.isArray(activities) ? activities.map(activity => `<option value="${activity}" ${activity === (activitySelected || '') ? 'selected' : ''}>${activity}</option>`).join('') : '' ?>
-          <option value="__autre__">Autre...</option>
-        </select>
-        <input type="text" id="newActivityInput" class="micro-input" placeholder="Entrez une nouvelle activité" style="display:none;" oninput="handleActivityInput()">
+        <div class="field-block">
+          <div class="label">Client :</div>
+          <select id="clientSelect" onchange="handleClientChange()"></select>
+        </div>
+
+        <div class="field-block">
+          <div class="label">Campagne :</div>
+          <div id="campaignSelectWrapper">
+            <select id="campaign" onchange="handleCampaignInput()"></select>
+          </div>
+          <div id="campaignCustomWrapper" class="inline-field" style="display:none;">
+            <input type="text" id="customCampaign" placeholder="Entrez une campagne" oninput="handleCustomFieldInput('campaign')">
+            <button type="button" class="icon-btn" onclick="closeCustomField('campaign')">X</button>
+          </div>
+          <div id="campaignExistsMessage" class="inline-warning"></div>
+        </div>
+
+        <div class="field-block">
+          <div class="label">Projet :</div>
+          <div id="projectSelectWrapper">
+            <select id="project" onchange="handleProjectChange()"></select>
+          </div>
+          <div id="projectCustomWrapper" class="inline-field" style="display:none;">
+            <input type="text" id="customProject" placeholder="Entrez un projet" oninput="handleCustomFieldInput('project')">
+            <button type="button" class="icon-btn" onclick="closeCustomField('project')">X</button>
+          </div>
+          <div id="projectExistsMessage" class="inline-warning"></div>
+        </div>
+
+        <div class="field-block">
+          <div class="label">Activité :</div>
+          <div id="activitySelectWrapper">
+            <select id="activitySelect" onchange="handleActivityChange()"></select>
+          </div>
+          <div id="activityCustomWrapper" class="inline-field" style="display:none;">
+            <input type="text" id="customActivity" placeholder="Entrez une activité" oninput="handleCustomFieldInput('activity')">
+            <button type="button" class="icon-btn" onclick="closeCustomField('activity')">X</button>
+          </div>
+          <div id="activityExistsMessage" class="inline-warning"></div>
+        </div>
+
+        <div class="field-block">
+          <div class="label">Note :</div>
+          <input type="text" id="note" oninput="updateLiveValidation()">
+        </div>
       </div>
 
-      <div class="footer" id="footer">
+      <div class="footer">
         <div class="rate-container">
           <div class="label">Taux :</div>
-          <select id="rate"></select>
-          <div id="newRateContainer" style="display: none; flex-direction: row; align-items: center; width: 100%; margin-top: 8px;">
-            <input type="number" id="newRateInput" min="1" max="1000" style="width: 70px; font-size: 13pt; padding: 8px; border: 1px solid #ccc; border-radius: 0;" oninput="clearValidationState()" />
-            <span style="margin-left: 10px; font-size: 10pt; color: #888;">$/h</span>
+          <div id="rateSelectWrapper">
+            <select id="rate"></select>
           </div>
+          <div id="rateCustomWrapper" class="inline-field" style="display:none; margin-top: 0;">
+            <input type="text" id="customRate" placeholder="Entrez un taux" oninput="handleCustomFieldInput('rate')">
+            <button type="button" class="icon-btn" onclick="closeCustomField('rate')">X</button>
+          </div>
+          <div id="rateExistsMessage" class="inline-warning"></div>
         </div>
         <div class="btn-container">
+          <button class="btn btn-secondary" onclick="google.script.host.close()">Fermer</button>
           <button id="submit" class="btn btn-green" onclick="submitForm()">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="newClientView" class="popup-view form-view">
+      <div class="form-container">
+        <div class="message-title">Nouveau client</div>
+        <div class="new-client-layout">
+          <div class="field-block full-width">
+            <div class="label">Nom de l’entreprise :</div>
+            <input type="text" id="clientCompanyName" oninput="updateNewClientValidation()">
+          </div>
+
+          <div class="field-block">
+            <div class="label">Nom du contact principal :</div>
+            <input type="text" id="clientPrimaryContactName" oninput="updateNewClientValidation()">
+          </div>
+
+          <div class="field-block">
+            <div class="label">Courriel du contact principal :</div>
+            <input type="email" id="clientPrimaryContactEmail" oninput="updateNewClientValidation()">
+          </div>
+
+          <div class="field-block">
+            <div class="label">Contact secondaire :</div>
+            <input type="text" id="clientSecondaryContactName" oninput="updateNewClientValidation()">
+          </div>
+
+          <div class="field-block">
+            <div class="label">Courriel secondaire :</div>
+            <input type="email" id="clientSecondaryContactEmail" oninput="updateNewClientValidation()">
+          </div>
+
+          <div class="field-block">
+            <div class="label">Contact facturation :</div>
+            <input type="text" id="clientBillingContactName" oninput="updateNewClientValidation()">
+          </div>
+
+          <div class="field-block">
+            <div class="label">Courriel facturation :</div>
+            <input type="email" id="clientBillingEmail" oninput="updateNewClientValidation()">
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div></div>
+        <div class="btn-container">
+          <button class="btn btn-secondary" onclick="cancelNewClientView()">Retour</button>
+          <button class="btn btn-green" onclick="saveNewClientView()">OK</button>
         </div>
       </div>
     </div>
@@ -217,43 +382,96 @@
     </div>
 
     <div id="errorView" class="popup-view error-view">
-      <div class="message-title">Erreur</div>
+      <div class="message-title">Attention</div>
       <div class="message-sub" id="errorMessage"></div>
       <div class="error-actions">
-        <button class="btn btn-green" onclick="showFormView()">Retour</button>
+        <button class="btn btn-green" onclick="google.script.host.close()">Fermer</button>
       </div>
     </div>
   </div>
 
   <script>
-    let rates = <?!= JSON.stringify(rates || ['0']) ?>;
-    if (!Array.isArray(rates)) rates = ['0'];
-    const popupViewIds = ['formView', 'loadingView', 'successView', 'errorView'];
+    let clientOptions = <?!= JSON.stringify(Array.isArray(clients) ? clients : []) ?>;
+    let campaignOptionsByClient = <?!= JSON.stringify(campaignOptionsByClient || {}) ?>;
+    let projectOptionsByClient = <?!= JSON.stringify(projectOptionsByClient || {}) ?>;
+    let activityOptions = <?!= JSON.stringify(Array.isArray(activities) ? activities : []) ?>;
+    let rateOptions = <?!= JSON.stringify(rates || ['0']) ?>;
+    if (!Array.isArray(rateOptions)) rateOptions = ['0'];
+
+    const initialClientSelected = <?!= JSON.stringify(typeof clientSelected === 'string' ? clientSelected : '') ?>;
+    const initialCampaignSelected = <?!= JSON.stringify(typeof campaign === 'string' ? campaign : '') ?>;
+    const initialProjectSelected = <?!= JSON.stringify(typeof project === 'string' ? project : '') ?>;
+    const initialActivitySelected = <?!= JSON.stringify(typeof activitySelected === 'string' ? activitySelected : '') ?>;
+
+    /* popupTemps reste un popup autonome, mais on lui donne la même notion
+       de catégories que popup.html pour converger vers une architecture UI
+       commune sans réécrire son flux complexe. */
+    const popupTypeClasses = [
+      'popup-type-alert',
+      'popup-type-confirm',
+      'popup-type-form-simple',
+      'popup-type-form-complex',
+      'popup-type-action'
+    ];
+    const popupTypeByView = {
+      formView: 'form-complex',
+      newClientView: 'form-complex',
+      loadingView: 'action',
+      successView: 'action',
+      errorView: 'alert'
+    };
+    const popupViewIds = ['formView', 'newClientView', 'loadingView', 'successView', 'errorView'];
     let isSubmitting = false;
-    let lastClientKey = null;
-    let lastCampaignValue = null;
+    let pendingNewClientData = null;
+    let previousClientValue = '';
 
     function getFieldRefs() {
       return {
         clientSelect: document.getElementById('clientSelect'),
-        newClientInput: document.getElementById('newClientInput'),
-        clientLabel: document.getElementById('clientLabel'),
         campaign: document.getElementById('campaign'),
         project: document.getElementById('project'),
         activitySelect: document.getElementById('activitySelect'),
-        newActivityInput: document.getElementById('newActivityInput'),
-        activityLabel: document.getElementById('activityLabel'),
+        note: document.getElementById('note'),
         rateSelect: document.getElementById('rate'),
-        newRateContainer: document.getElementById('newRateContainer'),
-        newRateInput: document.getElementById('newRateInput'),
+        customCampaign: document.getElementById('customCampaign'),
+        customProject: document.getElementById('customProject'),
+        customActivity: document.getElementById('customActivity'),
+        customRate: document.getElementById('customRate'),
         submit: document.getElementById('submit')
       };
     }
 
-    function setActiveView(viewId) {
+    /* Applique le type au conteneur actif.
+       Si aucun type explicite n'est fourni, on retombe sur le mapping par vue,
+       ce qui préserve le comportement existant tout en classant le popup. */
+    function applyPopupType(type) {
+      const popupContainer = document.getElementById('popupContainer');
+      popupTypeClasses.forEach(className => {
+        popupContainer.classList.remove(className);
+      });
+
+      if (typeof type !== 'string' || type.trim() === '') {
+        return;
+      }
+
+      const normalizedType = `popup-type-${type.trim()}`;
+      if (popupTypeClasses.includes(normalizedType)) {
+        popupContainer.classList.add(normalizedType);
+      }
+    }
+
+    function resolvePopupType(viewId, type) {
+      if (typeof type === 'string' && type.trim() !== '') {
+        return type.trim();
+      }
+      return popupTypeByView[viewId] || '';
+    }
+
+    function setActiveView(viewId, type) {
       popupViewIds.forEach(id => {
         document.getElementById(id).classList.toggle('active', id === viewId);
       });
+      applyPopupType(resolvePopupType(viewId, type));
     }
 
     function setSubmitDisabled(disabled) {
@@ -263,17 +481,22 @@
     function showFormView() {
       isSubmitting = false;
       setSubmitDisabled(false);
-      setActiveView('formView');
+      setActiveView('formView', 'form-complex');
+    }
+
+    function showNewClientView() {
+      setActiveView('newClientView', 'form-complex');
+      document.getElementById('clientCompanyName').focus();
     }
 
     function showLoadingView() {
       setSubmitDisabled(true);
-      setActiveView('loadingView');
+      setActiveView('loadingView', 'action');
     }
 
     function showSuccessView() {
       setSubmitDisabled(true);
-      setActiveView('successView');
+      setActiveView('successView', 'action');
     }
 
     function showErrorView(message) {
@@ -283,181 +506,407 @@
       isSubmitting = false;
       setSubmitDisabled(false);
       document.getElementById('errorMessage').textContent = safeMessage;
-      setActiveView('errorView');
+      setActiveView('errorView', 'alert');
     }
 
-    function initializeRateOptions() {
-      const { rateSelect } = getFieldRefs();
-      rateSelect.innerHTML = '';
-      rates.forEach((rate, index) => {
+    function normalizeOptionValue(value) {
+      return String(value || '').trim().toLowerCase();
+    }
+
+    function isCustomFieldActive(fieldName) {
+      return document.getElementById(`${fieldName}CustomWrapper`).style.display !== 'none';
+    }
+
+    function getCurrentClientValue() {
+      const { clientSelect } = getFieldRefs();
+      if (clientSelect.value === '__new_client__' && pendingNewClientData) {
+        return pendingNewClientData.companyName;
+      }
+      return clientSelect.value;
+    }
+
+    function getExistingOptionsForField(fieldName) {
+      if (fieldName === 'campaign') {
+        return campaignOptionsByClient[getCurrentClientValue()] || [];
+      }
+      if (fieldName === 'project') {
+        return projectOptionsByClient[getCurrentClientValue()] || [];
+      }
+      if (fieldName === 'activity') {
+        return activityOptions.filter(option => option !== '0');
+      }
+      if (fieldName === 'rate') {
+        return rateOptions.filter(option => String(option) !== '0');
+      }
+      return [];
+    }
+
+    function updateDuplicateMessage(fieldName) {
+      const input = document.getElementById(`custom${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}`);
+      const message = document.getElementById(`${fieldName}ExistsMessage`);
+      const existingOptions = getExistingOptionsForField(fieldName);
+      const value = normalizeOptionValue(input.value);
+      const exists = value !== '' && existingOptions.some(option => normalizeOptionValue(option) === value);
+      message.textContent = exists ? 'Existe déjà' : '';
+    }
+
+    function clearDuplicateMessage(fieldName) {
+      document.getElementById(`${fieldName}ExistsMessage`).textContent = '';
+    }
+
+    function setSelectOptions(selectElement, options, placeholder, selectedValue, includeOtherOption) {
+      selectElement.innerHTML = '';
+
+      const placeholderOption = document.createElement('option');
+      placeholderOption.value = '';
+      placeholderOption.text = placeholder;
+      selectElement.appendChild(placeholderOption);
+
+      options.forEach(optionValue => {
         const option = document.createElement('option');
-        option.value = rate;
-        option.text = rate === '0' ? 'Aucun taux disponible' : rate;
-        if (index === 0) option.selected = true;
-        rateSelect.appendChild(option);
+        option.value = optionValue;
+        option.text = optionValue;
+        selectElement.appendChild(option);
       });
 
-      const plusOption = document.createElement('option');
-      plusOption.value = '__ajouter__';
-      plusOption.text = '+';
-      rateSelect.appendChild(plusOption);
-      rateSelect.addEventListener('change', () => {
-        updateRateMode();
-        clearValidationState();
+      if (includeOtherOption) {
+        const otherOption = document.createElement('option');
+        otherOption.value = '__autre__';
+        otherOption.text = 'Autre...';
+        selectElement.appendChild(otherOption);
+      }
+
+      selectElement.value = selectedValue;
+      if (selectElement.value !== selectedValue) {
+        selectElement.value = '';
+      }
+    }
+
+    function populateClientOptions(selectedValue = '') {
+      const { clientSelect } = getFieldRefs();
+      clientSelect.innerHTML = '';
+
+      const placeholderOption = document.createElement('option');
+      placeholderOption.value = '';
+      placeholderOption.text = 'Sélectionnez un client';
+      clientSelect.appendChild(placeholderOption);
+
+      const renderedClients = [...clientOptions];
+      if (pendingNewClientData && pendingNewClientData.companyName) {
+        renderedClients.unshift(pendingNewClientData.companyName);
+      }
+
+      const uniqueRenderedClients = [...new Set(renderedClients)];
+      uniqueRenderedClients.forEach(client => {
+        const option = document.createElement('option');
+        option.value = pendingNewClientData && client === pendingNewClientData.companyName ? '__new_client__' : client;
+        option.text = client;
+        clientSelect.appendChild(option);
       });
-      updateRateMode();
+
+      const otherOption = document.createElement('option');
+      otherOption.value = '__autre__';
+      otherOption.text = 'Autre...';
+      clientSelect.appendChild(otherOption);
+
+      clientSelect.value = selectedValue;
+      if (clientSelect.value !== selectedValue) {
+        clientSelect.value = '';
+      }
+    }
+
+    function populateCampaignOptions(selectedValue = '') {
+      const { campaign } = getFieldRefs();
+      const currentClientValue = getCurrentClientValue();
+      const hasClient = currentClientValue !== '';
+      const options = campaignOptionsByClient[currentClientValue] || [];
+      setSelectOptions(
+        campaign,
+        options,
+        options.length === 0 ? 'Aucune campagne disponible' : 'Sélectionnez une campagne',
+        selectedValue,
+        hasClient
+      );
+      campaign.disabled = !hasClient;
+    }
+
+    function populateProjectOptions(selectedValue = '') {
+      const { project } = getFieldRefs();
+      const currentClientValue = getCurrentClientValue();
+      const hasClient = currentClientValue !== '';
+      const options = projectOptionsByClient[currentClientValue] || [];
+      setSelectOptions(
+        project,
+        options,
+        options.length === 0 ? 'Aucun projet disponible' : 'Sélectionnez un projet',
+        selectedValue,
+        hasClient
+      );
+      project.disabled = !hasClient;
+    }
+
+    function populateActivityOptions(selectedValue = '') {
+      const { activitySelect } = getFieldRefs();
+      setSelectOptions(
+        activitySelect,
+        activityOptions,
+        activityOptions.length === 0 ? 'Aucune activité disponible' : 'Sélectionnez une activité',
+        selectedValue,
+        true
+      );
+    }
+
+    function initializeRateOptions(selectedValue = '') {
+      const { rateSelect } = getFieldRefs();
+      const rateValues = rateOptions.filter(rate => String(rate) !== '0');
+      setSelectOptions(
+        rateSelect,
+        rateValues,
+        rateValues.length === 0 ? 'Aucun taux disponible' : 'Sélectionnez un taux',
+        selectedValue,
+        true
+      );
+      rateSelect.addEventListener('change', handleRateChange);
     }
 
     function clearValidationState() {
+      const fields = [
+        'clientSelect',
+        'campaign',
+        'project',
+        'activitySelect',
+        'note',
+        'rate',
+        'customCampaign',
+        'customProject',
+        'customActivity',
+        'customRate',
+        'clientCompanyName',
+        'clientPrimaryContactName',
+        'clientPrimaryContactEmail',
+        'clientSecondaryContactName',
+        'clientSecondaryContactEmail',
+        'clientBillingContactName',
+        'clientBillingEmail'
+      ];
+      fields.forEach(id => {
+        const field = document.getElementById(id);
+        if (field) field.classList.remove('invalid');
+      });
+    }
+
+    function updateLiveValidation() {
       const {
         clientSelect,
-        newClientInput,
         campaign,
         project,
         activitySelect,
-        newActivityInput,
+        note,
         rateSelect,
-        newRateInput
+        customCampaign,
+        customProject,
+        customActivity,
+        customRate
       } = getFieldRefs();
 
-      [
-        clientSelect,
-        newClientInput,
-        campaign,
-        project,
-        activitySelect,
-        newActivityInput,
-        rateSelect,
-        newRateInput
-      ].forEach(field => field.classList.remove('invalid'));
+      const isClientValid = clientSelect.value !== '' && clientSelect.value !== '__autre__';
+      const isCampaignValid = isCustomFieldActive('campaign')
+        ? customCampaign.value.trim() !== ''
+        : campaign.value !== '' && campaign.value !== '__autre__';
+      const isProjectValid = isCustomFieldActive('project')
+        ? customProject.value.trim() !== ''
+        : project.value !== '' && project.value !== '__autre__';
+      const isActivityValid = isCustomFieldActive('activity')
+        ? customActivity.value.trim() !== ''
+        : activitySelect.value !== '' && activitySelect.value !== '__autre__';
+      const isRateValid = isCustomFieldActive('rate')
+        ? /^\d+$/.test(customRate.value.trim())
+        : rateSelect.value !== '' && rateSelect.value !== '__autre__';
+      const isNoteValid = note.value.trim() !== '';
+
+      clientSelect.classList.toggle('invalid', !isClientValid);
+      campaign.classList.toggle('invalid', !isCustomFieldActive('campaign') && !isCampaignValid);
+      customCampaign.classList.toggle('invalid', isCustomFieldActive('campaign') && !isCampaignValid);
+      project.classList.toggle('invalid', !isCustomFieldActive('project') && !isProjectValid);
+      customProject.classList.toggle('invalid', isCustomFieldActive('project') && !isProjectValid);
+      activitySelect.classList.toggle('invalid', !isCustomFieldActive('activity') && !isActivityValid);
+      customActivity.classList.toggle('invalid', isCustomFieldActive('activity') && !isActivityValid);
+      rateSelect.classList.toggle('invalid', !isCustomFieldActive('rate') && !isRateValid);
+      customRate.classList.toggle('invalid', isCustomFieldActive('rate') && !isRateValid);
+      note.classList.toggle('invalid', !isNoteValid);
     }
 
-    function getClientKey() {
-      const { clientSelect, newClientInput } = getFieldRefs();
-      return clientSelect.value === "__autre__"
-        ? `__new__:${newClientInput.value.trim()}`
-        : clientSelect.value;
+    function updateNewClientValidation() {
+      const requiredIds = ['clientCompanyName', 'clientPrimaryContactName', 'clientPrimaryContactEmail'];
+      requiredIds.forEach(id => {
+        const field = document.getElementById(id);
+        field.classList.toggle('invalid', field.value.trim() === '');
+      });
     }
 
-    function updateClientMode() {
-      const { clientSelect, newClientInput, clientLabel } = getFieldRefs();
-      const isNewClient = clientSelect.value === "__autre__";
-      newClientInput.style.display = isNewClient ? 'block' : 'none';
-      if (!isNewClient) {
-        newClientInput.value = '';
-      }
-      clientLabel.textContent = isNewClient ? "Nouveau client :" : "Client :";
+    function openCustomField(fieldName) {
+      document.getElementById(`${fieldName}SelectWrapper`).style.display = 'none';
+      document.getElementById(`${fieldName}CustomWrapper`).style.display = 'flex';
+      clearDuplicateMessage(fieldName);
+      document.getElementById(`custom${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}`).focus();
+      updateLiveValidation();
     }
 
-    function updateActivityMode() {
-      const { activitySelect, newActivityInput, activityLabel } = getFieldRefs();
-      const isNewActivity = activitySelect.value === "__autre__";
-      newActivityInput.style.display = isNewActivity ? 'block' : 'none';
-      if (!isNewActivity) {
-        newActivityInput.value = '';
-      }
-      activityLabel.textContent = isNewActivity ? "Nouvelle activité :" : "Activité :";
+    function closeCustomField(fieldName) {
+      document.getElementById(`${fieldName}CustomWrapper`).style.display = 'none';
+      document.getElementById(`${fieldName}SelectWrapper`).style.display = 'block';
+      const input = document.getElementById(`custom${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}`);
+      input.value = '';
+      clearDuplicateMessage(fieldName);
+      const select = document.getElementById(fieldName === 'activity' ? 'activitySelect' : fieldName === 'rate' ? 'rate' : fieldName);
+      select.value = '';
+      updateLiveValidation();
     }
 
-    function updateRateMode() {
-      const { rateSelect, newRateContainer, newRateInput } = getFieldRefs();
-      const isCustomRate = rateSelect.value === '__ajouter__';
-      newRateContainer.style.display = isCustomRate ? 'flex' : 'none';
-      if (!isCustomRate) {
-        newRateInput.value = '';
-      }
+    function handleCustomFieldInput(fieldName) {
+      updateDuplicateMessage(fieldName);
+      updateLiveValidation();
     }
 
     function updateDependencyState(options = {}) {
-      const { initialize = false } = options;
-      const { campaign, project } = getFieldRefs();
-      const clientKey = getClientKey();
-      const hasClient = clientKey !== '' && clientKey !== '__new__:';
-      const trimmedCampaign = campaign.value.trim();
-
-      if (!initialize && lastClientKey !== null && clientKey !== lastClientKey) {
-        campaign.value = '';
-        project.value = '';
+      const { selectedCampaign = '', selectedProject = '' } = options;
+      populateCampaignOptions(selectedCampaign);
+      populateProjectOptions(selectedProject);
+      if (!selectedCampaign) {
+        closeCustomField('campaign');
       }
-
-      campaign.disabled = !hasClient;
-      if (!hasClient) {
-        campaign.value = '';
-        project.value = '';
+      if (!selectedProject) {
+        closeCustomField('project');
       }
-
-      if (!initialize && lastCampaignValue !== null && campaign.value.trim() !== lastCampaignValue) {
-        project.value = '';
-      }
-
-      project.disabled = !hasClient || trimmedCampaign === '';
-      if (project.disabled) {
-        project.value = '';
-      }
-
-      lastClientKey = clientKey;
-      lastCampaignValue = campaign.value.trim();
     }
 
     function handleClientChange() {
-      updateClientMode();
-      updateDependencyState();
-      clearValidationState();
-    }
-
-    function handleClientInput() {
-      updateDependencyState();
-      clearValidationState();
-    }
-
-    function handleActivityChange() {
-      updateActivityMode();
-      clearValidationState();
-    }
-
-    function handleActivityInput() {
-      clearValidationState();
+      const { clientSelect } = getFieldRefs();
+      if (clientSelect.value === '__autre__') {
+        clientSelect.value = previousClientValue || '';
+        showNewClientView();
+        return;
+      }
+      previousClientValue = clientSelect.value;
+      updateDependencyState({ selectedCampaign: '', selectedProject: '' });
+      updateLiveValidation();
     }
 
     function handleCampaignInput() {
-      updateDependencyState();
-      clearValidationState();
+      const { campaign } = getFieldRefs();
+      if (campaign.value === '__autre__') {
+        campaign.value = '';
+        openCustomField('campaign');
+        return;
+      }
+      updateLiveValidation();
+    }
+
+    function handleProjectChange() {
+      const { project } = getFieldRefs();
+      if (project.value === '__autre__') {
+        project.value = '';
+        openCustomField('project');
+        return;
+      }
+      updateLiveValidation();
+    }
+
+    function handleActivityChange() {
+      const { activitySelect } = getFieldRefs();
+      if (activitySelect.value === '__autre__') {
+        activitySelect.value = '';
+        openCustomField('activity');
+        return;
+      }
+      if (isCustomFieldActive('activity')) {
+        closeCustomField('activity');
+      }
+      updateLiveValidation();
+    }
+
+    function handleRateChange() {
+      const { rateSelect } = getFieldRefs();
+      if (rateSelect.value === '__autre__') {
+        rateSelect.value = '';
+        openCustomField('rate');
+        return;
+      }
+      if (isCustomFieldActive('rate')) {
+        closeCustomField('rate');
+      }
+      updateLiveValidation();
+    }
+
+    function cancelNewClientView() {
+      showFormView();
+      const { clientSelect } = getFieldRefs();
+      clientSelect.value = previousClientValue || '';
+      updateDependencyState({ selectedCampaign: '', selectedProject: '' });
+      updateLiveValidation();
+    }
+
+    function saveNewClientView() {
+      const companyName = document.getElementById('clientCompanyName').value.trim();
+      const primaryContactName = document.getElementById('clientPrimaryContactName').value.trim();
+      const primaryContactEmail = document.getElementById('clientPrimaryContactEmail').value.trim();
+      const secondaryContactName = document.getElementById('clientSecondaryContactName').value.trim();
+      const secondaryContactEmail = document.getElementById('clientSecondaryContactEmail').value.trim();
+      const billingContactName = document.getElementById('clientBillingContactName').value.trim();
+      const billingEmail = document.getElementById('clientBillingEmail').value.trim();
+
+      if (!companyName || !primaryContactName || !primaryContactEmail) {
+        updateNewClientValidation();
+        return;
+      }
+
+      pendingNewClientData = {
+        companyName,
+        primaryContactName,
+        primaryContactEmail,
+        secondaryContactName,
+        secondaryContactEmail,
+        billingContactName,
+        billingEmail
+      };
+
+      populateClientOptions('__new_client__');
+      previousClientValue = '__new_client__';
+      showFormView();
+      updateDependencyState({ selectedCampaign: '', selectedProject: '' });
+      updateLiveValidation();
     }
 
     function validateForm() {
+      updateLiveValidation();
+
       const {
         clientSelect,
-        newClientInput,
         campaign,
         project,
         activitySelect,
-        newActivityInput,
+        note,
         rateSelect,
-        newRateInput
+        customCampaign,
+        customProject,
+        customActivity,
+        customRate
       } = getFieldRefs();
 
-      const usingNewClient = clientSelect.value === "__autre__";
-      const usingNewActivity = activitySelect.value === "__autre__";
-      const usingCustomRate = rateSelect.value === '__ajouter__';
-      const cleanedRate = usingCustomRate
-        ? newRateInput.value.trim().replace(/[^0-9]/g, '')
-        : rateSelect.value;
-
-      const isClientValid = usingNewClient ? newClientInput.value.trim() !== "" : clientSelect.value !== "";
-      const isCampaignValid = campaign.value.trim() !== "";
-      const isProjectValid = project.value.trim() !== "";
-      const isActivityValid = usingNewActivity ? newActivityInput.value.trim() !== "" : activitySelect.value !== "";
-      const isRateValid = usingCustomRate ? /^\d+$/.test(newRateInput.value.trim()) && cleanedRate !== "" : cleanedRate !== "";
-
-      clearValidationState();
-      clientSelect.classList.toggle("invalid", !isClientValid);
-      newClientInput.classList.toggle("invalid", usingNewClient && !isClientValid);
-      campaign.classList.toggle("invalid", !isCampaignValid);
-      project.classList.toggle("invalid", !isProjectValid);
-      activitySelect.classList.toggle("invalid", !isActivityValid);
-      newActivityInput.classList.toggle("invalid", usingNewActivity && !isActivityValid);
-      rateSelect.classList.toggle("invalid", !usingCustomRate && !isRateValid);
-      newRateInput.classList.toggle("invalid", usingCustomRate && !isRateValid);
+      const isClientValid = clientSelect.value !== '' && clientSelect.value !== '__autre__';
+      const isCampaignValid = isCustomFieldActive('campaign')
+        ? customCampaign.value.trim() !== ''
+        : campaign.value !== '' && campaign.value !== '__autre__';
+      const isProjectValid = isCustomFieldActive('project')
+        ? customProject.value.trim() !== ''
+        : project.value !== '' && project.value !== '__autre__';
+      const isActivityValid = isCustomFieldActive('activity')
+        ? customActivity.value.trim() !== ''
+        : activitySelect.value !== '' && activitySelect.value !== '__autre__';
+      const isRateValid = isCustomFieldActive('rate')
+        ? /^\d+$/.test(customRate.value.trim())
+        : rateSelect.value !== '' && rateSelect.value !== '__autre__';
+      const isNoteValid = note.value.trim() !== '';
 
       let message = "";
       if (!isClientValid) {
@@ -468,12 +917,14 @@
         message = "Veuillez saisir un projet.";
       } else if (!isActivityValid) {
         message = "Veuillez sélectionner ou saisir une activité.";
+      } else if (!isNoteValid) {
+        message = "Veuillez saisir une note.";
       } else if (!isRateValid) {
         message = "Veuillez sélectionner ou saisir un taux valide.";
       }
 
       return {
-        isValid: isClientValid && isCampaignValid && isProjectValid && isActivityValid && isRateValid,
+        isValid: isClientValid && isCampaignValid && isProjectValid && isActivityValid && isRateValid && isNoteValid,
         message
       };
     }
@@ -489,29 +940,25 @@
 
       const {
         clientSelect,
-        newClientInput,
         campaign,
         project,
         activitySelect,
-        newActivityInput,
+        note,
         rateSelect,
-        newRateInput
+        customCampaign,
+        customProject,
+        customActivity,
+        customRate
       } = getFieldRefs();
 
-      const client = clientSelect.value;
-      const newClient = newClientInput.value.trim();
-      const campaignValue = campaign.value.trim();
-      const projectValue = project.value.trim();
-      const activity = activitySelect.value;
-      const newActivity = newActivityInput.value.trim();
-
-      let rate = rateSelect.value;
-      if (rate === '__ajouter__') {
-        rate = newRateInput.value.trim().replace(/[^0-9]/g, '');
-      }
-
-      const finalClient = client === "__autre__" ? newClient : client;
-      const finalActivity = activity === "__autre__" ? newActivity : activity;
+      const finalClient = clientSelect.value === '__new_client__' && pendingNewClientData
+        ? pendingNewClientData.companyName
+        : clientSelect.value;
+      const finalCampaign = isCustomFieldActive('campaign') ? customCampaign.value.trim() : campaign.value;
+      const finalProject = isCustomFieldActive('project') ? customProject.value.trim() : project.value;
+      const finalActivity = isCustomFieldActive('activity') ? customActivity.value.trim() : activitySelect.value;
+      const finalRate = isCustomFieldActive('rate') ? customRate.value.trim() : rateSelect.value;
+      const noteValue = note.value.trim();
 
       isSubmitting = true;
       showLoadingView();
@@ -521,31 +968,41 @@
           showSuccessView();
           window.setTimeout(() => {
             google.script.host.close();
-            google.script.run.showBeepPopup();
           }, 300);
         })
         .withFailureHandler(error => {
-          showErrorView(error && error.message ? `Erreur : ${error.message}` : null);
+          showErrorView(error && error.message ? error.message : null);
         })
         .submitTimeEntryForm(
           finalClient,
-          campaignValue,
-          projectValue,
+          finalCampaign,
+          finalProject,
           finalActivity,
           <?!= typeof newRow === 'number' ? newRow : 7 ?>,
           <?!= typeof checkedRowIndex === 'number' ? checkedRowIndex : -1 ?>,
-          client === "__autre__" ? newClient : null,
-          activity === "__autre__" ? newActivity : null,
-          rate
+          pendingNewClientData ? pendingNewClientData.companyName : null,
+          isCustomFieldActive('activity') ? finalActivity : null,
+          finalRate,
+          noteValue,
+          {
+            newClientDetails: pendingNewClientData,
+            isCustomCampaign: isCustomFieldActive('campaign'),
+            isCustomProject: isCustomFieldActive('project'),
+            isCustomRate: isCustomFieldActive('rate')
+          }
         );
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      populateClientOptions(initialClientSelected);
+      populateActivityOptions(initialActivitySelected);
+      initializeRateOptions('');
+      updateDependencyState({
+        selectedCampaign: initialCampaignSelected,
+        selectedProject: initialProjectSelected
+      });
+      clearValidationState();
       showFormView();
-      updateClientMode();
-      updateActivityMode();
-      initializeRateOptions();
-      updateDependencyState({ initialize: true });
     });
   </script>
 </body>

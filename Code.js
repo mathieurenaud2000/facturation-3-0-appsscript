@@ -183,33 +183,12 @@ function Facturer() {
     return;
   }
 
-  let facturerErrors = [];
-  let facturerAlreadyInvoiced = [];
-  facturerCheckedRows.forEach(row => {
-    const [facturerCheckbox, facturerClient, facturerCampaign, facturerProject, facturerActivity, facturerUnused1, facturerUnused2, facturerTimeRaw, facturerUnused3, facturerPrice, facturerUnused4, facturerUnused5, facturerUnused6, facturerInvoiced, facturerInvoiceNumber, facturerInvoiceDate] = row.row;
-    const facturerRowIndex = row.index;
-
-    let facturerTime = facturerTimeRaw;
-    if (facturerTimeRaw instanceof Date) {
-      facturerTime = facturerTimeRaw.getHours() + facturerTimeRaw.getMinutes() / 60;
-    } else if (typeof facturerTimeRaw === "string" || isNaN(Number(facturerTimeRaw))) {
-      facturerErrors.push(`Ligne ${facturerRowIndex}: temps non valide (format incorrect : ${facturerTimeRaw})`);
-      return;
-    }
-
-    if (!facturerClient || !facturerCampaign || !facturerProject || !facturerActivity || facturerTimeRaw == null || !facturerPrice) {
-      facturerErrors.push(`Ligne ${facturerRowIndex}: ${!facturerClient ? "client manquant" : !facturerCampaign ? "campagne manquante" : !facturerProject ? "projet manquant" : !facturerActivity ? "activité manquante" : facturerTimeRaw == null ? "temps manquant" : "prix manquant"}`);
-    }
-    if (facturerInvoiced && facturerInvoiceDate) {
-      facturerAlreadyInvoiced.push(`Ligne ${facturerRowIndex}: déjà facturée et payée`);
-    }
-    if (isNaN(facturerTime) || facturerTime <= 0) {
-      facturerErrors.push(`Ligne ${facturerRowIndex}: temps non valide (${facturerTime <= 0 ? "temps négatif ou nul" : facturerTimeRaw})`);
-    }
-  });
-
-  if (facturerErrors.length > 0) {
-    openStandaloneMessageView_("Données manquantes ou invalides :\n" + facturerErrors.join("\n"));
+  const preliminaryValidation = validateInvoiceGeneration_();
+  if (!preliminaryValidation.success) {
+    const validationTitle = preliminaryValidation.message.startsWith("Attention") || preliminaryValidation.message === "Un seul client par facture."
+      ? "Attention"
+      : "Information";
+    openStandaloneMessageView_(preliminaryValidation.message, validationTitle);
     return;
   }
 
@@ -240,18 +219,6 @@ function Facturer() {
   }
 
   const invoiceNumberingSetup = checkInvoiceNumberingSetup();
-  if (facturerAlreadyInvoiced.length > 0) {
-    showFacturerPopup(facturerContacts, facturerActivityTypes, null, invoiceNumberingSetup.requiresInitialInvoiceSetup, {
-      showStartupConfirm: true,
-      confirmViewTitle: "Activités déjà facturées",
-      confirmViewMessage: "Lignes déjà facturées :\n" + facturerAlreadyInvoiced.join("\n") + "\n\nVoulez-vous continuer ?",
-      confirmAction: "facturer_continue",
-      confirmPrimaryLabel: "Continuer",
-      confirmSecondaryLabel: "Annuler"
-    });
-    return;
-  }
-
   showFacturerPopup(facturerContacts, facturerActivityTypes, null, invoiceNumberingSetup.requiresInitialInvoiceSetup);
 }
 
@@ -322,12 +289,26 @@ function validateInvoiceGeneration_() {
 
   const validationCategories = new Set();
   const distinctClients = new Set();
+  const toDecimalHours = (value) => {
+    if (value instanceof Date) {
+      return value.getHours() + value.getMinutes() / 60 + value.getSeconds() / 3600;
+    }
+    if (typeof value === "number") {
+      return value;
+    }
+    if (typeof value === "string" && value.trim() !== "" && !isNaN(Number(value))) {
+      return Number(value);
+    }
+    return NaN;
+  };
 
   facturerCheckedRows.forEach(({ row }) => {
     const client = String(row[1] || "").trim();
-    distinctClients.add(client);
+    if (client) {
+      distinctClients.add(client);
+    }
 
-    if ([row[1], row[2], row[3], row[4], row[19]].some(isMissingValue)) {
+    if ([row[1], row[2], row[3], row[4]].some(isMissingValue)) {
       validationCategories.add("required_fields");
     }
 
@@ -335,8 +316,22 @@ function validateInvoiceGeneration_() {
       validationCategories.add("task_running");
     }
 
+    const rateValue = Number(row[19]);
+    if (isMissingValue(row[19]) || !isFinite(rateValue) || rateValue <= 0) {
+      validationCategories.add("invalid_rate");
+    }
+
+    const timeValue = toDecimalHours(row[8]);
+    if (isMissingValue(row[8]) || !isFinite(timeValue) || timeValue <= 0) {
+      validationCategories.add("invalid_time");
+    }
+
     if (row[14] === true) {
       validationCategories.add("already_invoiced");
+    }
+
+    if (row[17] === true || !isMissingValue(row[18])) {
+      validationCategories.add("already_paid");
     }
   });
 
@@ -344,19 +339,29 @@ function validateInvoiceGeneration_() {
     validationCategories.add("same_client");
   }
 
-  if (validationCategories.size > 1) {
-    return { success: false, message: "Entrée non valide. Veuillez recommencer." };
-  }
+  const validationPriority = [
+    "same_client",
+    "task_running",
+    "required_fields",
+    "invalid_rate",
+    "already_invoiced",
+    "already_paid",
+    "invalid_time"
+  ];
+  const validationMessages = {
+    same_client: "Un seul client par facture.",
+    required_fields: "Attention. Données incomplètes.",
+    invalid_rate: "Attention, taux invalide. Veuillez recommencer.",
+    already_invoiced: "Attention, certaines entrées ont déjà été facturées.",
+    already_paid: "Attention. Certaines entrées ont déjà été payées.",
+    task_running: "Attention, tâche en cours.",
+    invalid_time: "Attention, heure invalide."
+  };
 
-  if (validationCategories.size === 1) {
-    const [category] = Array.from(validationCategories);
-    const validationMessages = {
-      same_client: "Un seul client par facture.",
-      required_fields: "Des champs obligatoires sont manquants. Veuillez recommencer.",
-      task_running: "Une tâche est encore en cours. Veuillez compléter la tâche puis recommencer.",
-      already_invoiced: "Une activité sélectionnée a déjà été facturée. Veuillez recommencer."
-    };
-    return { success: false, message: validationMessages[category] };
+  for (const category of validationPriority) {
+    if (validationCategories.has(category)) {
+      return { success: false, message: validationMessages[category] };
+    }
   }
 
   return {
@@ -413,6 +418,7 @@ function normalizeString_(str) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -424,11 +430,79 @@ function logSendInvoiceEmailError_(step, error) {
   }));
 }
 
-function sendInvoiceEmail(invoiceNumber, pdfUrl) {
-  return sendInvoiceEmail_(invoiceNumber, pdfUrl);
+function sendInvoiceEmail(invoiceNumber, pdfUrl, recipient, ccRecipient) {
+  return sendInvoiceEmail_(invoiceNumber, pdfUrl, recipient, ccRecipient);
 }
 
-function sendInvoiceEmail_(invoiceNumber, pdfUrl) {
+function getInvoiceRecipientOptions(invoiceNumber) {
+  const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const facturerTrackingSheet = facturerSpreadsheet.getSheetByName("FACTURATION");
+  const clientsSheet = facturerSpreadsheet.getSheetByName("CLIENTS");
+
+  if (!facturerTrackingSheet || !clientsSheet) {
+    return { success: false, message: "Erreur lors de la préparation de l’envoi." };
+  }
+
+  const normalizedInvoiceNumber = String(invoiceNumber || "").trim();
+  if (!normalizedInvoiceNumber) {
+    return { success: false, message: "Erreur lors de la préparation de l’envoi." };
+  }
+
+  const facturerTrackingLastRow = facturerTrackingSheet.getLastRow();
+  const trackingValues = facturerTrackingLastRow >= 6
+    ? facturerTrackingSheet.getRange(`A6:I${facturerTrackingLastRow}`).getValues()
+    : [];
+  const trackingIndex = trackingValues.findIndex(row => String(row[1] || "").trim() === normalizedInvoiceNumber);
+  if (trackingIndex === -1) {
+    return { success: false, message: "Erreur lors de la préparation de l’envoi." };
+  }
+
+  const clientName = String(trackingValues[trackingIndex][3] || "").trim();
+  if (!clientName) {
+    return { success: false, message: "Erreur lors de la préparation de l’envoi." };
+  }
+
+  const clientsLastRow = clientsSheet.getLastRow();
+  const clientRows = clientsLastRow >= 2
+    ? clientsSheet.getRange(`A2:G${clientsLastRow}`).getValues()
+    : [];
+  const clientEntry = clientRows.find(row => normalizeString_(row[0]) === normalizeString_(clientName));
+  if (!clientEntry) {
+    logSendInvoiceEmailError_("client_lookup", `client not found for ${clientName}`);
+    return { success: false, message: "Erreur lors de la préparation de l’envoi." };
+  }
+
+  const recipientOptions = [
+    { name: String(clientEntry[1] || "").trim(), email: String(clientEntry[2] || "").trim(), source: "primary" },
+    { name: String(clientEntry[3] || "").trim(), email: String(clientEntry[4] || "").trim(), source: "secondary" },
+    { name: String(clientEntry[5] || "").trim(), email: String(clientEntry[6] || "").trim(), source: "billing" }
+  ]
+    .filter(option => option.email !== "")
+    .map(option => ({
+      name: option.name,
+      email: option.email,
+      source: option.source,
+      label: `${option.name || clientName} - ${option.email}`
+    }));
+
+  if (recipientOptions.length === 0) {
+    return { success: false, message: "Aucun contact avec courriel n'est configuré pour ce client." };
+  }
+
+  const defaultRecipient = recipientOptions.find(option => option.source === "billing")
+    || recipientOptions.find(option => option.source === "primary");
+  if (!defaultRecipient) {
+    return { success: false, message: "Aucun contact avec courriel n'est configuré pour ce client." };
+  }
+
+  return {
+    success: true,
+    recipientOptions,
+    defaultRecipientEmail: defaultRecipient.email
+  };
+}
+
+function sendInvoiceEmail_(invoiceNumber, pdfUrl, recipient, ccRecipient) {
   const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const facturerTimeSheet = facturerSpreadsheet.getSheetByName("FEUILLE DE TEMPS");
   const facturerTrackingSheet = facturerSpreadsheet.getSheetByName("FACTURATION");
@@ -461,12 +535,6 @@ function sendInvoiceEmail_(invoiceNumber, pdfUrl) {
     return { success: false, message: "Erreur lors de l’envoi du courriel." };
   }
 
-  const trackingRowNumber = trackingIndex + 6;
-  const existingSendDate = trackingValues[trackingIndex][7];
-  if (existingSendDate) {
-    return { success: false, message: "Courriel déjà envoyé." };
-  }
-
   const clientName = String(trackingValues[trackingIndex][3] || "").trim();
   if (!clientName) {
     logSendInvoiceEmailError_("tracking_client_lookup", "missing client name");
@@ -475,7 +543,7 @@ function sendInvoiceEmail_(invoiceNumber, pdfUrl) {
 
   const clientsLastRow = clientsSheet.getLastRow();
   const clientRows = clientsLastRow >= 2
-    ? clientsSheet.getRange(`A2:I${clientsLastRow}`).getValues()
+    ? clientsSheet.getRange(`A2:G${clientsLastRow}`).getValues()
     : [];
   const clientEntry = clientRows.find(row => normalizeString_(row[0]) === normalizeString_(clientName));
   if (!clientEntry) {
@@ -483,11 +551,11 @@ function sendInvoiceEmail_(invoiceNumber, pdfUrl) {
     return { success: false, message: "Erreur lors de l’envoi du courriel." };
   }
 
-  const billingContactName = String(clientEntry[5] || "").trim();
-  const billingEmail = String(clientEntry[6] || "").trim();
-  const ccEmail = String(clientEntry[8] || "").trim();
-  if (!billingEmail) {
-    logSendInvoiceEmailError_("billing_email_lookup", `missing billing email for ${clientName}`);
+  const recipientName = String(recipient && recipient.name || "").trim();
+  const recipientEmail = String(recipient && recipient.email || "").trim();
+  const ccEmail = String(ccRecipient && ccRecipient.email || "").trim();
+  if (!recipientEmail) {
+    logSendInvoiceEmailError_("recipient_lookup", `missing recipient email for ${clientName}`);
     return { success: false, message: "Erreur lors de l’envoi du courriel." };
   }
 
@@ -518,10 +586,10 @@ function sendInvoiceEmail_(invoiceNumber, pdfUrl) {
     return { success: false, message: "Erreur lors de l’envoi du courriel." };
   }
 
-  const recipientName = billingContactName || clientName;
+  const greetingName = recipientName || clientName;
   const emailSubject = `Facture ${normalizedInvoiceNumber} de Mathieu Renaud`;
   const emailBody = [
-    `Bonjour ${recipientName},`,
+    `Bonjour ${greetingName},`,
     "",
     `vous trouverez en attachement la facture ${normalizedInvoiceNumber} de Mathieu Renaud couvrant :`,
     "",
@@ -537,22 +605,104 @@ function sendInvoiceEmail_(invoiceNumber, pdfUrl) {
     const mailOptions = {
       attachments: [pdfFile.getBlob()]
     };
-    if (ccEmail) {
+    if (ccEmail && ccEmail !== recipientEmail) {
       mailOptions.cc = ccEmail;
     }
-    MailApp.sendEmail(billingEmail, emailSubject, emailBody, mailOptions);
+    MailApp.sendEmail(recipientEmail, emailSubject, emailBody, mailOptions);
   } catch (e) {
     logSendInvoiceEmailError_("email_send", e.message);
     return { success: false, message: "Erreur lors de l’envoi du courriel." };
   }
 
-  const todayString = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd MM yyyy");
-  matchingTimeRows.forEach(({ index }) => {
-    facturerTimeSheet.getRange(`Q${index}`).setValue(todayString);
-  });
-  facturerTrackingSheet.getRange(`H${trackingRowNumber}`).setValue(todayString);
-
   return { success: true };
+}
+
+function paye() {
+  const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const facturerTrackingSheet = facturerSpreadsheet.getSheetByName("FACTURATION");
+
+  if (!facturerTrackingSheet) {
+    openStandaloneMessageView_("Erreur : La feuille FACTURATION n'existe pas.");
+    return;
+  }
+
+  const lastRow = facturerTrackingSheet.getLastRow();
+  const trackingValues = lastRow >= 6
+    ? facturerTrackingSheet.getRange(`B6:H${lastRow}`).getValues()
+    : [];
+  const unpaidInvoices = trackingValues
+    .map((row, index) => ({
+      invoiceNumber: String(row[0] || "").trim(),
+      paymentDate: row[6],
+      rowNumber: index + 6
+    }))
+    .filter(entry => entry.invoiceNumber !== "" && (entry.paymentDate === "" || entry.paymentDate === null));
+
+  if (unpaidInvoices.length === 0) {
+    openStandaloneMessageView_("Aucune facture non payée existe.", "Attention");
+    return;
+  }
+
+  const html = HtmlService.createTemplateFromFile("popupPayment");
+  html.invoices = unpaidInvoices;
+
+  const htmlOutput = html.evaluate().setWidth(400).setHeight(360);
+  htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  SpreadsheetApp.getUi().showModelessDialog(htmlOutput, "Enregistrer un paiement");
+}
+
+function registerInvoicePayments(selectedInvoiceNumbers) {
+  const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const facturerTrackingSheet = facturerSpreadsheet.getSheetByName("FACTURATION");
+  const facturerTimeSheet = facturerSpreadsheet.getSheetByName("FEUILLE DE TEMPS");
+
+  if (!facturerTrackingSheet || !facturerTimeSheet) {
+    throw new Error("Erreur : La feuille 'FACTURATION' ou 'FEUILLE DE TEMPS' est manquante.");
+  }
+
+  const normalizedInvoiceNumbers = [...new Set(
+    (Array.isArray(selectedInvoiceNumbers) ? selectedInvoiceNumbers : [])
+      .map(value => String(value || "").trim())
+      .filter(String)
+  )];
+
+  if (normalizedInvoiceNumbers.length === 0) {
+    throw new Error("Aucune facture sélectionnée.");
+  }
+
+  const lastTrackingRow = facturerTrackingSheet.getLastRow();
+  const trackingValues = lastTrackingRow >= 6
+    ? facturerTrackingSheet.getRange(`B6:H${lastTrackingRow}`).getValues()
+    : [];
+  const selectedTrackingRows = trackingValues
+    .map((row, index) => ({
+      invoiceNumber: String(row[0] || "").trim(),
+      paymentDate: row[6],
+      rowNumber: index + 6
+    }))
+    .filter(entry => normalizedInvoiceNumbers.includes(entry.invoiceNumber));
+
+  if (selectedTrackingRows.some(entry => entry.paymentDate !== "" && entry.paymentDate !== null)) {
+    throw new Error("Cette facture est déjà marquée comme payée.");
+  }
+
+  const today = new Date();
+  selectedTrackingRows.forEach(({ rowNumber }) => {
+    facturerTrackingSheet.getRange(`H${rowNumber}`).setValue(today).setNumberFormat("d mmmm yyyy");
+  });
+
+  const lastTimeRow = facturerTimeSheet.getLastRow();
+  if (lastTimeRow >= 7) {
+    const timeRows = facturerTimeSheet.getRange(`P7:S${lastTimeRow}`).getValues();
+    timeRows.forEach((row, index) => {
+      const invoiceNumber = String(row[0] || "").trim();
+      if (normalizedInvoiceNumbers.includes(invoiceNumber)) {
+        const rowNumber = index + 7;
+        facturerTimeSheet.getRange(`R${rowNumber}`).setValue(true);
+        facturerTimeSheet.getRange(`S${rowNumber}`).setValue(today).setNumberFormat("d mmmm yyyy");
+      }
+    });
+  }
 }
 
 function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExistingFile) {
@@ -679,12 +829,22 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
 
   const facturerTotalAmount = facturerItems.reduce((sum, item) => sum + item.totalPrice, 0).toFixed(2);
   const facturerClientName = String(facturerCheckedRows[0].row[1] || "");
-  const facturerScopeSummary = facturerItems
-    .map(item => `${item.campaign} (${item.projects.join(", ")})`)
-    .join(" | ");
+  const facturerToday = new Date();
+  const facturerCampaignSummary = [];
+  const facturerSeenCampaignKeys = new Set();
+  facturerCheckedRows.forEach(row => {
+    const facturerCampaignName = String(row.row[2] || "").trim();
+    const facturerCampaignKey = normalizeString_(facturerCampaignName);
+    if (!facturerCampaignName || facturerSeenCampaignKeys.has(facturerCampaignKey)) {
+      return;
+    }
+    facturerSeenCampaignKeys.add(facturerCampaignKey);
+    facturerCampaignSummary.push(facturerCampaignName);
+  });
+  const facturerScopeSummary = facturerCampaignSummary.join(", ");
 
   facturerTempSheet.getRange("L1").setValue(facturerFullInvoiceNumber);
-  facturerTempSheet.getRange("C7").setValue(Utilities.formatDate(new Date(), "EDT", "yyyy-MM-dd"));
+  facturerTempSheet.getRange("C7").setValue(facturerToday).setNumberFormat("d mmmm yyyy");
   facturerTempSheet.getRange("C10").setValue(contact);
   facturerTempSheet.getRange("C12").setValue([...new Set(facturerCheckedRows.map(row => row.row[1]))].join(", "));
   facturerTempSheet.getRange("C14").setValue(activityType);
@@ -725,21 +885,23 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
       facturerTimeSheet.getRange(`A${facturerRowIndex}`).setValue(false);
       facturerTimeSheet.getRange(`O${facturerRowIndex}`).setValue(true);
       facturerTimeSheet.getRange(`P${facturerRowIndex}`).setValue(facturerFullInvoiceNumber);
+      facturerTimeSheet.getRange(`Q${facturerRowIndex}`).setValue(facturerToday).setNumberFormat("d mmmm yyyy");
     });
 
     const facturerTrackingRow = facturerTrackingSheet.getLastRow() + 1 >= 6 ? facturerTrackingSheet.getLastRow() + 1 : 6;
     facturerTrackingSheet.getRange(`A${facturerTrackingRow}:I${facturerTrackingRow}`).setValues([[
       false,
       facturerFullInvoiceNumber,
-      Utilities.formatDate(new Date(), "EDT", "dd MM yyyy"),
+      facturerToday,
       facturerClientName,
       facturerScopeSummary,
-      facturerTotalAmount + " $",
+      Number(facturerTotalAmount),
       `=HYPERLINK("${facturerPdfUrl}"; "Voir PDF")`,
       "",
       ""
     ]]);
     facturerTrackingSheet.getRange(`B${facturerTrackingRow}`).setNumberFormat("@");
+    facturerTrackingSheet.getRange(`C${facturerTrackingRow}`).setNumberFormat("d mmmm yyyy");
 
     facturerSpreadsheet.deleteSheet(facturerTempSheet);
     return { success: true, pdfUrl: facturerPdfUrl, invoiceNumber: facturerFullInvoiceNumber };
@@ -763,14 +925,18 @@ function newTimeEntry() {
   const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const facturerTimeSheet = facturerSpreadsheet.getSheetByName("FEUILLE DE TEMPS");
   const facturerGestionSheet = facturerSpreadsheet.getSheetByName("GESTION");
+  const facturerClientsSheet = facturerSpreadsheet.getSheetByName("CLIENTS");
 
-  if (!facturerTimeSheet || !facturerGestionSheet) {
-    openStandaloneMessageView_("Erreur : La feuille 'FEUILLE DE TEMPS' ou 'GESTION' est manquante.");
+  if (!facturerTimeSheet || !facturerGestionSheet || !facturerClientsSheet) {
+    openStandaloneMessageView_("Erreur : La feuille 'FEUILLE DE TEMPS', 'GESTION' ou 'CLIENTS' est manquante.");
     return;
   }
 
   const lastRowGestion = facturerGestionSheet.getLastRow();
-  const clients = facturerGestionSheet.getRange("B2:B" + Math.max(2, lastRowGestion)).getValues().flat().filter(String);
+  const lastRowClients = facturerClientsSheet.getLastRow();
+  const clients = [...new Set(
+    facturerClientsSheet.getRange("A2:A" + Math.max(2, lastRowClients)).getValues().flat().map(value => String(value || "").trim()).filter(String)
+  )];
   const activities = facturerGestionSheet.getRange("A2:A" + Math.max(2, lastRowGestion)).getValues().flat().filter(String);
   let rates = ['0']; // Valeur par défaut
   try {
@@ -783,17 +949,38 @@ function newTimeEntry() {
   const lastRow = facturerTimeSheet.getLastRow();
   if (lastRow < 7) return;
 
-  const checkBoxData = facturerTimeSheet.getRange("A7:A" + lastRow).getValues();
-  const checkedIndexes = [];
-
-  for (let i = 0; i < checkBoxData.length; i++) {
-    if (checkBoxData[i][0] === true) {
-      checkedIndexes.push(i + 7);
+  const clientScopedRows = facturerTimeSheet.getRange("B7:D" + lastRow).getValues();
+  const campaignOptionsByClient = {};
+  const projectOptionsByClient = {};
+  clientScopedRows.forEach(row => {
+    const client = String(row[0] || "").trim();
+    const campaign = String(row[1] || "").trim();
+    const project = String(row[2] || "").trim();
+    if (!client) return;
+    if (!campaignOptionsByClient[client]) campaignOptionsByClient[client] = [];
+    if (!projectOptionsByClient[client]) projectOptionsByClient[client] = [];
+    if (campaign && !campaignOptionsByClient[client].includes(campaign)) {
+      campaignOptionsByClient[client].push(campaign);
     }
-  }
+    if (project && !projectOptionsByClient[client].includes(project)) {
+      projectOptionsByClient[client].push(project);
+    }
+  });
+
+  const taskStateData = facturerTimeSheet.getRange("A7:H" + lastRow).getValues();
+  const checkedRows = taskStateData
+    .map((row, index) => ({ checked: row[0], endTime: row[7], index: index + 7 }))
+    .filter(row => row.checked === true);
+  const checkedIndexes = checkedRows.map(row => row.index);
 
   if (checkedIndexes.length > 1) {
-    openStandaloneMessageView_("Sélectionne une ligne max.", "Information");
+    openStandaloneMessageView_(`${checkedIndexes.length} lignes sont présentement cochées. Veuillez recommencer.`, "Attention");
+    return;
+  }
+
+  const activeTaskRows = checkedRows.filter(row => row.endTime === "" || row.endTime === null);
+  if (activeTaskRows.length > 0) {
+    openStandaloneMessageView_("Une tâche est présentement en cours.", "Attention");
     return;
   }
 
@@ -801,6 +988,8 @@ function newTimeEntry() {
 
   const html = HtmlService.createTemplateFromFile("popupTemps");
   html.clients = clients || [];
+  html.campaignOptionsByClient = campaignOptionsByClient || {};
+  html.projectOptionsByClient = projectOptionsByClient || {};
   html.activities = activities || [];
   html.rates = rates || ['0'];
   html.checkedRowIndex = checkedRowIndex;
@@ -825,29 +1014,74 @@ function newTimeEntry() {
     html.newRow = 7;
   }
 
-  const htmlOutput = html.evaluate().setWidth(400).setHeight(350);
+  const htmlOutput = html.evaluate().setWidth(460).setHeight(620);
   SpreadsheetApp.getUi().showModelessDialog(htmlOutput, "Nouvelle entrée de temps");
 }
 
-function submitTimeEntryForm(client, campaign, project, activity, newRow, checkedRowIndex, newClient, newActivity, rate) {
+function submitTimeEntryForm(client, campaign, project, activity, newRow, checkedRowIndex, newClient, newActivity, rate, note, options) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetTime = ss.getSheetByName("FEUILLE DE TEMPS");
   const sheetGestion = ss.getSheetByName("GESTION");
+  const sheetClients = ss.getSheetByName("CLIENTS");
+  const normalizedOptions = options || {};
+  const newClientDetails = normalizedOptions.newClientDetails || null;
+  const isCustomCampaign = normalizedOptions.isCustomCampaign === true;
+  const isCustomProject = normalizedOptions.isCustomProject === true;
 
-  if (!sheetTime || !sheetGestion) {
-    throw new Error("Erreur : La feuille 'FEUILLE DE TEMPS' ou 'GESTION' est manquante.");
+  if (!sheetTime || !sheetGestion || !sheetClients) {
+    throw new Error("Erreur : La feuille 'FEUILLE DE TEMPS', 'GESTION' ou 'CLIENTS' est manquante.");
   }
 
-  // Ajouter le nouveau client à la colonne B de GESTION
-  if (newClient && newClient.trim() !== "") {
-    const clients = sheetGestion.getRange("B2:B" + sheetGestion.getLastRow()).getValues().flat();
-    if (!clients.map(c => c.toString().toLowerCase()).includes(newClient.trim().toLowerCase())) {
-      const insertRow = sheetGestion.getLastRow() + 1;
-      sheetGestion.getRange("B" + insertRow).setValue(newClient.trim());
-      const range = sheetGestion.getRange("B2:B" + sheetGestion.getLastRow());
-      range.sort({ column: 2, ascending: true });
+  if (!newClientDetails) {
+    const lastRowTime = sheetTime.getLastRow();
+    const clientScopedRows = lastRowTime >= 7
+      ? sheetTime.getRange("B7:D" + lastRowTime).getValues()
+      : [];
+    const allowedCampaigns = [...new Set(
+      clientScopedRows
+        .filter(row => String(row[0] || "").trim() === String(client || "").trim())
+        .map(row => String(row[1] || "").trim())
+        .filter(String)
+    )];
+    const allowedProjects = [...new Set(
+      clientScopedRows
+        .filter(row => String(row[0] || "").trim() === String(client || "").trim())
+        .map(row => String(row[2] || "").trim())
+        .filter(String)
+    )];
+
+    if ((!isCustomCampaign && !allowedCampaigns.includes(String(campaign || "").trim())) || (!isCustomProject && !allowedProjects.includes(String(project || "").trim()))) {
+      throw new Error("Attention. Données invalides.");
     }
-    client = newClient.trim();
+  }
+
+  if (newClientDetails && newClientDetails.companyName) {
+    const companyName = String(newClientDetails.companyName || "").trim();
+    const primaryContactName = String(newClientDetails.primaryContactName || "").trim();
+    const primaryContactEmail = String(newClientDetails.primaryContactEmail || "").trim();
+    const secondaryContactName = String(newClientDetails.secondaryContactName || "").trim();
+    const secondaryContactEmail = String(newClientDetails.secondaryContactEmail || "").trim();
+    const billingContactName = String(newClientDetails.billingContactName || "").trim();
+    const billingEmail = String(newClientDetails.billingEmail || "").trim();
+
+    const lastRowClients = sheetClients.getLastRow();
+    const clientRows = lastRowClients >= 2
+      ? sheetClients.getRange(`A2:G${lastRowClients}`).getValues()
+      : [];
+    const existingClientIndex = clientRows.findIndex(row => normalizeString_(row[0]) === normalizeString_(companyName));
+    if (existingClientIndex === -1) {
+      const insertRow = Math.max(2, lastRowClients + 1);
+      sheetClients.getRange(`A${insertRow}:G${insertRow}`).setValues([[
+        companyName,
+        primaryContactName,
+        primaryContactEmail,
+        secondaryContactName,
+        secondaryContactEmail,
+        billingContactName,
+        billingEmail
+      ]]);
+    }
+    client = companyName;
   }
 
   // Ajouter la nouvelle activité à la colonne A de GESTION
@@ -874,8 +1108,6 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
   }
 
   const now = new Date();
-  const dateStr = Utilities.formatDate(now, "America/Guayaquil", "yyyy-MM-dd");
-  const timeStr = Utilities.formatDate(now, "America/Guayaquil", "HH:mm");
 
   if (checkedRowIndex !== -1) {
     // Insertion après ligne cochée
@@ -895,20 +1127,17 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
     sheetTime.getRange(`C${targetRow}`).setValue(campaign);
     sheetTime.getRange(`D${targetRow}`).setValue(project);
     sheetTime.getRange(`E${targetRow}`).setValue(activity);
-    sheetTime.getRange(`F${targetRow}`).setValue(dateStr);
-    sheetTime.getRange(`G${targetRow}`).setValue(timeStr);
+    sheetTime.getRange(`F${targetRow}`).setValue(now).setNumberFormat("d mmmm yyyy");
+    sheetTime.getRange(`G${targetRow}`).setValue(now).setNumberFormat("HH:mm");
     sheetTime.getRange(`T${targetRow}`).setValue(rate);
-    sheetTime.getRange(`U${targetRow}`).setValue("");
+    sheetTime.getRange(`U${targetRow}`).setValue(note);
     sheetTime.getRange(`A${targetRow}`).setValue(true);
 
     sheetTime.getRange(`A${checkedRowIndex}`).setValue(false);
 
     const rangeEffet = sheetTime.getRange(`A${targetRow}:Z${targetRow}`);
-    rangeEffet.setBackground("#e7efe1");
+    rangeEffet.setBackground("#f1f6ee");
     sheetTime.getRange("I3").setBackground("#6aa84f");
-    SpreadsheetApp.flush();
-    Utilities.sleep(1000);
-    rangeEffet.setBackground("#ffffff");
     sheetTime.setActiveSelection(`H${targetRow}`);
     SpreadsheetApp.flush();
 
@@ -920,7 +1149,7 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
     sheetTime.getRange("P7").clearContent();
     sheetTime.getRange("Q7").clearContent();
     sheetTime.getRange("S7").clearContent();
-    sheetTime.getRange("U7").setValue("");
+    sheetTime.getRange("U7").setValue(note);
     sheetTime.getRange("N7").setValue(false);
     sheetTime.getRange("O7").setValue(false);
     sheetTime.getRange("R7").setValue(false);
@@ -934,17 +1163,14 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
     sheetTime.getRange("C7").setValue(campaign);
     sheetTime.getRange("D7").setValue(project);
     sheetTime.getRange("E7").setValue(activity);
-    sheetTime.getRange("F7").setValue(dateStr);
-    sheetTime.getRange("G7").setValue(timeStr);
+    sheetTime.getRange("F7").setValue(now).setNumberFormat("d mmmm yyyy");
+    sheetTime.getRange("G7").setValue(now).setNumberFormat("HH:mm");
     sheetTime.getRange("T7").setValue(rate);
     sheetTime.getRange("A7").setValue(true);
 
     const rangeEffet = sheetTime.getRange("A7:Z7");
-    rangeEffet.setBackground("#e7efe1");
+    rangeEffet.setBackground("#f1f6ee");
     sheetTime.getRange("I3").setBackground("#6aa84f");
-    SpreadsheetApp.flush();
-    Utilities.sleep(1000);
-    rangeEffet.setBackground("#ffffff");
     sheetTime.setActiveSelection("H7");
     SpreadsheetApp.flush();
   }
@@ -974,16 +1200,31 @@ function FeuilleDeTemps() {
 
 function trash() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  const data = sheet.getRange("A7:A").getValues();
-  const ligneCocheeCount = data.filter(row => row[0] === true).length;
+  const lastRow = sheet.getLastRow();
+  const data = lastRow >= 7 ? sheet.getRange(`A7:S${lastRow}`).getValues() : [];
+  const checkedRows = data
+    .map((row, index) => ({ row, index: index + 7 }))
+    .filter(entry => entry.row[0] === true);
+  const ligneCocheeCount = checkedRows.length;
 
-  const confirmTitle = `Supprimer ${ligneCocheeCount} ligne${ligneCocheeCount > 1 ? 's' : ''}`;
-  const confirmMessage = `Confirmer la suppression de ${ligneCocheeCount} ligne${ligneCocheeCount > 1 ? 's' : ''} ?`;
+  if (ligneCocheeCount === 0) {
+    openStandaloneMessageView_("Aucune ligne cochée à supprimer.");
+    return;
+  }
+
+  const hasInvoicedOrPaidRow = checkedRows.some(({ row }) => row[14] === true || row[17] === true || row[18] !== "" && row[18] !== null);
+  const confirmTitle = hasInvoicedOrPaidRow ? "Attention" : `Supprimer ${ligneCocheeCount} entrée${ligneCocheeCount > 1 ? 's' : ''}`;
+  const confirmMessage = hasInvoicedOrPaidRow
+    ? "Attention, au moins une entrée sélectionnée a déjà été facturée ou payée."
+    : ligneCocheeCount === 1
+      ? "Voulez-vous vraiment supprimer cette entrée ?"
+      : `Voulez-vous vraiment supprimer ces ${ligneCocheeCount} entrées ?`;
+  const confirmSecondaryLabel = hasInvoicedOrPaidRow ? "Fermer" : "Annuler";
   const output = HtmlService.createHtmlOutputFromFile("popup")
     .setWidth(400)
     .setHeight(220);
   output.addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  output.append(`<script>var contacts = []; var activityTypes = []; var initialInvoiceNumber = null; var requiresInitialInvoiceSetup = false; var showStartupConfirm = true; var confirmViewTitle = ${JSON.stringify(confirmTitle)}; var confirmViewMessage = ${JSON.stringify(confirmMessage)}; var confirmAction = "delete_rows"; var confirmPrimaryLabel = "Supprimer"; var confirmSecondaryLabel = "Annuler";</script>`);
+  output.append(`<script>var contacts = []; var activityTypes = []; var initialInvoiceNumber = null; var requiresInitialInvoiceSetup = false; var showStartupConfirm = true; var confirmViewTitle = ${JSON.stringify(confirmTitle)}; var confirmViewMessage = ${JSON.stringify(confirmMessage)}; var confirmAction = "delete_rows"; var confirmPrimaryLabel = "Supprimer"; var confirmSecondaryLabel = ${JSON.stringify(confirmSecondaryLabel)};</script>`);
 
   SpreadsheetApp.getUi().showModalDialog(output, confirmTitle);
 }
@@ -1097,12 +1338,12 @@ function checkAndSetTime() {
 
   // Vérifier si exactement une ligne est cochée
   if (checkedRows.length > 1) {
-    openStandaloneMessageView_("Ne cocher qu'une seule ligne.", "Information");
+    openStandaloneMessageView_("Ne sélectionner qu'une tâche active.", "Information");
     return;
   }
 
   if (checkedRows.length === 0) {
-    openStandaloneMessageView_("Erreur : Aucune ligne cochée.");
+    openStandaloneMessageView_("Sélectionner une tâche active.");
     return;
   }
 
@@ -1121,14 +1362,14 @@ function checkAndSetTime() {
     if (cellH.isBlank()) {
       // Cellule H vide, écrire l'heure actuelle
       const now = new Date();
-      const timeStr = Utilities.formatDate(now, "America/Guayaquil", "HH:mm");
-      cellH.setValue(timeStr);
+      cellH.setValue(now).setNumberFormat("HH:mm");
+      sheetTime.getRange(`A${rowIndex}:Z${rowIndex}`).setBackground("#ffffff");
       // Changer la couleur de I3 en blanc
       sheetTime.getRange("I3").setBackground("#ffffff");
       SpreadsheetApp.flush();
     } else {
       // Cellule H non vide, afficher popup
-      openStandaloneMessageView_("La cellule H de la ligne cochée contient déjà une valeur.", "Action impossible sur cette ligne");
+      openStandaloneMessageView_("La tâche sélectionnée a déjà été fermée.", "Action impossible sur cette ligne");
     }
   }
 }

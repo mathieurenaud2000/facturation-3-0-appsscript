@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      font-family: Roboto, sans-serif;
+    }
+
+    .container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Base commune de catégories : popupPayment reste autonome,
+       mais il adopte la même grille de types que les autres popups
+       pour faciliter les futures évolutions sans changer son flux. */
+    .container[class*="popup-type-"] .popup-view.active {
+      width: 100%;
+      align-self: center;
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    .popup-type-alert .popup-view.active {
+      max-width: 360px;
+    }
+
+    .popup-type-confirm .popup-view.active {
+      max-width: 380px;
+    }
+
+    .popup-type-form-simple .popup-view.active {
+      max-width: 440px;
+    }
+
+    .popup-type-form-complex .popup-view.active {
+      max-width: 520px;
+    }
+
+    .popup-type-action .popup-view.active {
+      max-width: 420px;
+    }
+
+    .popup-view {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+    }
+
+    .popup-view.active {
+      display: flex;
+    }
+
+    .form-view {
+      padding: 20px 0 80px 0;
+    }
+
+    .error-view {
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .list-container {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .invoice-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #eeeeee;
+      font-size: 13pt;
+      color: #000;
+    }
+
+    .invoice-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .message-title {
+      font-size: 16pt;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .message-sub {
+      font-size: 13pt;
+      line-height: 1.4;
+    }
+
+    .footer {
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      width: 100%;
+      height: 70px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-end;
+      padding: 0 0 0 0;
+      background: #fff;
+    }
+
+    .btn {
+      margin-left: 20px;
+      padding: 10px 48px;
+      border-radius: 10px;
+      cursor: pointer;
+      border: none;
+      font-size: 18px;
+      text-align: center;
+    }
+
+    .btn-green {
+      background-color: #4CAF50;
+      color: white;
+      border: 1px solid #4CAF50;
+    }
+
+    .btn-green:hover:enabled {
+      background-color: #45a049;
+      border: 1px solid #45a049;
+    }
+
+    .btn-green:disabled {
+      background-color: #b8d8b9;
+      border: 1px solid #b8d8b9;
+      cursor: default;
+    }
+
+    .btn-cancel {
+      background-color: #ccc;
+      color: #000;
+      border: 1px solid #ccc;
+    }
+
+    .btn-cancel:hover {
+      background-color: #b3b3b3;
+      border: 1px solid #b3b3b3;
+    }
+  </style>
+</head>
+<body>
+  <div id="popupContainer" class="container">
+    <div id="formView" class="popup-view form-view active">
+      <div class="message-title">Enregistrer un paiement</div>
+      <div class="list-container">
+        <? for (let i = 0; i < invoices.length; i++) { ?>
+          <label class="invoice-item">
+            <input type="checkbox" name="invoiceNumber" value="<?= invoices[i].invoiceNumber ?>" onchange="updateSubmitState()">
+            <span>Facture #<?= invoices[i].invoiceNumber ?></span>
+          </label>
+        <? } ?>
+      </div>
+
+      <div class="footer">
+        <button class="btn btn-cancel" onclick="google.script.host.close()">Fermer</button>
+        <button id="submit" class="btn btn-green" onclick="submitForm()" disabled>Enregistrer</button>
+      </div>
+    </div>
+
+    <div id="errorView" class="popup-view error-view">
+      <div class="message-title" id="errorTitle">Attention</div>
+      <div class="message-sub" id="errorMessage"></div>
+      <div class="footer">
+        <button class="btn btn-cancel" onclick="google.script.host.close()">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isSubmitting = false;
+    const popupTypeClasses = [
+      "popup-type-alert",
+      "popup-type-confirm",
+      "popup-type-form-simple",
+      "popup-type-form-complex",
+      "popup-type-action"
+    ];
+    const popupTypeByView = {
+      formView: "form-simple",
+      errorView: "alert"
+    };
+
+    /* Même fallback que sur les autres popups :
+       si aucun type n'est explicitement imposé, on utilise le type prévu
+       pour la vue courante afin d'harmoniser l'ensemble sans casser le flux. */
+    function applyPopupType(type) {
+      const popupContainer = document.getElementById("popupContainer");
+      popupTypeClasses.forEach(className => {
+        popupContainer.classList.remove(className);
+      });
+
+      if (typeof type !== "string" || type.trim() === "") {
+        return;
+      }
+
+      const normalizedType = `popup-type-${type.trim()}`;
+      if (popupTypeClasses.includes(normalizedType)) {
+        popupContainer.classList.add(normalizedType);
+      }
+    }
+
+    function resolvePopupType(viewId, type) {
+      if (typeof type === "string" && type.trim() !== "") {
+        return type.trim();
+      }
+      return popupTypeByView[viewId] || "";
+    }
+
+    function setActiveView(viewId, type) {
+      ["formView", "errorView"].forEach(id => {
+        document.getElementById(id).classList.toggle("active", id === viewId);
+      });
+      applyPopupType(resolvePopupType(viewId, type));
+    }
+
+    function updateSubmitState() {
+      const hasSelection = Array.from(document.querySelectorAll('input[name="invoiceNumber"]:checked')).length > 0;
+      document.getElementById("submit").disabled = !hasSelection || isSubmitting;
+    }
+
+    function showError(message) {
+      document.getElementById("errorTitle").textContent = "Attention";
+      document.getElementById("errorMessage").textContent = message || "Une erreur est survenue.";
+      setActiveView("errorView", "alert");
+    }
+
+    function submitForm() {
+      if (isSubmitting) return;
+
+      const selectedInvoiceNumbers = Array.from(document.querySelectorAll('input[name="invoiceNumber"]:checked'))
+        .map(input => input.value);
+      if (selectedInvoiceNumbers.length === 0) {
+        updateSubmitState();
+        return;
+      }
+
+      isSubmitting = true;
+      updateSubmitState();
+
+      google.script.run
+        .withSuccessHandler(() => {
+          google.script.host.close();
+        })
+        .withFailureHandler(error => {
+          isSubmitting = false;
+          showError(error && error.message ? error.message : "Une erreur est survenue.");
+        })
+        .registerInvoicePayments(selectedInvoiceNumbers);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      setActiveView("formView", "form-simple");
+      updateSubmitState();
+    });
+  </script>
+</body>
+</html>
