@@ -395,7 +395,6 @@
 <body>
   <div id="popupContainer" class="container">
     <div id="formView" class="popup-view form-view active">
-      <div id="formViewTitle" class="message-title">Nouvelle entrée de temps</div>
       <div id="formContainer" class="form-container">
         <div class="time-entry-layout">
           <div class="time-entry-column">
@@ -566,21 +565,6 @@
     let formValidationActivated = false;
     let newClientValidationActivated = false;
 
-    function setPopupTitle(title) {
-      const normalizedTitle = String(title || '').trim();
-      document.title = normalizedTitle;
-
-      const formViewTitle = document.getElementById('formViewTitle');
-      if (formViewTitle) {
-        formViewTitle.textContent = normalizedTitle || 'Nouvelle entrée de temps';
-      }
-
-      const newClientViewTitle = document.querySelector('#newClientView .message-title');
-      if (newClientViewTitle) {
-        newClientViewTitle.textContent = normalizedTitle || 'Nouveau client';
-      }
-    }
-
     function getFieldRefs() {
       return {
         clientSelect: document.getElementById('clientSelect'),
@@ -727,13 +711,11 @@
 
     function showFormView() {
       isSubmitting = false;
-      setPopupTitle('Nouvelle entrée de temps');
       setActiveView('formView', 'form-complex');
       updateLiveValidation();
     }
 
     function showNewClientView() {
-      setPopupTitle('Nouveau client');
       setActiveView('newClientView', 'form-complex');
       updateNewClientValidation();
       document.getElementById('clientCompanyName').focus();
