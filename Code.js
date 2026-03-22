@@ -1012,7 +1012,7 @@ function newTimeEntry() {
     html.newRow = 7;
   }
 
-  const htmlOutput = html.evaluate().setWidth(460).setHeight(620);
+  const htmlOutput = html.evaluate().setWidth(690).setHeight(340);
   SpreadsheetApp.getUi().showModelessDialog(htmlOutput, "Nouvelle entrée de temps");
 }
 
