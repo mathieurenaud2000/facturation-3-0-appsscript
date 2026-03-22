@@ -277,7 +277,12 @@
       border: 1px solid #000000;
     }
 
-    .btn:disabled {
+    .btn-green:disabled,
+    .btn-green[disabled],
+    .btn-green.disabled,
+    .btn:disabled.btn-green,
+    .btn[disabled].btn-green,
+    .btn.btn-green.disabled {
       background-color: #efefef;
       border: 1px solid #efefef;
       color: #ffffff;
