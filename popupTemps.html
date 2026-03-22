@@ -95,7 +95,7 @@
     }
 
     select:disabled, input:disabled {
-      border: 1px solid #cfcfcf;
+      border: 1px solid #f7f7f7;
       color: #9a9a9a;
       background: #f7f7f7;
     }
@@ -115,8 +115,8 @@
         linear-gradient(45deg, transparent 50%, #000000 50%),
         linear-gradient(135deg, #000000 50%, transparent 50%);
       background-position:
-        calc(100% - 24px) calc(50% + 5px),
-        calc(100% - 14px) calc(50% + 5px);
+        calc(100% - 24px) calc(50% + 1px),
+        calc(100% - 14px) calc(50% + 1px);
       background-size: 10px 10px, 10px 10px;
       background-repeat: no-repeat;
     }
@@ -179,10 +179,9 @@
       right: 0;
       height: 80px;
       width: 100%;
-      display: grid;
-      grid-template-columns: 40% 60%;
+      display: flex;
       align-items: flex-end;
-      justify-content: space-between;
+      justify-content: flex-end;
       background: #fff;
     }
 
