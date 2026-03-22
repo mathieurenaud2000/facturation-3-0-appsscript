@@ -72,11 +72,13 @@
     .form-view {
       justify-content: flex-start;
       padding: 40px 0 0 0;
+      gap: 25px;
     }
 
     .invoice-number-view {
       justify-content: flex-start;
       padding: 40px 0 0 0;
+      gap: 25px;
     }
 
     .confirm-view {
@@ -107,12 +109,18 @@
     select, input {
       width: 100%;
       margin: 0;
-      padding: 3px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
+      padding: 5px;
+      border: 1px solid #000000;
+      border-radius: 10px;
       font-size: calc(13pt + 2px);
       color: #000;
       background: #fff;
+    }
+
+    select:disabled, input:disabled {
+      border: 1px solid #cfcfcf;
+      color: #9a9a9a;
+      background: #f7f7f7;
     }
 
     input::placeholder {
@@ -160,7 +168,7 @@
       border-radius: 10px;
       cursor: pointer;
       border: none;
-      font-size: 18px;
+      font-size: 23px;
       text-align: center;
     }
 
@@ -169,14 +177,14 @@
     }
 
     .btn-green {
-      background-color: #4CAF50;
+      background-color: #00983a;
       color: white;
-      border: 1px solid #4CAF50;
+      border: 1px solid #00983a;
     }
 
     .btn-green:hover {
-      background-color: #45a049;
-      border: 1px solid #45a049;
+      background-color: #1ecc00;
+      border: 1px solid #1ecc00;
     }
 
     .btn-white {
@@ -190,8 +198,9 @@
     }
 
     .btn:disabled {
-      background-color: #cccccc;
-      border: 1px solid #cccccc;
+      background-color: #efefef;
+      border: 1px solid #efefef;
+      color: #ffffff;
       cursor: not-allowed;
     }
 
