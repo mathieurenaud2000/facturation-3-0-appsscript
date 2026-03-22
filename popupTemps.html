@@ -83,18 +83,6 @@
       padding: 0;
     }
 
-    .label {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-
     select, input {
       width: 100%;
       padding: 3px;
@@ -273,14 +261,12 @@
 <body>
   <div id="popupContainer" class="container">
     <div id="formView" class="popup-view form-view active">
-      <div id="formContainer" class="form-container">
+        <div id="formContainer" class="form-container">
         <div class="field-block">
-          <div class="label">Client :</div>
           <select id="clientSelect" onchange="handleClientChange()"></select>
         </div>
 
         <div class="field-block">
-          <div class="label">Campagne :</div>
           <div id="campaignSelectWrapper">
             <select id="campaign" onchange="handleCampaignInput()"></select>
           </div>
@@ -292,7 +278,6 @@
         </div>
 
         <div class="field-block">
-          <div class="label">Projet :</div>
           <div id="projectSelectWrapper">
             <select id="project" onchange="handleProjectChange()"></select>
           </div>
@@ -304,7 +289,6 @@
         </div>
 
         <div class="field-block">
-          <div class="label">Activité :</div>
           <div id="activitySelectWrapper">
             <select id="activitySelect" onchange="handleActivityChange()"></select>
           </div>
@@ -316,14 +300,12 @@
         </div>
 
         <div class="field-block">
-          <div class="label">Note :</div>
           <input type="text" id="note" placeholder="Note" oninput="updateLiveValidation()">
         </div>
       </div>
 
       <div class="footer">
         <div class="rate-container">
-          <div class="label">Taux :</div>
           <div id="rateSelectWrapper">
             <select id="rate"></select>
           </div>
@@ -345,37 +327,30 @@
         <div class="message-title">Nouveau client</div>
         <div class="new-client-layout">
           <div class="field-block full-width">
-            <div class="label">Nom de l’entreprise :</div>
             <input type="text" id="clientCompanyName" placeholder="Nom de l’entreprise" oninput="updateNewClientValidation()">
           </div>
 
           <div class="field-block">
-            <div class="label">Nom du contact principal :</div>
             <input type="text" id="clientPrimaryContactName" placeholder="Nom du contact principal" oninput="updateNewClientValidation()">
           </div>
 
           <div class="field-block">
-            <div class="label">Courriel du contact principal :</div>
             <input type="email" id="clientPrimaryContactEmail" placeholder="Courriel du contact principal" oninput="updateNewClientValidation()">
           </div>
 
           <div class="field-block">
-            <div class="label">Contact secondaire :</div>
             <input type="text" id="clientSecondaryContactName" placeholder="Contact secondaire" oninput="updateNewClientValidation()">
           </div>
 
           <div class="field-block">
-            <div class="label">Courriel secondaire :</div>
             <input type="email" id="clientSecondaryContactEmail" placeholder="Courriel secondaire" oninput="updateNewClientValidation()">
           </div>
 
           <div class="field-block">
-            <div class="label">Contact facturation :</div>
             <input type="text" id="clientBillingContactName" placeholder="Contact facturation" oninput="updateNewClientValidation()">
           </div>
 
           <div class="field-block">
-            <div class="label">Courriel facturation :</div>
             <input type="email" id="clientBillingEmail" placeholder="Courriel facturation" oninput="updateNewClientValidation()">
           </div>
         </div>
@@ -445,6 +420,8 @@
     let isSubmitting = false;
     let pendingNewClientData = null;
     let previousClientValue = '';
+    let formValidationActivated = false;
+    let newClientValidationActivated = false;
 
     function getFieldRefs() {
       return {
@@ -760,6 +737,16 @@
         : rateSelect.value !== '' && rateSelect.value !== '__autre__';
       const isNoteValid = note.value.trim() !== '';
 
+      updateSelectPlaceholderState(clientSelect);
+      updateSelectPlaceholderState(campaign);
+      updateSelectPlaceholderState(project);
+      updateSelectPlaceholderState(activitySelect);
+      updateSelectPlaceholderState(rateSelect);
+
+      if (!formValidationActivated) {
+        return;
+      }
+
       clientSelect.classList.toggle('invalid', !isClientValid);
       campaign.classList.toggle('invalid', !isCustomFieldActive('campaign') && !isCampaignValid);
       customCampaign.classList.toggle('invalid', isCustomFieldActive('campaign') && !isCampaignValid);
@@ -770,14 +757,12 @@
       rateSelect.classList.toggle('invalid', !isCustomFieldActive('rate') && !isRateValid);
       customRate.classList.toggle('invalid', isCustomFieldActive('rate') && !isRateValid);
       note.classList.toggle('invalid', !isNoteValid);
-      updateSelectPlaceholderState(clientSelect);
-      updateSelectPlaceholderState(campaign);
-      updateSelectPlaceholderState(project);
-      updateSelectPlaceholderState(activitySelect);
-      updateSelectPlaceholderState(rateSelect);
     }
 
     function updateNewClientValidation() {
+      if (!newClientValidationActivated) {
+        return;
+      }
       const requiredIds = ['clientCompanyName', 'clientPrimaryContactName', 'clientPrimaryContactEmail'];
       requiredIds.forEach(id => {
         const field = document.getElementById(id);
@@ -901,6 +886,7 @@
       const billingEmail = document.getElementById('clientBillingEmail').value.trim();
 
       if (!companyName || !primaryContactName || !primaryContactEmail) {
+        newClientValidationActivated = true;
         updateNewClientValidation();
         return;
       }
@@ -922,7 +908,10 @@
       updateLiveValidation();
     }
 
-    function validateForm() {
+    function validateForm(activateValidation = false) {
+      if (activateValidation) {
+        formValidationActivated = true;
+      }
       updateLiveValidation();
 
       const {
@@ -977,7 +966,7 @@
     function submitForm() {
       if (isSubmitting) return;
 
-      const validation = validateForm();
+      const validation = validateForm(true);
       if (!validation.isValid) {
         showErrorView(validation.message);
         return;
@@ -1046,9 +1035,11 @@
         selectedCampaign: initialCampaignSelected,
         selectedProject: initialProjectSelected
       });
+      formValidationActivated = false;
+      newClientValidationActivated = false;
       clearValidationState();
       showFormView();
-      validateForm();
+      updateLiveValidation();
     });
   </script>
 </body>
