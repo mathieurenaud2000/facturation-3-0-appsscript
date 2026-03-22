@@ -1117,6 +1117,10 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
     sheetTime.insertRowAfter(checkedRowIndex);
     const targetRow = checkedRowIndex + 1;
     sheetTime.getRange(`A${targetRow}:U${targetRow}`).clearContent();
+    sheetTime.getRange(`A${targetRow}`).insertCheckboxes();
+    sheetTime.getRange(`N${targetRow}`).insertCheckboxes();
+    sheetTime.getRange(`O${targetRow}`).insertCheckboxes();
+    sheetTime.getRange(`R${targetRow}`).insertCheckboxes();
     sheetTime.getRange(`A${targetRow}`).setValue(true);
     sheetTime.getRange(`B${targetRow}`).setValue(client);
     sheetTime.getRange(`C${targetRow}`).setValue(campaign);
@@ -1151,6 +1155,10 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
     sheetTime.insertRowsAfter(6, 2);
     sheetTime.getRange("A7:U7").clearContent();
     sheetTime.getRange("A8:U8").clearContent();
+    sheetTime.getRange("A7").insertCheckboxes();
+    sheetTime.getRange("N7").insertCheckboxes();
+    sheetTime.getRange("O7").insertCheckboxes();
+    sheetTime.getRange("R7").insertCheckboxes();
     sheetTime.getRange("H7").clearContent();
     sheetTime.getRange("B7").setValue(client);
     sheetTime.getRange("C7").setValue(campaign);
