@@ -1040,10 +1040,13 @@
 
     function handleCampaignInput() {
       const { campaign, customProject } = getFieldRefs();
+      const projectHasCustomValue = isCustomFieldActive('project') && customProject.value.trim() !== '';
       if (campaign.value === '__autre__') {
         campaign.value = '';
         populateProjectOptions('');
-        closeCustomField('project');
+        if (!projectHasCustomValue) {
+          closeCustomField('project');
+        }
         openCustomField('campaign');
         return;
       }
