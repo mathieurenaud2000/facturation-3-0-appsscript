@@ -105,11 +105,15 @@
     }
 
     .label {
-      margin: 0;
-      padding: 5px 0;
-      font-size: 10pt;
-      color: #888;
-      width: 100%;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     .activity-label, .invoice-number-label {
@@ -119,11 +123,33 @@
     select, input {
       width: 100%;
       margin: 0;
-      padding: 8px;
+      padding: 3px;
       border: 1px solid #ccc;
-      border-radius: 0;
-      font-size: 13pt;
+      border-radius: 5px;
+      font-size: calc(13pt + 2px);
       color: #000;
+      background: #fff;
+    }
+
+    input::placeholder {
+      color: #c8c8c8;
+      opacity: 1;
+    }
+
+    select {
+      color: #000000;
+    }
+
+    select.is-placeholder {
+      color: #c8c8c8;
+    }
+
+    select option {
+      color: #000000;
+    }
+
+    select option[value=""] {
+      color: #c8c8c8;
     }
 
     select.invalid, input.invalid {
@@ -246,7 +272,7 @@
       <div class="message-title">Numéro de facture</div>
       <div class="message-sub">Par quel numéro de facture doit-on commencer?</div>
       <div class="label invoice-number-label">Numéro</div>
-      <input type="number" id="initialNumber" inputmode="numeric" min="1" step="1" oninput="validateInitialInvoiceNumber()">
+      <input type="number" id="initialNumber" inputmode="numeric" min="1" step="1" placeholder="Numéro de facture" oninput="validateInitialInvoiceNumber()">
       <div id="invoiceNumberError" class="inline-error" aria-live="polite"></div>
     </div>
     <!-- Vue confirmation -->
@@ -263,13 +289,13 @@
     <div id="formView" class="popup-view form-view active">
       <div class="label">Contact :</div>
       <select id="contact" onchange="validateForm()">
-        <option>Sélectionnez un contact</option>
+        <option value="">Contact</option>
         <option>Autre</option>
       </select>
       <input type="text" id="newContact" placeholder="Entrez un nouveau contact" style="display:none;" oninput="validateForm()">
       <div class="label activity-label">Type d’activité générale :</div>
       <select id="activityType" onchange="validateForm()">
-        <option>Sélectionnez une activité</option>
+        <option value="">Type d’activité générale</option>
         <option>Autre</option>
       </select>
       <input type="text" id="newActivityType" placeholder="Entrez une nouvelle activité" style="display:none;" oninput="validateForm()">
@@ -462,6 +488,13 @@
       } else {
         selectElement.value = "";
       }
+
+      updateSelectPlaceholderState(selectElement);
+    }
+
+    function updateSelectPlaceholderState(selectElement) {
+      if (!selectElement) return;
+      selectElement.classList.toggle("is-placeholder", selectElement.value === "");
     }
 
     function validateSendInvoiceForm() {
@@ -691,9 +724,10 @@
       }
 
       // Sélectionner automatiquement la deuxième option
-      contactSelect.selectedIndex = contactSelect.options.length > 1 ? 1 : 0;
-      activityTypeSelect.selectedIndex = activityTypeSelect.options.length > 1 ? 1 : 0;
-
+      contactSelect.selectedIndex = 0;
+      activityTypeSelect.selectedIndex = 0;
+      updateSelectPlaceholderState(contactSelect);
+      updateSelectPlaceholderState(activityTypeSelect);
     }
 
     function validateForm() {
@@ -708,15 +742,17 @@
       newActivityType.style.display = activitySelect.value === "Autre" ? "block" : "none";
 
       // Valider les champs
-      const isContactValid = contactSelect.value !== "Sélectionnez un contact" && 
+      const isContactValid = contactSelect.value !== "" && 
         (contactSelect.value !== "Autre" || (newContact.value.trim() !== ""));
-      const isActivityValid = activitySelect.value !== "Sélectionnez une activité" && 
+      const isActivityValid = activitySelect.value !== "" && 
         (activitySelect.value !== "Autre" || (newActivityType.value.trim() !== ""));
 
       contactSelect.classList.toggle("invalid", !isContactValid);
       newContact.classList.toggle("invalid", contactSelect.value === "Autre" && newContact.value.trim() === "");
       activitySelect.classList.toggle("invalid", !isActivityValid);
       newActivityType.classList.toggle("invalid", activitySelect.value === "Autre" && newActivityType.value.trim() === "");
+      updateSelectPlaceholderState(contactSelect);
+      updateSelectPlaceholderState(activitySelect);
 
       submitBtn.disabled = !(isContactValid && isActivityValid);
     }
@@ -796,14 +832,14 @@
       renderRecipientSelectOptions(
         recipientSelect,
         currentInvoiceRecipientOptions,
-        "Sélectionnez un destinataire",
+        "Destinataire principal",
         defaultRecipientEmail,
         false
       );
       renderRecipientSelectOptions(
         ccSelect,
         currentInvoiceRecipientOptions,
-        "Aucun CC",
+        "CC (optionnel)",
         "",
         true
       );
