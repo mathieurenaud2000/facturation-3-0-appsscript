@@ -63,7 +63,8 @@
       display: flex;
     }
 
-    #formView.popup-view.active {
+    #formView.popup-view.active,
+    #newClientView.popup-view.active {
       flex: 0 0 auto;
     }
 
@@ -72,11 +73,8 @@
       padding-bottom: 0;
     }
 
-    #newClientView.form-view {
-      padding-bottom: 88px;
-    }
-
-    #formView .form-container {
+    #formView .form-container,
+    #newClientView .form-container {
       flex: 0 0 auto;
       overflow: visible;
       padding-bottom: 0;
@@ -330,13 +328,32 @@
     .new-client-layout {
       width: 100%;
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: var(--field-gap);
-      padding-bottom: 88px;
+      align-items: stretch;
     }
 
-    .full-width {
-      grid-column: 1 / -1;
+    .new-client-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-items: stretch;
+      min-height: var(--control-height);
+    }
+
+    .new-client-actions .btn {
+      width: 100%;
+      height: 100%;
+      margin-left: 0;
+      padding: 0 24px;
+    }
+
+    #newClientView input.required-field {
+      border: 1px solid #000000;
+    }
+
+    #newClientView input.optional-field {
+      border: 1px solid #cccccc;
     }
 
     .time-entry-layout {
@@ -465,43 +482,42 @@
     </div>
 
     <div id="newClientView" class="popup-view form-view">
-      <div class="form-container">
+      <div id="newClientFormContainer" class="form-container">
         <div class="new-client-layout">
-          <div class="field-block full-width">
-            <input type="text" id="clientCompanyName" placeholder="Nom de l’entreprise" oninput="updateNewClientValidation()">
+          <div class="field-block">
+            <input type="text" id="clientCompanyName" class="required-field" placeholder="Entreprise" oninput="updateNewClientValidation()">
           </div>
 
           <div class="field-block">
-            <input type="text" id="clientPrimaryContactName" placeholder="Nom du contact principal" oninput="updateNewClientValidation()">
+            <div class="new-client-actions btn-container">
+              <button class="btn btn-secondary" onclick="cancelNewClientView()">Retour</button>
+              <button class="btn btn-green" onclick="saveNewClientView()">OK</button>
+            </div>
           </div>
 
           <div class="field-block">
-            <input type="email" id="clientPrimaryContactEmail" placeholder="Courriel du contact principal" oninput="updateNewClientValidation()">
+            <input type="text" id="clientPrimaryContactName" class="required-field" placeholder="Contact principal" oninput="updateNewClientValidation()">
           </div>
 
           <div class="field-block">
-            <input type="text" id="clientSecondaryContactName" placeholder="Contact secondaire" oninput="updateNewClientValidation()">
+            <input type="email" id="clientPrimaryContactEmail" class="required-field" placeholder="Courriel (principal)" oninput="updateNewClientValidation()">
           </div>
 
           <div class="field-block">
-            <input type="email" id="clientSecondaryContactEmail" placeholder="Courriel secondaire" oninput="updateNewClientValidation()">
+            <input type="text" id="clientSecondaryContactName" class="optional-field" placeholder="Contact secondaire" oninput="updateNewClientValidation()">
           </div>
 
           <div class="field-block">
-            <input type="text" id="clientBillingContactName" placeholder="Contact facturation" oninput="updateNewClientValidation()">
+            <input type="email" id="clientSecondaryContactEmail" class="optional-field" placeholder="Courriel (secondaire)" oninput="updateNewClientValidation()">
           </div>
 
           <div class="field-block">
-            <input type="email" id="clientBillingEmail" placeholder="Courriel facturation" oninput="updateNewClientValidation()">
+            <input type="text" id="clientBillingContactName" class="optional-field" placeholder="Contact administratif" oninput="updateNewClientValidation()">
           </div>
-        </div>
-      </div>
 
-      <div class="footer">
-        <div></div>
-        <div class="btn-container">
-          <button class="btn btn-secondary" onclick="cancelNewClientView()">Retour</button>
-          <button class="btn btn-green" onclick="saveNewClientView()">OK</button>
+          <div class="field-block">
+            <input type="email" id="clientBillingEmail" class="optional-field" placeholder="Courriel (administratif)" oninput="updateNewClientValidation()">
+          </div>
         </div>
       </div>
     </div>
@@ -619,8 +635,9 @@
         return;
       }
 
-      if (viewId === 'formView') {
-        const formContainer = document.getElementById('formContainer');
+      if (viewId === 'formView' || viewId === 'newClientView') {
+        const containerId = viewId === 'formView' ? 'formContainer' : 'newClientFormContainer';
+        const formContainer = document.getElementById(containerId);
         const measuredHeight = formContainer
           ? Math.ceil(formContainer.scrollHeight + 10)
           : 300;
@@ -630,7 +647,6 @@
       }
 
       const dimensionsByView = {
-        newClientView: { width: 690, height: 560 },
         loadingView: { width: 460, height: 260 },
         successView: { width: 460, height: 260 },
         errorView: { width: 460, height: 260 }
