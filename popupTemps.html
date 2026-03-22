@@ -360,7 +360,7 @@
       gap: 12px;
       align-items: stretch;
       min-height: var(--control-height);
-      transform: translateY(-4px);
+      transform: translateY(-5px);
     }
 
     .time-entry-actions .btn {
@@ -600,8 +600,17 @@
         return;
       }
 
+      if (viewId === 'formView') {
+        const formContainer = document.getElementById('formContainer');
+        const measuredHeight = formContainer
+          ? Math.ceil(formContainer.scrollHeight + 10)
+          : 300;
+        google.script.host.setWidth(690);
+        google.script.host.setHeight(measuredHeight);
+        return;
+      }
+
       const dimensionsByView = {
-        formView: { width: 690, height: 300 },
         newClientView: { width: 690, height: 560 },
         loadingView: { width: 460, height: 260 },
         successView: { width: 460, height: 260 },
