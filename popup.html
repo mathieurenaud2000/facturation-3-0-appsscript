@@ -3,6 +3,7 @@
 <head>
   <base target="_top">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
   <style>
     * {
       margin: 0;
@@ -160,6 +161,47 @@
       border: 1px solid #ff0000;
     }
 
+    .inline-field {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      width: 100%;
+      min-height: 52px;
+      margin-top: 0;
+    }
+
+    .inline-field input {
+      flex: 1;
+      min-height: 52px;
+    }
+
+    .icon-btn {
+      width: 52px;
+      min-width: 52px;
+      height: 52px;
+      min-height: 52px;
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: #666;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      align-self: stretch;
+      line-height: 1;
+    }
+
+    .icon-btn:hover {
+      background: transparent;
+    }
+
+    .icon-btn .material-symbols-outlined {
+      font-size: 24px;
+      line-height: 1;
+    }
+
     .footer {
       position: fixed;
       bottom: 0;
@@ -301,12 +343,18 @@
         <option value="">Contact</option>
         <option>Autre</option>
       </select>
-      <input type="text" id="newContact" placeholder="Entrez un nouveau contact" style="display:none;" oninput="validateForm()">
+      <div id="newContactWrapper" class="inline-field" style="display:none;">
+        <input type="text" id="newContact" placeholder="Entrez un nouveau contact" oninput="validateForm()">
+        <button type="button" class="icon-btn" onclick="closeOtherField('contact', 'newContact', 'newContactWrapper')"><span class="material-symbols-outlined">close</span></button>
+      </div>
       <select id="activityType" onchange="validateForm()">
         <option value="">Type d’activité générale</option>
         <option>Autre</option>
       </select>
-      <input type="text" id="newActivityType" placeholder="Entrez une nouvelle activité" style="display:none;" oninput="validateForm()">
+      <div id="newActivityTypeWrapper" class="inline-field" style="display:none;">
+        <input type="text" id="newActivityType" placeholder="Entrez une nouvelle activité" oninput="validateForm()">
+        <button type="button" class="icon-btn" onclick="closeOtherField('activityType', 'newActivityType', 'newActivityTypeWrapper')"><span class="material-symbols-outlined">close</span></button>
+      </div>
     </div>
     <!-- État de chargement -->
     <div id="loadingView" class="popup-view status-view">
@@ -761,12 +809,14 @@
       }
       const contactSelect = document.getElementById("contact");
       const newContact = document.getElementById("newContact");
+      const newContactWrapper = document.getElementById("newContactWrapper");
       const activitySelect = document.getElementById("activityType");
       const newActivityType = document.getElementById("newActivityType");
+      const newActivityTypeWrapper = document.getElementById("newActivityTypeWrapper");
 
       // Afficher/masquer les champs "Autre"
-      newContact.style.display = contactSelect.value === "Autre" ? "block" : "none";
-      newActivityType.style.display = activitySelect.value === "Autre" ? "block" : "none";
+      newContactWrapper.style.display = contactSelect.value === "Autre" ? "flex" : "none";
+      newActivityTypeWrapper.style.display = activitySelect.value === "Autre" ? "flex" : "none";
 
       // Valider les champs
       const isContactValid = contactSelect.value !== "" && 
@@ -794,6 +844,16 @@
       return {
         isValid: isContactValid && isActivityValid
       };
+    }
+
+    function closeOtherField(selectId, inputId, wrapperId) {
+      const selectElement = document.getElementById(selectId);
+      const inputElement = document.getElementById(inputId);
+      const wrapperElement = document.getElementById(wrapperId);
+      selectElement.value = "";
+      inputElement.value = "";
+      wrapperElement.style.display = "none";
+      validateForm();
     }
 
     function showFormView() {
