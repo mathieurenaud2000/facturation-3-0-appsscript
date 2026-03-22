@@ -938,15 +938,64 @@
       });
     }
 
-    function openCustomField(fieldName) {
+    function resetProjectToInitialState() {
+      const { project, customProject } = getFieldRefs();
+      document.getElementById('projectCustomWrapper').style.display = 'none';
+      document.getElementById('projectSelectWrapper').style.display = 'block';
+      customProject.value = '';
+      clearDuplicateMessage('project');
+      populateProjectOptions('');
+      project.value = '';
+      updateSelectPlaceholderState(project);
+    }
+
+    function syncProjectStateFromCampaignCustomInput() {
+      const { customCampaign, customProject } = getFieldRefs();
+      const campaignHasValue = isCustomFieldActive('campaign') && customCampaign.value.trim() !== '';
+      const projectHasValue = customProject.value.trim() !== '';
+
+      if (campaignHasValue) {
+        if (!isCustomFieldActive('project')) {
+          openCustomField('project', false);
+        }
+        return;
+      }
+
+      if (isCustomFieldActive('project') && projectHasValue) {
+        return;
+      }
+
+      resetProjectToInitialState();
+    }
+
+    function openCustomField(fieldName, shouldFocus = true) {
       document.getElementById(`${fieldName}SelectWrapper`).style.display = 'none';
       document.getElementById(`${fieldName}CustomWrapper`).style.display = 'flex';
       clearDuplicateMessage(fieldName);
-      document.getElementById(`custom${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}`).focus();
+      if (shouldFocus) {
+        document.getElementById(`custom${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}`).focus();
+      }
       updateLiveValidation();
     }
 
     function closeCustomField(fieldName) {
+      if (fieldName === 'campaign') {
+        const { campaign, customCampaign, customProject } = getFieldRefs();
+        const projectHasCustomValue = isCustomFieldActive('project') && customProject.value.trim() !== '';
+        document.getElementById('campaignCustomWrapper').style.display = 'none';
+        document.getElementById('campaignSelectWrapper').style.display = 'block';
+        customCampaign.value = '';
+        clearDuplicateMessage('campaign');
+        campaign.value = '';
+        updateSelectPlaceholderState(campaign);
+        populateProjectOptions('');
+        if (!projectHasCustomValue) {
+          resetProjectToInitialState();
+        }
+        updateLiveValidation();
+        return;
+      }
+
       document.getElementById(`${fieldName}CustomWrapper`).style.display = 'none';
       document.getElementById(`${fieldName}SelectWrapper`).style.display = 'block';
       const input = document.getElementById(`custom${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}`);
@@ -959,6 +1008,9 @@
 
     function handleCustomFieldInput(fieldName) {
       updateDuplicateMessage(fieldName);
+      if (fieldName === 'campaign') {
+        syncProjectStateFromCampaignCustomInput();
+      }
       updateLiveValidation();
     }
 
