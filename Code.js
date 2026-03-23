@@ -1117,6 +1117,10 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
   const buildHoursCumulativeFormula = (rowNumber) => `=IF(H${rowNumber}<>""; SUM($I$7:I${rowNumber}); "")`;
   const buildAmountFormula = (rowNumber) => `=IF(H${rowNumber}<>""; I${rowNumber}*T${rowNumber}; "")`;
   const buildAmountCumulativeFormula = (rowNumber) => `=IF(H${rowNumber}<>""; SUM($K$7:K${rowNumber}); "")`;
+  const applyTimeColumnsDisplayFormat = () => {
+    const lastTimeRow = Math.max(7, sheetTime.getLastRow());
+    sheetTime.getRange(`G7:H${lastTimeRow}`).setNumberFormat("HH:mm");
+  };
   const applyTimeEntryRowFormatting = (rowNumber) => {
     sheetTime.getRange(`A${rowNumber}:U${rowNumber}`)
       .setFontFamily("Roboto")
@@ -1186,6 +1190,7 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
     sheetTime.getRange(`T${targetRow}`).setValue(rate);
     sheetTime.getRange(`U${targetRow}`).setValue(note);
     applyTimeEntryRowFormatting(targetRow);
+    applyTimeColumnsDisplayFormat();
 
     sheetTime.getRange(`A${checkedRowIndex}`).setValue(false);
 
@@ -1225,6 +1230,7 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
     sheetTime.getRange("U7").setValue(note);
     sheetTime.getRange("A7").setValue(true);
     applyTimeEntryRowFormatting(7);
+    applyTimeColumnsDisplayFormat();
 
     const rangeEffet = sheetTime.getRange("A7:Z7");
     rangeEffet.setBackground("#f1f6ee");
@@ -1382,6 +1388,11 @@ function checkAndSetTime() {
     return;
   }
 
+  const applyTimeColumnsDisplayFormat = () => {
+    const lastTimeRow = Math.max(7, sheetTime.getLastRow());
+    sheetTime.getRange(`G7:H${lastTimeRow}`).setNumberFormat("HH:mm");
+  };
+
   // Obtenir les cases cochées dans la colonne A à partir de A7
   const lastRow = sheetTime.getLastRow();
   if (lastRow < 7) {
@@ -1421,6 +1432,7 @@ function checkAndSetTime() {
       // Cellule H vide, écrire l'heure actuelle
       const now = new Date();
       cellH.setValue(now).setNumberFormat("HH:mm");
+      applyTimeColumnsDisplayFormat();
       sheetTime.getRange(`A${rowIndex}:Z${rowIndex}`).setBackground("#ffffff");
       // Changer la couleur de I3 en blanc
       sheetTime.getRange("I3").setBackground("#ffffff");
