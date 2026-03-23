@@ -79,9 +79,11 @@
     .invoice-number-view {
       justify-content: flex-start;
       padding: 0;
+      width: 100%;
     }
 
     #invoiceNumberView.popup-view.active {
+      flex: 0 0 auto;
       max-width: 690px;
     }
 
@@ -728,8 +730,10 @@
       if (typeof google === "undefined" || !google.script || !google.script.host) {
         return;
       }
+      const invoiceNumberLayout = document.querySelector("#invoiceNumberView .invoice-number-layout");
+      const measuredHeight = Math.ceil((invoiceNumberLayout ? invoiceNumberLayout.scrollHeight : 0) + 10) || 300;
       google.script.host.setWidth(690);
-      google.script.host.setHeight(300);
+      google.script.host.setHeight(measuredHeight);
     }
 
     function restoreDefaultFacturerPopupSize() {
