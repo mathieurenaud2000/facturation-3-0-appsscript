@@ -967,7 +967,7 @@ function newTimeEntry() {
 
   const taskStateData = facturerTimeSheet.getRange("A7:H" + lastRow).getValues();
   const checkedRows = taskStateData
-    .map((row, index) => ({ checked: row[0], endTime: row[7], index: index + 7 }))
+    .map((row, index) => ({ checked: row[0], startTime: row[6], endTime: row[7], index: index + 7 }))
     .filter(row => row.checked === true);
   const checkedIndexes = checkedRows.map(row => row.index);
 
@@ -976,7 +976,9 @@ function newTimeEntry() {
     return;
   }
 
-  const activeTaskRows = checkedRows.filter(row => row.endTime === "" || row.endTime === null);
+  const activeTaskRows = taskStateData
+    .map((row, index) => ({ startTime: row[6], endTime: row[7], index: index + 7 }))
+    .filter(row => row.startTime !== "" && row.startTime !== null && (row.endTime === "" || row.endTime === null));
   if (activeTaskRows.length > 0) {
     openStandaloneMessageView_("Une tâche est présentement en cours.", "Attention");
     return;
