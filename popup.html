@@ -315,7 +315,7 @@
       font-size: 11pt;
       text-align: left;
       margin-top: 10px;
-      display: none;
+      display: none !important;
     }
 
     .inline-error.active {
@@ -329,7 +329,7 @@
     <div id="invoiceNumberView" class="popup-view invoice-number-view">
       <div class="message-title">Numéro de facture</div>
       <div class="message-sub">Par quel numéro de facture doit-on commencer?</div>
-      <input type="number" id="initialNumber" inputmode="numeric" min="1" step="1" placeholder="Numéro de facture" oninput="validateInitialInvoiceNumber()">
+      <input type="text" id="initialNumber" inputmode="numeric" autocomplete="off" pattern="[0-9]*" placeholder="Numéro de facture" onkeydown="return allowOnlyInitialInvoiceNumberKey(event)" onpaste="handleInitialInvoiceNumberPaste(event)" oninput="sanitizeInitialInvoiceNumber(); validateInitialInvoiceNumber()">
       <div id="invoiceNumberError" class="inline-error" aria-live="polite"></div>
     </div>
     <!-- Vue confirmation -->
@@ -647,14 +647,53 @@
 
     function showInvoiceNumberInlineError(message) {
       const errorElement = document.getElementById("invoiceNumberError");
-      errorElement.textContent = message;
-      errorElement.classList.add("active");
+      errorElement.textContent = "";
+      errorElement.classList.remove("active");
     }
 
     function clearInvoiceNumberInlineError() {
       const errorElement = document.getElementById("invoiceNumberError");
       errorElement.textContent = "";
       errorElement.classList.remove("active");
+    }
+
+    function sanitizeInitialInvoiceNumber() {
+      const initialNumberInput = document.getElementById("initialNumber");
+      initialNumberInput.value = initialNumberInput.value.replace(/\D+/g, "");
+    }
+
+    function allowOnlyInitialInvoiceNumberKey(event) {
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return true;
+      }
+
+      const allowedKeys = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Tab", "Home", "End", "Enter"];
+      if (allowedKeys.includes(event.key) || /^\d$/.test(event.key)) {
+        return true;
+      }
+
+      event.preventDefault();
+      return false;
+    }
+
+    function handleInitialInvoiceNumberPaste(event) {
+      const pastedText = String((event.clipboardData || window.clipboardData).getData("text") || "");
+      const digitsOnly = pastedText.replace(/\D+/g, "");
+      event.preventDefault();
+
+      const initialNumberInput = document.getElementById("initialNumber");
+      const selectionStart = initialNumberInput.selectionStart ?? initialNumberInput.value.length;
+      const selectionEnd = initialNumberInput.selectionEnd ?? initialNumberInput.value.length;
+
+      initialNumberInput.value =
+        initialNumberInput.value.slice(0, selectionStart) +
+        digitsOnly +
+        initialNumberInput.value.slice(selectionEnd);
+
+      const caretPosition = selectionStart + digitsOnly.length;
+      initialNumberInput.setSelectionRange(caretPosition, caretPosition);
+      sanitizeInitialInvoiceNumber();
+      validateInitialInvoiceNumber();
     }
 
     function clearFormValidationState() {
