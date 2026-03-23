@@ -85,6 +85,10 @@
       padding-top: 75px;
     }
 
+    #loadingView.status-view {
+      padding-top: 95px;
+    }
+
     .error-view {
       justify-content: flex-start;
       padding-top: 60px;
@@ -597,6 +601,7 @@
     let previousClientValue = '';
     let formValidationActivated = false;
     let newClientValidationActivated = false;
+    let stablePopupDimensions = { width: 690, height: 300 };
 
     function getFieldRefs() {
       return {
@@ -659,23 +664,25 @@
         const measuredHeight = formContainer
           ? Math.ceil(formContainer.scrollHeight + 10)
           : 300;
-        google.script.host.setWidth(690);
-        google.script.host.setHeight(measuredHeight);
+        stablePopupDimensions = {
+          width: 690,
+          height: measuredHeight
+        };
+        google.script.host.setWidth(stablePopupDimensions.width);
+        google.script.host.setHeight(stablePopupDimensions.height);
         return;
       }
 
-      const dimensionsByView = {
-        loadingView: { width: 460, height: 260 },
-        successView: { width: 460, height: 260 },
-        errorView: { width: 460, height: 260 }
-      };
-      const dimensions = dimensionsByView[viewId];
-      if (!dimensions) {
+      if (viewId === 'loadingView' || viewId === 'successView') {
+        google.script.host.setWidth(stablePopupDimensions.width);
+        google.script.host.setHeight(stablePopupDimensions.height);
         return;
       }
 
-      google.script.host.setWidth(dimensions.width);
-      google.script.host.setHeight(dimensions.height);
+      if (viewId === 'errorView') {
+        google.script.host.setWidth(460);
+        google.script.host.setHeight(260);
+      }
     }
 
     function setSubmitDisabled(disabled) {
@@ -1422,7 +1429,7 @@
           showSuccessView();
           window.setTimeout(() => {
             google.script.host.close();
-          }, 300);
+          }, 1000);
         })
         .withFailureHandler(error => {
           showErrorView(error && error.message ? error.message : null);
