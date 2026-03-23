@@ -152,6 +152,17 @@
       color: #c8c8c8;
     }
 
+    select.locked-field {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      pointer-events: none;
+      background-image: none;
+      background-color: #efefef;
+      border: 1px solid #efefef;
+      color: #000000;
+    }
+
     select option:not([value=""]) { color: #000000; }
     select option[value=""] { color: #c8c8c8; }
     select.invalid, input.invalid, textarea.invalid { border: 1px solid #ff0000; }
@@ -557,6 +568,8 @@
     const initialCampaignSelected = <?!= JSON.stringify(typeof campaign === 'string' ? campaign : '') ?>;
     const initialProjectSelected = <?!= JSON.stringify(typeof project === 'string' ? project : '') ?>;
     const initialActivitySelected = <?!= JSON.stringify(typeof activitySelected === 'string' ? activitySelected : '') ?>;
+    const checkedRowIndexValue = <?!= typeof checkedRowIndex === 'number' ? checkedRowIndex : -1 ?>;
+    const isCreateFromRowMode = checkedRowIndexValue !== -1;
 
     /* popupTemps reste un popup autonome, mais on lui donne la même notion
        de catégories que popup.html pour converger vers une architecture UI
@@ -677,6 +690,21 @@
       }
     }
 
+    function applyCreateFromRowFieldLocking() {
+      const { clientSelect, campaign } = getFieldRefs();
+
+      if (!isCreateFromRowMode) {
+        clientSelect.classList.remove('locked-field');
+        campaign.classList.remove('locked-field');
+        return;
+      }
+
+      clientSelect.disabled = true;
+      campaign.disabled = true;
+      clientSelect.classList.add('locked-field');
+      campaign.classList.add('locked-field');
+    }
+
     function resetNewClientFormState() {
       [
         'clientCompanyName',
@@ -774,6 +802,7 @@
     function showFormView() {
       isSubmitting = false;
       setActiveView('formView', 'form-complex');
+      applyCreateFromRowFieldLocking();
       updateLiveValidation();
     }
 
@@ -1411,6 +1440,7 @@
         selectedCampaign: initialCampaignSelected,
         selectedProject: initialProjectSelected
       });
+      applyCreateFromRowFieldLocking();
       formValidationActivated = false;
       newClientValidationActivated = false;
       clearValidationState();
