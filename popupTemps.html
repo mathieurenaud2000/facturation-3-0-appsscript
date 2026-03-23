@@ -326,8 +326,14 @@
 
     .success-icon {
       color: #4CAF50;
-      font-size: 90px;
-      margin-bottom: 15px;
+      width: 120px;
+      height: 120px;
+      font-size: 120px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 0;
     }
 
     .error-actions {
@@ -1425,7 +1431,7 @@
           showSuccessView();
           window.setTimeout(() => {
             google.script.host.close();
-          }, 1000);
+          }, 3000);
         })
         .withFailureHandler(error => {
           showErrorView(error && error.message ? error.message : null);
