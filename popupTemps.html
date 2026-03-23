@@ -716,11 +716,35 @@
       const companyName = document.getElementById('clientCompanyName').value.trim();
       const primaryContactName = document.getElementById('clientPrimaryContactName').value.trim();
       const primaryContactEmail = document.getElementById('clientPrimaryContactEmail').value.trim();
+      const secondaryContactName = document.getElementById('clientSecondaryContactName').value.trim();
+      const secondaryContactEmail = document.getElementById('clientSecondaryContactEmail').value.trim();
+      const billingContactName = document.getElementById('clientBillingContactName').value.trim();
+      const billingEmail = document.getElementById('clientBillingEmail').value.trim();
+
+      const isPrimaryEmailValid = isValidEmailAddress(primaryContactEmail);
+      const isSecondaryPairValid = secondaryContactName === ''
+        ? secondaryContactEmail === ''
+        : secondaryContactEmail !== '' && isValidEmailAddress(secondaryContactEmail);
+      const isBillingPairValid = billingContactName === ''
+        ? billingEmail === ''
+        : billingEmail !== '' && isValidEmailAddress(billingEmail);
+
       return {
         companyName,
         primaryContactName,
         primaryContactEmail,
-        isReady: companyName !== '' && primaryContactName !== '' && primaryContactEmail !== ''
+        secondaryContactName,
+        secondaryContactEmail,
+        billingContactName,
+        billingEmail,
+        isPrimaryEmailValid,
+        isSecondaryPairValid,
+        isBillingPairValid,
+        isReady: companyName !== ''
+          && primaryContactName !== ''
+          && isPrimaryEmailValid
+          && isSecondaryPairValid
+          && isBillingPairValid
       };
     }
 
@@ -758,6 +782,21 @@
 
     function normalizeOptionValue(value) {
       return String(value || '').trim().toLowerCase();
+    }
+
+    function isValidEmailAddress(value) {
+      const normalizedValue = String(value || '').trim();
+      const atIndex = normalizedValue.indexOf('@');
+      if (atIndex <= 0 || atIndex !== normalizedValue.lastIndexOf('@')) {
+        return false;
+      }
+
+      const domain = normalizedValue.slice(atIndex + 1);
+      if (domain === '' || !domain.includes('.')) {
+        return false;
+      }
+
+      return domain.split('.').every(part => part.trim() !== '');
     }
 
     function isCustomFieldActive(fieldName) {
@@ -1002,17 +1041,32 @@
     }
 
     function updateNewClientValidation() {
-      const { isReady } = getNewClientRequiredState();
+      const {
+        companyName,
+        primaryContactName,
+        primaryContactEmail,
+        secondaryContactName,
+        secondaryContactEmail,
+        billingContactName,
+        billingEmail,
+        isPrimaryEmailValid,
+        isSecondaryPairValid,
+        isBillingPairValid,
+        isReady
+      } = getNewClientRequiredState();
       setNewClientSubmitDisabled(!isReady);
 
       if (!newClientValidationActivated) {
         return;
       }
-      const requiredIds = ['clientCompanyName', 'clientPrimaryContactName', 'clientPrimaryContactEmail'];
-      requiredIds.forEach(id => {
-        const field = document.getElementById(id);
-        field.classList.toggle('invalid', field.value.trim() === '');
-      });
+
+      document.getElementById('clientCompanyName').classList.toggle('invalid', companyName === '');
+      document.getElementById('clientPrimaryContactName').classList.toggle('invalid', primaryContactName === '');
+      document.getElementById('clientPrimaryContactEmail').classList.toggle('invalid', primaryContactEmail === '' || !isPrimaryEmailValid);
+      document.getElementById('clientSecondaryContactName').classList.toggle('invalid', !isSecondaryPairValid && secondaryContactName !== '');
+      document.getElementById('clientSecondaryContactEmail').classList.toggle('invalid', !isSecondaryPairValid && (secondaryContactName !== '' || secondaryContactEmail !== ''));
+      document.getElementById('clientBillingContactName').classList.toggle('invalid', !isBillingPairValid && billingContactName !== '');
+      document.getElementById('clientBillingEmail').classList.toggle('invalid', !isBillingPairValid && (billingContactName !== '' || billingEmail !== ''));
     }
 
     function resetProjectToInitialState() {
@@ -1187,7 +1241,7 @@
       const billingContactName = document.getElementById('clientBillingContactName').value.trim();
       const billingEmail = document.getElementById('clientBillingEmail').value.trim();
 
-      if (!companyName || !primaryContactName || !primaryContactEmail) {
+      if (!getNewClientRequiredState().isReady) {
         newClientValidationActivated = true;
         updateNewClientValidation();
         return;
