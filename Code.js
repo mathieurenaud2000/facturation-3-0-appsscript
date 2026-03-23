@@ -1113,6 +1113,7 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
   }
 
   const now = new Date();
+  const currentTimeValue = (now.getHours() * 60 + now.getMinutes()) / (24 * 60);
   const buildTimeFormula = (rowNumber) => `=IF(H${rowNumber}<>""; ROUND((IF(H${rowNumber}<G${rowNumber}; H${rowNumber}+1; H${rowNumber})-G${rowNumber})*96)/4; "")`;
   const buildHoursCumulativeFormula = (rowNumber) => `=IF(H${rowNumber}<>""; SUM($I$7:I${rowNumber}); "")`;
   const buildAmountFormula = (rowNumber) => `=IF(H${rowNumber}<>""; I${rowNumber}*T${rowNumber}; "")`;
@@ -1175,7 +1176,7 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
     sheetTime.getRange(`D${targetRow}`).setValue(project);
     sheetTime.getRange(`E${targetRow}`).setValue(activity);
     sheetTime.getRange(`F${targetRow}`).setValue(now).setNumberFormat("d mmmm yyyy");
-    sheetTime.getRange(`G${targetRow}`).setValue(now).setNumberFormat("HH:mm");
+    sheetTime.getRange(`G${targetRow}`).setValue(currentTimeValue).setNumberFormat("HH:mm");
     sheetTime.getRange(`H${targetRow}`).clearContent();
     sheetTime.getRange(`I${targetRow}`).setFormula(buildTimeFormula(targetRow));
     sheetTime.getRange(`J${targetRow}`).setFormula(buildHoursCumulativeFormula(targetRow));
@@ -1215,7 +1216,7 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
     sheetTime.getRange("D7").setValue(project);
     sheetTime.getRange("E7").setValue(activity);
     sheetTime.getRange("F7").setValue(now).setNumberFormat("d mmmm yyyy");
-    sheetTime.getRange("G7").setValue(now).setNumberFormat("HH:mm");
+    sheetTime.getRange("G7").setValue(currentTimeValue).setNumberFormat("HH:mm");
     sheetTime.getRange("I7").setFormula(buildTimeFormula(7));
     sheetTime.getRange("J7").setFormula(buildHoursCumulativeFormula(7));
     sheetTime.getRange("K7").setFormula(buildAmountFormula(7));
@@ -1431,7 +1432,8 @@ function checkAndSetTime() {
     if (cellH.isBlank()) {
       // Cellule H vide, écrire l'heure actuelle
       const now = new Date();
-      cellH.setValue(now).setNumberFormat("HH:mm");
+      const currentTimeValue = (now.getHours() * 60 + now.getMinutes()) / (24 * 60);
+      cellH.setValue(currentTimeValue).setNumberFormat("HH:mm");
       applyTimeColumnsDisplayFormat();
       sheetTime.getRange(`A${rowIndex}:Z${rowIndex}`).setBackground("#ffffff");
       // Changer la couleur de I3 en blanc
