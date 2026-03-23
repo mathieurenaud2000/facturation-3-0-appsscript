@@ -550,7 +550,7 @@
     <div id="successView" class="popup-view status-view">
       <i class="fas fa-check-circle success-icon"></i>
       <div class="message-title">Entrée créée</div>
-      <div class="message-sub">Fermeture en cours...</div>
+      <div class="message-sub">Merci d'avoir patienté.</div>
     </div>
 
     <div id="errorView" class="popup-view error-view">
@@ -1431,7 +1431,7 @@
           showSuccessView();
           window.setTimeout(() => {
             google.script.host.close();
-          }, 3000);
+          }, 2000);
         })
         .withFailureHandler(error => {
           showErrorView(error && error.message ? error.message : null);
