@@ -78,8 +78,57 @@
 
     .invoice-number-view {
       justify-content: flex-start;
-      padding: 40px 0 0 0;
-      gap: 15px;
+      padding: 0;
+    }
+
+    .invoice-number-layout {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-rows: 52px 52px 52px 52px;
+      column-gap: 24px;
+      row-gap: 15px;
+      align-items: start;
+    }
+
+    .invoice-number-label {
+      grid-column: 1;
+      grid-row: 1;
+      align-self: center;
+      font-size: calc(13pt + 2px);
+      line-height: 1.2;
+      color: #000000;
+      text-align: left;
+    }
+
+    .invoice-number-field {
+      grid-column: 1;
+      grid-row: 2;
+      display: flex;
+      align-items: flex-start;
+      width: 100%;
+    }
+
+    #invoiceNumberView #initialNumber {
+      width: 30%;
+      min-width: 0;
+    }
+
+    .invoice-number-actions {
+      grid-column: 2;
+      grid-row: 4;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-items: stretch;
+      min-height: 52px;
+    }
+
+    .invoice-number-actions .btn {
+      width: 100%;
+      height: 100%;
+      margin-left: 0;
+      padding: 0 24px;
     }
 
     .confirm-view {
@@ -327,10 +376,17 @@
   <div id="popupContainer" class="container">
     <!-- Vue numéro initial -->
     <div id="invoiceNumberView" class="popup-view invoice-number-view">
-      <div class="message-title">Numéro de facture</div>
-      <div class="message-sub">Par quel numéro de facture doit-on commencer?</div>
-      <input type="text" id="initialNumber" inputmode="numeric" autocomplete="off" pattern="[0-9]*" placeholder="Numéro de facture" onkeydown="return allowOnlyInitialInvoiceNumberKey(event)" onpaste="handleInitialInvoiceNumberPaste(event)" oninput="sanitizeInitialInvoiceNumber(); validateInitialInvoiceNumber()">
-      <div id="invoiceNumberError" class="inline-error" aria-live="polite"></div>
+      <div class="invoice-number-layout">
+        <div class="invoice-number-label">Numéro</div>
+        <div class="invoice-number-field">
+          <input type="text" id="initialNumber" inputmode="numeric" autocomplete="off" pattern="[0-9]*" placeholder="Numéro de facture" onkeydown="return allowOnlyInitialInvoiceNumberKey(event)" onpaste="handleInitialInvoiceNumberPaste(event)" oninput="sanitizeInitialInvoiceNumber(); validateInitialInvoiceNumber()">
+          <div id="invoiceNumberError" class="inline-error" aria-live="polite"></div>
+        </div>
+        <div class="invoice-number-actions">
+          <button type="button" class="btn btn-white" onclick="google.script.host.close()">Fermer</button>
+          <button type="button" class="btn btn-green" onclick="submitInitialInvoiceNumber()">OK</button>
+        </div>
+      </div>
     </div>
     <!-- Vue confirmation -->
     <div id="confirmView" class="popup-view confirm-view">
@@ -925,15 +981,14 @@
         view: "invoiceNumberView",
         type: "form-simple",
         footer: {
-          primary: { label: "OK", visible: true },
-          secondary: { label: "Fermer", visible: false },
+          primary: { label: "", visible: false },
+          secondary: { label: "", visible: false },
           openPdf: { visible: false }
         },
-        primaryAction: submitInitialInvoiceNumber,
-        secondaryAction: () => google.script.host.close(),
+        primaryAction: null,
+        secondaryAction: null,
         openPdfAction: null
       });
-      document.getElementById("submit").disabled = false;
       document.getElementById("initialNumber").focus();
     }
 
