@@ -248,9 +248,10 @@ function showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumbe
   const opensOnInvoiceNumberView = !normalizedPopupContext.showStartupConfirm
     && invoiceNumber === null
     && requiresInitialInvoiceSetup === true;
+  const opensOnFormView = !normalizedPopupContext.showStartupConfirm && !opensOnInvoiceNumberView;
   const facturerHtml = HtmlService.createHtmlOutputFromFile("popup")
-    .setWidth(opensOnInvoiceNumberView ? 690 : 400)
-    .setHeight(opensOnInvoiceNumberView ? 263 : 350);
+    .setWidth(opensOnInvoiceNumberView || opensOnFormView ? 690 : 400)
+    .setHeight(opensOnInvoiceNumberView || opensOnFormView ? 263 : 350);
   facturerHtml.addMetaTag('viewport', 'width=device-width, initial-scale=1');
   facturerHtml.append(`<script>var contacts = ${JSON.stringify(facturerContacts)}; var activityTypes = ${JSON.stringify(facturerActivityTypes)}; var initialInvoiceNumber = ${JSON.stringify(invoiceNumber)}; var requiresInitialInvoiceSetup = ${JSON.stringify(requiresInitialInvoiceSetup)}; var showStartupConfirm = ${JSON.stringify(normalizedPopupContext.showStartupConfirm)}; var confirmViewTitle = ${JSON.stringify(normalizedPopupContext.confirmViewTitle)}; var confirmViewMessage = ${JSON.stringify(normalizedPopupContext.confirmViewMessage)}; var confirmAction = ${JSON.stringify(normalizedPopupContext.confirmAction)}; var confirmPrimaryLabel = ${JSON.stringify(normalizedPopupContext.confirmPrimaryLabel)}; var confirmSecondaryLabel = ${JSON.stringify(normalizedPopupContext.confirmSecondaryLabel)};</script>`);
   facturerUi.showModelessDialog(facturerHtml, "Nouvelle facture");
@@ -742,6 +743,7 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   const facturerLastRow = facturerConfigSheet.getLastRow();
   const facturerContactsRange = facturerConfigSheet.getRange("B2:B" + Math.max(2, facturerLastRow)).getValues();
   const facturerActivitiesRange = facturerConfigSheet.getRange("C2:C" + Math.max(2, facturerLastRow)).getValues();
+  const shouldPersistNewActivityType = !facturerActivitiesRange.flat().includes(activityType);
   if (!facturerContactsRange.flat().includes(contact)) {
     let facturerLastContactRow = 2;
     for (let i = 0; i < facturerContactsRange.length; i++) {
@@ -752,17 +754,6 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
       facturerLastContactRow = i + 3;
     }
     facturerConfigSheet.getRange(`B${facturerLastContactRow}`).setValue(contact.trim());
-  }
-  if (!facturerActivitiesRange.flat().includes(activityType)) {
-    let facturerLastActivityRow = 2;
-    for (let i = 0; i < facturerActivitiesRange.length; i++) {
-      if (!facturerActivitiesRange[i][0]) {
-        facturerLastActivityRow = i + 2;
-        break;
-      }
-      facturerLastActivityRow = i + 3;
-    }
-    facturerConfigSheet.getRange(`C${facturerLastActivityRow}`).setValue(activityType.trim());
   }
 
   const facturerTrackingLastRow = facturerTrackingSheet.getLastRow();
@@ -905,6 +896,22 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
     ]]);
     facturerTrackingSheet.getRange(`B${facturerTrackingRow}`).setNumberFormat("@");
     facturerTrackingSheet.getRange(`C${facturerTrackingRow}`).setNumberFormat("d mmmm yyyy");
+
+    if (shouldPersistNewActivityType) {
+      const latestConfigLastRow = facturerConfigSheet.getLastRow();
+      const latestActivitiesRange = facturerConfigSheet.getRange("C2:C" + Math.max(2, latestConfigLastRow)).getValues();
+      if (!latestActivitiesRange.flat().includes(activityType)) {
+        let facturerLastActivityRow = 2;
+        for (let i = 0; i < latestActivitiesRange.length; i++) {
+          if (!latestActivitiesRange[i][0]) {
+            facturerLastActivityRow = i + 2;
+            break;
+          }
+          facturerLastActivityRow = i + 3;
+        }
+        facturerConfigSheet.getRange(`C${facturerLastActivityRow}`).setValue(activityType.trim());
+      }
+    }
 
     facturerSpreadsheet.deleteSheet(facturerTempSheet);
     return { success: true, pdfUrl: facturerPdfUrl, invoiceNumber: facturerFullInvoiceNumber };

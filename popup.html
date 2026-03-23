@@ -139,6 +139,74 @@
       padding: 0 24px;
     }
 
+    #formView.form-view {
+      justify-content: flex-start;
+      padding: 0;
+      width: 100%;
+      gap: 0;
+    }
+
+    #formView.popup-view.active {
+      flex: 0 0 auto;
+      max-width: 690px;
+    }
+
+    .service-title-layout {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-rows: 52px 52px 52px 52px;
+      column-gap: 24px;
+      row-gap: 15px;
+      align-items: start;
+    }
+
+    .service-title-label {
+      grid-column: 1;
+      grid-row: 1;
+      align-self: end;
+      font-size: calc(13pt + 2px);
+      line-height: 1.2;
+      color: #000000;
+      text-align: left;
+    }
+
+    .service-title-field {
+      grid-column: 1;
+      grid-row: 2;
+      display: flex;
+      align-items: flex-start;
+      width: 100%;
+    }
+
+    .service-title-select-wrapper {
+      width: 100%;
+    }
+
+    #formView #activityType {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .service-title-actions {
+      grid-column: 2;
+      grid-row: 4;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-items: stretch;
+      min-height: 52px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .service-title-actions .btn {
+      width: 100%;
+      height: 100%;
+      margin-left: 0;
+      padding: 0 24px;
+    }
+
     .confirm-view {
       justify-content: flex-start;
       padding: 40px 0 0 0;
@@ -408,21 +476,21 @@
     </div>
     <!-- Formulaire initial -->
     <div id="formView" class="popup-view form-view active">
-      <select id="contact" onchange="validateForm()">
-        <option value="">Contact</option>
-        <option>Autre</option>
-      </select>
-      <div id="newContactWrapper" class="inline-field" style="display:none;">
-        <input type="text" id="newContact" placeholder="Entrez un nouveau contact" oninput="validateForm()">
-        <button type="button" class="icon-btn" onclick="closeOtherField('contact', 'newContact', 'newContactWrapper')"><span class="material-symbols-outlined">close</span></button>
-      </div>
-      <select id="activityType" onchange="validateForm()">
-        <option value="">Type d’activité générale</option>
-        <option>Autre</option>
-      </select>
-      <div id="newActivityTypeWrapper" class="inline-field" style="display:none;">
-        <input type="text" id="newActivityType" placeholder="Entrez une nouvelle activité" oninput="validateForm()">
-        <button type="button" class="icon-btn" onclick="closeOtherField('activityType', 'newActivityType', 'newActivityTypeWrapper')"><span class="material-symbols-outlined">close</span></button>
+      <div class="service-title-layout">
+        <div class="service-title-label">Titre du service</div>
+        <div class="service-title-field">
+          <div id="activityTypeSelectWrapper" class="service-title-select-wrapper">
+            <select id="activityType" onchange="validateForm()"></select>
+          </div>
+          <div id="newActivityTypeWrapper" class="inline-field" style="display:none;">
+            <input type="text" id="newActivityType" autocomplete="off" oninput="validateForm()">
+            <button type="button" class="icon-btn" onclick="closeOtherField('activityType', 'newActivityType', 'newActivityTypeWrapper')"><span class="material-symbols-outlined">close</span></button>
+          </div>
+        </div>
+        <div class="service-title-actions">
+          <button type="button" class="btn btn-white" onclick="google.script.host.close()">Fermer</button>
+          <button type="button" class="btn btn-green" disabled onclick="submit()">OK</button>
+        </div>
       </div>
     </div>
     <!-- État de chargement -->
@@ -728,12 +796,29 @@
       }
     }
 
+    function setFormSubmitDisabled(disabled) {
+      const button = document.querySelector("#formView .service-title-actions .btn-green");
+      if (button) {
+        button.disabled = disabled;
+      }
+    }
+
     function setInvoiceNumberViewPopupSize() {
       if (typeof google === "undefined" || !google.script || !google.script.host) {
         return;
       }
       const invoiceNumberLayout = document.querySelector("#invoiceNumberView .invoice-number-layout");
       const measuredHeight = Math.ceil((invoiceNumberLayout ? invoiceNumberLayout.scrollHeight : 0) + 10) || 300;
+      google.script.host.setWidth(690);
+      google.script.host.setHeight(measuredHeight);
+    }
+
+    function setFormViewPopupSize() {
+      if (typeof google === "undefined" || !google.script || !google.script.host) {
+        return;
+      }
+      const formLayout = document.querySelector("#formView .service-title-layout");
+      const measuredHeight = Math.ceil((formLayout ? formLayout.scrollHeight : 0) + 10) || 263;
       google.script.host.setWidth(690);
       google.script.host.setHeight(measuredHeight);
     }
@@ -786,7 +871,7 @@
     }
 
     function clearFormValidationState() {
-      ["contact", "newContact", "activityType", "newActivityType", "initialNumber"].forEach(id => {
+      ["activityType", "newActivityType", "initialNumber"].forEach(id => {
         const field = document.getElementById(id);
         if (field) {
           field.classList.remove("invalid");
@@ -820,7 +905,6 @@
       if (!validateInitialInvoiceNumber(true)) return;
       window.initialInvoiceNumber = Number(document.getElementById("initialNumber").value.trim());
       clearInvoiceNumberInlineError();
-      restoreDefaultFacturerPopupSize();
       showFormView();
     }
 
@@ -904,80 +988,75 @@
 
     // Remplir les menus déroulants avec les données injectées
     function populateDropdowns() {
-      const contactSelect = document.getElementById("contact");
       const activityTypeSelect = document.getElementById("activityType");
-
-      // Vider les options existantes sauf les par défaut
-      while (contactSelect.options.length > 2) contactSelect.remove(1);
-      while (activityTypeSelect.options.length > 2) activityTypeSelect.remove(1);
-
-      // Ajouter les contacts
-      if (contacts && Array.isArray(contacts)) {
-        contacts.forEach(contact => {
-          const option = document.createElement("option");
-          option.text = contact;
-          option.value = contact;
-          contactSelect.add(option, contactSelect.options[contactSelect.options.length - 1]);
-        });
-      }
-
-      // Ajouter les types d'activité
+      activityTypeSelect.innerHTML = "";
       if (activityTypes && Array.isArray(activityTypes)) {
         activityTypes.forEach(activity => {
           const option = document.createElement("option");
           option.text = activity;
           option.value = activity;
-          activityTypeSelect.add(option, activityTypeSelect.options[activityTypeSelect.options.length - 1]);
+          activityTypeSelect.add(option);
         });
       }
+      const otherOption = document.createElement("option");
+      otherOption.text = "Autre...";
+      otherOption.value = "Autre...";
+      activityTypeSelect.add(otherOption);
 
-      // Sélectionner automatiquement la deuxième option
-      contactSelect.selectedIndex = 0;
-      activityTypeSelect.selectedIndex = 0;
-      updateSelectPlaceholderState(contactSelect);
-      updateSelectPlaceholderState(activityTypeSelect);
+      const defaultActivityType = getDefaultActivityTypeValue();
+      activityTypeSelect.value = defaultActivityType;
+      document.getElementById("activityTypeSelectWrapper").style.display = "block";
+      document.getElementById("newActivityTypeWrapper").style.display = "none";
+      document.getElementById("newActivityType").value = "";
+    }
+
+    function getDefaultActivityTypeValue() {
+      const activityTypeSelect = document.getElementById("activityType");
+      if (!activityTypeSelect) {
+        return "";
+      }
+      const defaultOption = Array.from(activityTypeSelect.options).find(option => option.value !== "" && option.value !== "Autre...");
+      return defaultOption ? defaultOption.value : "";
+    }
+
+    function getDefaultContactValue() {
+      if (!Array.isArray(window.contacts)) {
+        return "";
+      }
+      const firstContact = window.contacts.find(contact => String(contact || "").trim() !== "");
+      return firstContact ? String(firstContact).trim() : "";
     }
 
     function validateForm(activateValidation = false) {
       if (activateValidation) {
         formValidationActivated = true;
       }
-      const contactSelect = document.getElementById("contact");
-      const newContact = document.getElementById("newContact");
-      const newContactWrapper = document.getElementById("newContactWrapper");
       const activitySelect = document.getElementById("activityType");
       const newActivityType = document.getElementById("newActivityType");
+      const activityTypeSelectWrapper = document.getElementById("activityTypeSelectWrapper");
       const newActivityTypeWrapper = document.getElementById("newActivityTypeWrapper");
+      const isOtherMode = activitySelect.value === "Autre...";
 
-      // Afficher/masquer les champs "Autre"
-      newContactWrapper.style.display = contactSelect.value === "Autre" ? "flex" : "none";
-      newActivityTypeWrapper.style.display = activitySelect.value === "Autre" ? "flex" : "none";
+      activityTypeSelectWrapper.style.display = isOtherMode ? "none" : "block";
+      newActivityTypeWrapper.style.display = isOtherMode ? "flex" : "none";
 
-      // Valider les champs
-      const isContactValid = contactSelect.value !== "" && 
-        (contactSelect.value !== "Autre" || (newContact.value.trim() !== ""));
-      const isActivityValid = activitySelect.value !== "" && 
-        (activitySelect.value !== "Autre" || (newActivityType.value.trim() !== ""));
-
-      updateSelectPlaceholderState(contactSelect);
-      updateSelectPlaceholderState(activitySelect);
+      const isActivityValid = isOtherMode
+        ? newActivityType.value.trim() !== ""
+        : activitySelect.value !== "";
+      setFormSubmitDisabled(!isActivityValid);
 
       if (!formValidationActivated) {
-        contactSelect.classList.remove("invalid");
-        newContact.classList.remove("invalid");
         activitySelect.classList.remove("invalid");
         newActivityType.classList.remove("invalid");
         return {
-          isValid: isContactValid && isActivityValid
+          isValid: isActivityValid
         };
       }
 
-      contactSelect.classList.toggle("invalid", !isContactValid);
-      newContact.classList.toggle("invalid", contactSelect.value === "Autre" && newContact.value.trim() === "");
-      activitySelect.classList.toggle("invalid", !isActivityValid);
-      newActivityType.classList.toggle("invalid", activitySelect.value === "Autre" && newActivityType.value.trim() === "");
+      activitySelect.classList.toggle("invalid", !isOtherMode && !isActivityValid);
+      newActivityType.classList.toggle("invalid", isOtherMode && newActivityType.value.trim() === "");
       return {
-        isValid: isContactValid && isActivityValid
+        isValid: isActivityValid
       };
     }
 
@@ -985,7 +1064,11 @@
       const selectElement = document.getElementById(selectId);
       const inputElement = document.getElementById(inputId);
       const wrapperElement = document.getElementById(wrapperId);
-      selectElement.value = "";
+      if (selectId === "activityType") {
+        selectElement.value = getDefaultActivityTypeValue();
+      } else {
+        selectElement.value = "";
+      }
       inputElement.value = "";
       wrapperElement.style.display = "none";
       validateForm();
@@ -998,14 +1081,23 @@
         view: "formView",
         type: "form-simple",
         footer: {
-          primary: { label: "Enregistrer", visible: true },
-          secondary: { label: "Fermer", visible: false },
+          primary: { label: "", visible: false },
+          secondary: { label: "", visible: false },
           openPdf: { visible: false }
         },
-        primaryAction: submit,
-        secondaryAction: () => google.script.host.close(),
+        primaryAction: null,
+        secondaryAction: null,
         openPdfAction: null
       });
+      setFormViewPopupSize();
+      validateForm();
+      const activitySelect = document.getElementById("activityType");
+      const newActivityType = document.getElementById("newActivityType");
+      if (activitySelect.value === "Autre...") {
+        newActivityType.focus();
+      } else {
+        activitySelect.focus();
+      }
     }
 
     function showInvoiceNumberView() {
@@ -1227,10 +1319,8 @@
       if (!validation.isValid) {
         return;
       }
-      const contact = document.getElementById("contact").value === "Autre" ? 
-        document.getElementById("newContact").value.trim() : 
-        document.getElementById("contact").value;
-      const activityType = document.getElementById("activityType").value === "Autre" ? 
+      const contact = getDefaultContactValue();
+      const activityType = document.getElementById("activityType").value === "Autre..." ? 
         document.getElementById("newActivityType").value.trim() : 
         document.getElementById("activityType").value;
 
