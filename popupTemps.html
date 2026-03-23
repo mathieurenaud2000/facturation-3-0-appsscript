@@ -568,6 +568,9 @@
     const initialCampaignSelected = <?!= JSON.stringify(typeof campaign === 'string' ? campaign : '') ?>;
     const initialProjectSelected = <?!= JSON.stringify(typeof project === 'string' ? project : '') ?>;
     const initialActivitySelected = <?!= JSON.stringify(typeof activitySelected === 'string' ? activitySelected : '') ?>;
+    const initialRateSelected = <?!= JSON.stringify(
+      typeof rateSelected === 'string' || typeof rateSelected === 'number' ? rateSelected : ''
+    ) ?>;
     const checkedRowIndexValue = <?!= typeof checkedRowIndex === 'number' ? checkedRowIndex : -1 ?>;
     const isCreateFromRowMode = checkedRowIndexValue !== -1;
 
@@ -1011,15 +1014,27 @@
     }
 
     function initializeRateOptions(selectedValue = '') {
-      const { rateSelect } = getFieldRefs();
+      const { rateSelect, customRate } = getFieldRefs();
       const rateValues = rateOptions.filter(rate => String(rate) !== '0');
+      const normalizedSelectedValue = String(selectedValue || '').trim();
       setSelectOptions(
         rateSelect,
         rateValues,
         '',
-        selectedValue,
+        normalizedSelectedValue,
         true
       );
+
+      if (
+        normalizedSelectedValue !== ''
+        && !rateValues.some(rateValue => String(rateValue).trim() === normalizedSelectedValue)
+      ) {
+        rateSelect.value = '';
+        openCustomField('rate', false);
+        customRate.value = normalizedSelectedValue;
+        updateDuplicateMessage('rate');
+      }
+
       rateSelect.addEventListener('change', handleRateChange);
     }
 
@@ -1435,7 +1450,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       populateClientOptions(initialClientSelected);
       populateActivityOptions(initialActivitySelected);
-      initializeRateOptions('');
+      initializeRateOptions(isCreateFromRowMode ? initialRateSelected : '');
       updateDependencyState({
         selectedCampaign: initialCampaignSelected,
         selectedProject: initialProjectSelected

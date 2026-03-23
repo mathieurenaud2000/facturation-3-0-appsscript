@@ -994,21 +994,26 @@ function newTimeEntry() {
 
   if (checkedRowIndex !== -1) {
     let sourceData;
+    let sourceRate = "";
     try {
       sourceData = facturerTimeSheet.getRange(`B${checkedRowIndex}:E${checkedRowIndex}`).getValues()[0];
+      sourceRate = facturerTimeSheet.getRange(`T${checkedRowIndex}`).getValue();
     } catch (e) {
       sourceData = ["", "", "", ""];
+      sourceRate = "";
     }
     html.clientSelected = sourceData[0] || "";
     html.campaign = sourceData[1] || "";
     html.project = sourceData[2] || "";
     html.activitySelected = sourceData[3] || "";
+    html.rateSelected = sourceRate === null || typeof sourceRate === "undefined" ? "" : sourceRate;
     html.newRow = checkedRowIndex + 1;
   } else {
     html.clientSelected = "";
     html.campaign = "";
     html.project = "";
     html.activitySelected = "";
+    html.rateSelected = "";
     html.newRow = 7;
   }
 
