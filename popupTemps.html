@@ -677,6 +677,27 @@
       }
     }
 
+    function resetNewClientFormState() {
+      [
+        'clientCompanyName',
+        'clientPrimaryContactName',
+        'clientPrimaryContactEmail',
+        'clientSecondaryContactName',
+        'clientSecondaryContactEmail',
+        'clientBillingContactName',
+        'clientBillingEmail'
+      ].forEach(id => {
+        const field = document.getElementById(id);
+        if (field) {
+          field.value = '';
+          field.classList.remove('invalid');
+        }
+      });
+
+      newClientValidationActivated = false;
+      updateNewClientValidation();
+    }
+
     function getTimeEntryRequiredState() {
       const {
         clientSelect,
@@ -757,6 +778,7 @@
     }
 
     function showNewClientView() {
+      resetNewClientFormState();
       setActiveView('newClientView', 'form-complex');
       updateNewClientValidation();
       document.getElementById('clientCompanyName').focus();
