@@ -404,8 +404,12 @@ function exportInvoiceSheetPdfBlob_(spreadsheetId, sheetId, fileName) {
     muteHttpExceptions: true
   });
 
-  if (response.getResponseCode() !== 200) {
-    throw new Error("PDF_EXPORT_FAILED");
+  const responseCode = response.getResponseCode();
+  if (responseCode !== 200) {
+    const responseBody = response.getContentText();
+    Logger.log(`PDF export failed with HTTP ${responseCode}`);
+    Logger.log(`PDF export response body: ${responseBody}`);
+    throw new Error(`PDF_EXPORT_FAILED: HTTP ${responseCode} - ${responseBody}`);
   }
 
   return response.getBlob().setName(fileName);
