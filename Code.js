@@ -866,6 +866,7 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   });
 
   SpreadsheetApp.flush();
+  Utilities.sleep(1000);
 
   let facturerPdfFile = null;
   try {
