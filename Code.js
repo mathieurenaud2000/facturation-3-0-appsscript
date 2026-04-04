@@ -803,6 +803,7 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   }
 
   const facturerTempSheet = facturerModelSheet.copyTo(facturerSpreadsheet).setName(facturerFullInvoiceNumber);
+  Logger.log(`Temp invoice sheet created: name="${facturerTempSheet.getName()}", sheetId=${facturerTempSheet.getSheetId()}, index=${facturerTempSheet.getIndex()}`);
 
   const facturerItems = [];
   facturerCheckedRows.forEach(row => {
@@ -870,6 +871,11 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
 
   let facturerPdfFile = null;
   try {
+    const facturerSheetNamesBeforeExport = facturerSpreadsheet.getSheets().map(sheet => sheet.getName());
+    const facturerTempSheetStillExists = facturerSpreadsheet.getSheets().some(sheet => sheet.getSheetId() === facturerTempSheet.getSheetId());
+    Logger.log(`Temp invoice sheet expected before export: name="${facturerTempSheet.getName()}", sheetId=${facturerTempSheet.getSheetId()}`);
+    Logger.log(`Spreadsheet sheets before export: ${JSON.stringify(facturerSheetNamesBeforeExport)}`);
+    Logger.log(`Temp invoice sheet exists before export: ${facturerTempSheetStillExists}`);
     const facturerPdfBlob = exportInvoiceSheetPdfBlob_(facturerSpreadsheet.getId(), facturerTempSheet.getSheetId(), facturerFileName);
     if (facturerExistingFile) {
       facturerPdfFile = facturerDriveFolder.createFile(facturerPdfBlob);
