@@ -878,8 +878,6 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   });
 
   SpreadsheetApp.flush();
-  Utilities.sleep(1000);
-
   let facturerPdfFile = null;
   try {
     const facturerSheetNamesBeforeExport = facturerSpreadsheet.getSheets().map(sheet => sheet.getName());
