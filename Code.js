@@ -802,7 +802,18 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
     }
   }
 
-  const facturerTempSheet = facturerModelSheet.copyTo(facturerSpreadsheet).setName(facturerFullInvoiceNumber);
+  const wasModelSheetHidden = facturerModelSheet.isSheetHidden();
+  if (wasModelSheetHidden) {
+    facturerModelSheet.showSheet();
+  }
+  let facturerTempSheet;
+  try {
+    facturerTempSheet = facturerModelSheet.copyTo(facturerSpreadsheet).setName(facturerFullInvoiceNumber);
+  } finally {
+    if (wasModelSheetHidden) {
+      facturerModelSheet.hideSheet();
+    }
+  }
   Logger.log(`Temp invoice sheet created: name="${facturerTempSheet.getName()}", sheetId=${facturerTempSheet.getSheetId()}, index=${facturerTempSheet.getIndex()}`);
 
   const facturerItems = [];
