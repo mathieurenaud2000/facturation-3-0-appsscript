@@ -907,7 +907,7 @@
       if (!validateInitialInvoiceNumber(true)) return;
       window.initialInvoiceNumber = Number(document.getElementById("initialNumber").value.trim());
       clearInvoiceNumberInlineError();
-      showFormView();
+      submit();
     }
 
     function handleConfirmAction(action, confirmed) {
@@ -933,7 +933,7 @@
         if (window.initialInvoiceNumber === null && window.requiresInitialInvoiceSetup) {
           showInvoiceNumberView();
         } else {
-          showFormView();
+          submit();
         }
         return;
       }
@@ -941,7 +941,7 @@
       if (action === "replace_pdf") {
         if (!confirmed) {
           pendingInvoiceSubmission = null;
-          showFormView();
+          google.script.host.close();
           return;
         }
         if (!pendingInvoiceSubmission) {
@@ -955,7 +955,7 @@
       if (action === "invoice_preview_confirm") {
         if (!confirmed) {
           currentInvoicePreview = null;
-          showFormView();
+          google.script.host.close();
           return;
         }
         if (!pendingInvoiceSubmission) {
@@ -1353,14 +1353,8 @@
     }
 
     function submit() {
-      const validation = validateForm(true);
-      if (!validation.isValid) {
-        return;
-      }
       const contact = getDefaultContactValue();
-      const activityType = document.getElementById("activityType").value === "Autre..." ? 
-        document.getElementById("newActivityType").value.trim() : 
-        document.getElementById("activityType").value;
+      const activityType = getDefaultActivityTypeValue();
 
       pendingInvoiceSubmission = { contact, activityType };
       showLoadingView("Préparation de la facture", "Veuillez patienter...");
@@ -1378,13 +1372,19 @@
           } else {
             pendingInvoiceSubmission = null;
             currentInvoicePreview = null;
-            showErrorView(result && result.message ? result.message : null);
+            showErrorView(result && result.message ? result.message : null, {
+              secondaryAction: () => google.script.host.close(),
+              secondaryLabel: "Fermer"
+            });
           }
         })
         .withFailureHandler(error => {
           pendingInvoiceSubmission = null;
           currentInvoicePreview = null;
-          showErrorView(error && error.message ? `Erreur inattendue : ${error.message}` : null);
+          showErrorView(error && error.message ? `Erreur inattendue : ${error.message}` : null, {
+            secondaryAction: () => google.script.host.close(),
+            secondaryLabel: "Fermer"
+          });
         })
         .prepareInvoicePreview(contact, activityType, window.initialInvoiceNumber);
     }
@@ -1408,7 +1408,7 @@
       } else if (window.initialInvoiceNumber === null && window.requiresInitialInvoiceSetup) {
         showInvoiceNumberView();
       } else {
-        showFormView();
+        submit();
       }
     });
   </script>
