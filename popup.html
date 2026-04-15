@@ -255,7 +255,7 @@
     .invoice-preview-scroll {
       flex: 1 1 auto;
       overflow-y: auto;
-      padding: 5px 0 0 0;
+      padding: 0;
     }
 
     .invoice-edit-body {
@@ -342,11 +342,15 @@
     .invoice-preview-block {
       display: grid;
       grid-template-columns: 60px minmax(0, 1fr);
-      column-gap: 0;
+      column-gap: 12px;
       padding: 25px 0;
       margin: 12px 0;
       border-bottom: none;
       background: #ffffff;
+    }
+
+    .invoice-preview-block:first-child {
+      border-top: 1px solid #000000;
     }
 
     .invoice-preview-block:not(:last-child) {
@@ -401,7 +405,7 @@
       font-size: 18px;
       line-height: 1.25;
       color: #000000;
-      margin: 20px 0 15px 0;
+      margin: 10px 0 15px 0;
       white-space: pre-line;
     }
 
@@ -472,7 +476,12 @@
 
     #loadingView.status-view {
       justify-content: center;
-      padding: 0;
+      padding: 0 0 200px 0;
+    }
+
+    #loadingTitle,
+    #loadingMessage {
+      display: none;
     }
 
     .error-view {
@@ -613,9 +622,12 @@
     .invoice-preview-mode #close {
       grid-column: 2;
       align-self: end;
+      justify-self: stretch;
       display: inline-flex !important;
       height: 68px;
       min-height: 68px;
+      min-width: 0;
+      max-width: 100%;
       margin-left: 0;
       margin-right: 0;
       padding-top: 0;
@@ -626,9 +638,12 @@
     .invoice-preview-mode #submit {
       grid-column: 3;
       align-self: end;
+      justify-self: stretch;
       display: inline-flex !important;
       height: 68px;
       min-height: 68px;
+      min-width: 0;
+      max-width: 100%;
       margin-left: 0;
       padding-top: 0;
       padding-bottom: 0;
@@ -1216,7 +1231,7 @@
       if (typeof google === "undefined" || !google.script || !google.script.host) {
         return;
       }
-      google.script.host.setWidth(800);
+      google.script.host.setWidth(900);
       google.script.host.setHeight(450);
     }
 
@@ -1795,7 +1810,10 @@
       document.getElementById("initialNumber").focus();
     }
 
-    function showLoadingView(title = "Création de la facture", message = "Veuillez patienter...") {
+    function showLoadingView(title = "Création de la facture", message = "Veuillez patienter...", useInvoicePreviewSize = false) {
+      if (useInvoicePreviewSize) {
+        setInvoicePreviewPopupSize();
+      }
       document.getElementById("loadingTitle").textContent = title;
       document.getElementById("loadingMessage").textContent = message;
       setPopupState({
@@ -1957,7 +1975,7 @@
     }
 
     function submitInvoiceRequest(submissionData, overwriteExistingFile) {
-      showLoadingView("Création de la facture", "Veuillez patienter...");
+      showLoadingView("Création de la facture", "Veuillez patienter...", true);
 
       google.script.run
         .withSuccessHandler(result => {
@@ -2017,7 +2035,7 @@
 
     function submit() {
       pendingInvoiceSubmission = null;
-      showLoadingView("Préparation de la facture", "Veuillez patienter...");
+      showLoadingView("Préparation de la facture", "Veuillez patienter...", true);
       google.script.run
         .withSuccessHandler(result => {
           if (result && result.success) {
