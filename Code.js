@@ -248,10 +248,10 @@ function showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumbe
   const opensOnInvoiceNumberView = !normalizedPopupContext.showStartupConfirm
     && invoiceNumber === null
     && requiresInitialInvoiceSetup === true;
-  const opensOnFormView = !normalizedPopupContext.showStartupConfirm && !opensOnInvoiceNumberView;
+  const opensOnPreviewFlow = !normalizedPopupContext.showStartupConfirm && !opensOnInvoiceNumberView;
   const facturerHtml = HtmlService.createHtmlOutputFromFile("popup")
-    .setWidth(opensOnInvoiceNumberView || opensOnFormView ? 690 : 400)
-    .setHeight(opensOnInvoiceNumberView || opensOnFormView ? 263 : 350);
+    .setWidth(opensOnInvoiceNumberView ? 690 : opensOnPreviewFlow ? 700 : 400)
+    .setHeight(opensOnInvoiceNumberView ? 263 : opensOnPreviewFlow ? 500 : 350);
   facturerHtml.addMetaTag('viewport', 'width=device-width, initial-scale=1');
   facturerHtml.append(`<script>var contacts = ${JSON.stringify(facturerContacts)}; var activityTypes = ${JSON.stringify(facturerActivityTypes)}; var initialInvoiceNumber = ${JSON.stringify(invoiceNumber)}; var requiresInitialInvoiceSetup = ${JSON.stringify(requiresInitialInvoiceSetup)}; var showStartupConfirm = ${JSON.stringify(normalizedPopupContext.showStartupConfirm)}; var confirmViewTitle = ${JSON.stringify(normalizedPopupContext.confirmViewTitle)}; var confirmViewMessage = ${JSON.stringify(normalizedPopupContext.confirmViewMessage)}; var confirmAction = ${JSON.stringify(normalizedPopupContext.confirmAction)}; var confirmPrimaryLabel = ${JSON.stringify(normalizedPopupContext.confirmPrimaryLabel)}; var confirmSecondaryLabel = ${JSON.stringify(normalizedPopupContext.confirmSecondaryLabel)};</script>`);
   facturerUi.showModelessDialog(facturerHtml, "Nouvelle facture");

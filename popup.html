@@ -212,6 +212,232 @@
       padding: 40px 0 0 0;
     }
 
+    .invoice-preview-mode .confirm-view,
+    .invoice-preview-mode .invoice-edit-view {
+      align-items: stretch;
+      justify-content: flex-start;
+      padding: 0 0 80px 0;
+      width: 100%;
+      height: 100%;
+      max-width: none !important;
+    }
+
+    .technical-confirm-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    .invoice-preview-content,
+    .invoice-edit-content {
+      display: none;
+      width: 100%;
+      height: calc(100vh - 80px);
+      flex-direction: column;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .invoice-preview-mode .invoice-preview-content,
+    .invoice-preview-mode .invoice-edit-content {
+      display: flex;
+    }
+
+    .invoice-view-header {
+      flex: 0 0 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      border-bottom: 1px solid #efefef;
+    }
+
+    .invoice-view-title {
+      font-size: 18pt;
+      font-weight: 700;
+      color: #000000;
+      line-height: 1;
+    }
+
+    .invoice-view-close {
+      width: 42px;
+      height: 42px;
+      min-width: 42px;
+      min-height: 42px;
+      border: none;
+      background: transparent;
+      color: #000000;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .invoice-view-close .material-symbols-outlined {
+      font-size: 26px;
+      line-height: 1;
+    }
+
+    .invoice-preview-scroll,
+    .invoice-edit-body {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .invoice-summary-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 14px 24px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid #efefef;
+      margin-bottom: 22px;
+    }
+
+    .invoice-summary-item {
+      min-width: 0;
+    }
+
+    .invoice-summary-label {
+      font-size: 10pt;
+      color: #9d9d9d;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .invoice-summary-value {
+      font-size: 13pt;
+      color: #000000;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+
+    .invoice-summary-value-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .invoice-summary-value-row .invoice-summary-value {
+      flex: 1;
+    }
+
+    .invoice-edit-link {
+      border: none;
+      background: transparent;
+      color: #00983a;
+      cursor: pointer;
+      font-size: 10pt;
+      line-height: 1.2;
+      padding: 2px 0;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      flex: 0 0 auto;
+    }
+
+    .invoice-blocks {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .invoice-preview-block {
+      border: 1px solid #e5e5e5;
+      border-radius: 12px;
+      padding: 18px;
+      background: #ffffff;
+    }
+
+    .invoice-block-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .invoice-block-number {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      background: #00983a;
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      flex: 0 0 auto;
+    }
+
+    .invoice-block-heading {
+      flex: 1;
+      min-width: 0;
+      font-size: 14pt;
+      line-height: 1.25;
+      font-weight: 700;
+      color: #000000;
+      word-break: break-word;
+    }
+
+    .invoice-block-description {
+      font-size: 12.5pt;
+      line-height: 1.35;
+      color: #333333;
+      margin-bottom: 14px;
+      white-space: pre-line;
+    }
+
+    .invoice-activity-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-bottom: 14px;
+    }
+
+    .invoice-activity-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 12pt;
+      color: #000000;
+    }
+
+    .invoice-activity-time {
+      color: #666666;
+      white-space: nowrap;
+    }
+
+    .invoice-block-totals {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding-top: 12px;
+      border-top: 1px solid #efefef;
+      font-size: 12pt;
+      font-weight: 700;
+    }
+
+    .invoice-edit-field,
+    .invoice-edit-textarea {
+      width: 100%;
+      border: 1px solid #000000;
+      border-radius: 7px;
+      padding: 10px;
+      font-size: calc(13pt + 2px);
+      color: #000000;
+      background: #ffffff;
+      font-family: Roboto, sans-serif;
+    }
+
+    .invoice-edit-textarea {
+      min-height: 220px;
+      resize: vertical;
+      line-height: 1.3;
+    }
+
     .message-view {
       justify-content: flex-start;
       padding: 40px 0 0 0;
@@ -340,6 +566,30 @@
       padding-right: 0;
     }
 
+    .invoice-preview-mode .footer {
+      align-items: center;
+      justify-content: flex-end;
+      padding: 14px 24px;
+      background: #ffffff;
+      border-top: 1px solid #efefef;
+    }
+
+    .invoice-preview-mode #invoiceScrollArrow {
+      order: 1;
+      margin-right: auto;
+    }
+
+    .invoice-preview-mode #close {
+      order: 2;
+      margin-left: 0;
+      margin-right: 12px;
+    }
+
+    .invoice-preview-mode #submit {
+      order: 3;
+      margin-left: 0;
+    }
+
     .btn {
       margin-right: 0;
       margin-left: 20px;
@@ -358,6 +608,33 @@
 
     .footer .btn:first-child {
       margin-left: 0;
+    }
+
+    .scroll-arrow {
+      width: 52px;
+      min-width: 52px;
+      height: 52px;
+      min-height: 52px;
+      margin: 0;
+      padding: 0;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: #efefef;
+      cursor: default;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .scroll-arrow .material-symbols-outlined {
+      font-size: 34px;
+      line-height: 1;
+    }
+
+    .scroll-arrow.is-active {
+      color: #00983a;
+      cursor: pointer;
     }
 
     .btn-green {
@@ -466,8 +743,78 @@
     </div>
     <!-- Vue confirmation -->
     <div id="confirmView" class="popup-view confirm-view">
-      <div class="message-title" id="confirmTitle"></div>
-      <div class="message-sub" id="confirmMessage"></div>
+      <div id="technicalConfirmContent" class="technical-confirm-content">
+        <div class="message-title" id="confirmTitle"></div>
+        <div class="message-sub" id="confirmMessage"></div>
+      </div>
+      <div id="invoicePreviewContent" class="invoice-preview-content">
+        <div class="invoice-view-header">
+          <div class="invoice-view-title">Créer une facture</div>
+          <button type="button" class="invoice-view-close" onclick="google.script.host.close()" aria-label="Fermer">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div id="invoicePreviewScroll" class="invoice-preview-scroll">
+          <section class="invoice-summary-grid" aria-label="Résumé de la facture">
+            <div class="invoice-summary-item">
+              <div class="invoice-summary-label">Client</div>
+              <div class="invoice-summary-value" id="previewClientValue"></div>
+            </div>
+            <div class="invoice-summary-item">
+              <div class="invoice-summary-label">Projet</div>
+              <div class="invoice-summary-value" id="previewProjectsValue"></div>
+            </div>
+            <div class="invoice-summary-item">
+              <div class="invoice-summary-label">Titre du service</div>
+              <div class="invoice-summary-value-row">
+                <div class="invoice-summary-value" id="previewServiceTitleValue"></div>
+                <button type="button" class="invoice-edit-link" onclick="showEditTitleView()">Edit</button>
+              </div>
+            </div>
+            <div class="invoice-summary-item">
+              <div class="invoice-summary-label">Numéro de facture</div>
+              <div class="invoice-summary-value" id="previewInvoiceNumberValue"></div>
+            </div>
+            <div class="invoice-summary-item">
+              <div class="invoice-summary-label">Date de facturation</div>
+              <div class="invoice-summary-value" id="previewInvoiceDateValue"></div>
+            </div>
+            <div class="invoice-summary-item">
+              <div class="invoice-summary-label">Total</div>
+              <div class="invoice-summary-value" id="previewTotalValue"></div>
+            </div>
+          </section>
+          <section id="invoicePreviewBlocks" class="invoice-blocks" aria-label="Blocs facturés"></section>
+        </div>
+      </div>
+    </div>
+    <!-- Vue édition du titre -->
+    <div id="editTitleView" class="popup-view invoice-edit-view">
+      <div class="invoice-edit-content">
+        <div class="invoice-view-header">
+          <div class="invoice-view-title">Créer une facture</div>
+          <button type="button" class="invoice-view-close" onclick="google.script.host.close()" aria-label="Fermer">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="invoice-edit-body">
+          <input type="text" id="editServiceTitleInput" class="invoice-edit-field" autocomplete="off" oninput="validateEditTitleView()">
+        </div>
+      </div>
+    </div>
+    <!-- Vue édition d'une description -->
+    <div id="editDescriptionView" class="popup-view invoice-edit-view">
+      <div class="invoice-edit-content">
+        <div class="invoice-view-header">
+          <div class="invoice-view-title">Créer une facture</div>
+          <button type="button" class="invoice-view-close" onclick="google.script.host.close()" aria-label="Fermer">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="invoice-edit-body">
+          <textarea id="editDescriptionInput" class="invoice-edit-textarea"></textarea>
+        </div>
+      </div>
     </div>
     <!-- Vue message -->
     <div id="messageView" class="popup-view message-view">
@@ -517,6 +864,9 @@
     </div>
     <!-- Pied de page -->
     <div class="footer">
+      <button id="invoiceScrollArrow" class="scroll-arrow" type="button" onclick="handleInvoiceScrollArrow()" aria-label="Bloc suivant">
+        <span class="material-symbols-outlined">keyboard_arrow_down</span>
+      </button>
       <button id="submit" class="btn btn-green" disabled onclick="handlePrimaryAction()">Générer la facture</button>
       <button id="close" class="btn btn-white" style="display:none;" onclick="handleSecondaryAction()">Fermer</button>
       <button id="openPdf" class="btn btn-green" style="display:none;" onclick="handleOpenPdfAction()">Télécharger</button>
@@ -532,6 +882,7 @@
     let currentSecondaryAction = null;
     let currentOpenPdfAction = null;
     let pendingInvoiceSubmission = null;
+    let currentEditingDescriptionIndex = null;
     let emailSendCompleted = false;
     let formValidationActivated = false;
     let invoiceNumberValidationActivated = false;
@@ -551,6 +902,8 @@
     const popupTypeByView = {
       invoiceNumberView: "form-simple",
       confirmView: "confirm",
+      editTitleView: "form-complex",
+      editDescriptionView: "form-complex",
       messageView: "alert",
       formView: "form-simple",
       loadingView: "action",
@@ -558,7 +911,7 @@
       sendInvoiceView: "form-simple",
       errorView: "alert"
     };
-    const popupViewIds = ["invoiceNumberView", "confirmView", "messageView", "formView", "loadingView", "successView", "sendInvoiceView", "errorView"];
+    const popupViewIds = ["invoiceNumberView", "confirmView", "editTitleView", "editDescriptionView", "messageView", "formView", "loadingView", "successView", "sendInvoiceView", "errorView"];
     if (typeof window.contacts === "undefined") {
       window.contacts = [];
     }
@@ -605,19 +958,28 @@
       });
     }
 
+    function setInvoicePreviewMode(enabled) {
+      document.getElementById("popupContainer").classList.toggle("invoice-preview-mode", Boolean(enabled));
+    }
+
     function setFooterButtons(footer) {
       const normalizedFooter = Object.assign({
         primary: { label: "", visible: false },
         secondary: { label: "", visible: false },
-        openPdf: { visible: false }
+        openPdf: { visible: false },
+        scrollArrow: { visible: false, enabled: false }
       }, footer || {});
       const primaryButton = document.getElementById("submit");
       const secondaryButton = document.getElementById("close");
       const openPdfButton = document.getElementById("openPdf");
+      const scrollArrowButton = document.getElementById("invoiceScrollArrow");
 
       primaryButton.style.display = normalizedFooter.primary.visible ? "block" : "none";
       secondaryButton.style.display = normalizedFooter.secondary.visible ? "block" : "none";
       openPdfButton.style.display = normalizedFooter.openPdf.visible ? "block" : "none";
+      scrollArrowButton.style.display = normalizedFooter.scrollArrow.visible ? "inline-flex" : "none";
+      scrollArrowButton.disabled = !normalizedFooter.scrollArrow.enabled;
+      scrollArrowButton.classList.toggle("is-active", Boolean(normalizedFooter.scrollArrow.enabled));
 
       if (typeof normalizedFooter.primary.label === "string" && normalizedFooter.primary.label !== "") {
         primaryButton.textContent = normalizedFooter.primary.label;
@@ -722,6 +1084,10 @@
       secondaryAction,
       openPdfAction
     }) {
+      if (!["confirmView", "editTitleView", "editDescriptionView"].includes(view)) {
+        setInvoicePreviewMode(false);
+      }
+
       if (view === "formView") {
         pdfUrl = "";
         currentInvoiceNumber = "";
@@ -823,6 +1189,14 @@
       const measuredHeight = Math.ceil((formLayout ? formLayout.scrollHeight : 0) + 10) || 263;
       google.script.host.setWidth(690);
       google.script.host.setHeight(measuredHeight);
+    }
+
+    function setInvoicePreviewPopupSize() {
+      if (typeof google === "undefined" || !google.script || !google.script.host) {
+        return;
+      }
+      google.script.host.setWidth(700);
+      google.script.host.setHeight(500);
     }
 
     function restoreDefaultFacturerPopupSize() {
@@ -969,7 +1343,260 @@
       google.script.host.close();
     }
 
+    function formatPreviewMoney(value) {
+      const numericValue = Number(value);
+      return Number.isFinite(numericValue) ? `${numericValue.toFixed(2)} $` : "";
+    }
+
+    function formatPreviewTime(value) {
+      const numericValue = Number(value);
+      return Number.isFinite(numericValue) ? `${numericValue.toFixed(2)} h` : "";
+    }
+
+    function getPreviewBlockTitle(block) {
+      const titleParts = [block.campaign, block.project].map(value => String(value || "").trim()).filter(Boolean);
+      return titleParts.length ? titleParts.join(" — ") : "Bloc sans titre";
+    }
+
+    function setInvoiceScrollArrowEnabled(enabled) {
+      const scrollArrowButton = document.getElementById("invoiceScrollArrow");
+      scrollArrowButton.disabled = !enabled;
+      scrollArrowButton.classList.toggle("is-active", Boolean(enabled));
+    }
+
+    function getNextInvoicePreviewBlockTarget() {
+      const scrollElement = document.getElementById("invoicePreviewScroll");
+      if (!scrollElement) return null;
+      const blocks = Array.from(scrollElement.querySelectorAll(".invoice-preview-block"));
+      if (!blocks.length || scrollElement.scrollHeight <= scrollElement.clientHeight + 1) {
+        return null;
+      }
+
+      const containerRect = scrollElement.getBoundingClientRect();
+      const tolerance = 1;
+      return blocks.find(block => {
+        const blockRect = block.getBoundingClientRect();
+        const startsInOrBelowView = blockRect.top >= containerRect.top - tolerance;
+        const isNotFullyVisible = blockRect.top > containerRect.top + tolerance || blockRect.bottom > containerRect.bottom - tolerance;
+        return startsInOrBelowView && isNotFullyVisible;
+      }) || null;
+    }
+
+    function updateInvoiceScrollArrowState() {
+      setInvoiceScrollArrowEnabled(Boolean(getNextInvoicePreviewBlockTarget()));
+    }
+
+    function handleInvoiceScrollArrow() {
+      const scrollElement = document.getElementById("invoicePreviewScroll");
+      const targetBlock = getNextInvoicePreviewBlockTarget();
+      if (!scrollElement || !targetBlock) {
+        updateInvoiceScrollArrowState();
+        return;
+      }
+
+      const containerRect = scrollElement.getBoundingClientRect();
+      const targetRect = targetBlock.getBoundingClientRect();
+      const nextScrollTop = scrollElement.scrollTop + targetRect.top - containerRect.top;
+      scrollElement.scrollTo({ top: nextScrollTop, behavior: "smooth" });
+      window.setTimeout(updateInvoiceScrollArrowState, 350);
+    }
+
+    function renderInvoicePreviewConfirmView() {
+      const preview = currentInvoicePreview || {};
+      const blocks = Array.isArray(preview.blocks) ? preview.blocks : [];
+      document.getElementById("previewClientValue").textContent = preview.client || "";
+      document.getElementById("previewProjectsValue").textContent = Array.isArray(preview.projects) && preview.projects.length
+        ? preview.projects.join(", ")
+        : "";
+      document.getElementById("previewServiceTitleValue").textContent = preview.serviceTitle || "";
+      document.getElementById("previewInvoiceNumberValue").textContent = preview.invoiceNumber || "";
+      document.getElementById("previewInvoiceDateValue").textContent = preview.invoiceDate || "";
+      document.getElementById("previewTotalValue").textContent = formatPreviewMoney(preview.totalAmount);
+
+      const blocksContainer = document.getElementById("invoicePreviewBlocks");
+      blocksContainer.innerHTML = "";
+      blocks.forEach((block, index) => {
+        const blockElement = document.createElement("article");
+        blockElement.className = "invoice-preview-block";
+        blockElement.dataset.blockIndex = String(index);
+
+        const headerElement = document.createElement("div");
+        headerElement.className = "invoice-block-header";
+
+        const numberElement = document.createElement("div");
+        numberElement.className = "invoice-block-number";
+        numberElement.textContent = String(block.blockNumber || index + 1);
+
+        const titleElement = document.createElement("div");
+        titleElement.className = "invoice-block-heading";
+        titleElement.textContent = getPreviewBlockTitle(block);
+
+        const editButton = document.createElement("button");
+        editButton.type = "button";
+        editButton.className = "invoice-edit-link";
+        editButton.textContent = "Edit";
+        editButton.addEventListener("click", () => showEditDescriptionView(index));
+
+        headerElement.appendChild(numberElement);
+        headerElement.appendChild(titleElement);
+        headerElement.appendChild(editButton);
+
+        const descriptionElement = document.createElement("div");
+        descriptionElement.className = "invoice-block-description";
+        descriptionElement.textContent = block.description || "";
+
+        const activityList = document.createElement("ul");
+        activityList.className = "invoice-activity-list";
+        const activities = Array.isArray(block.activities) ? block.activities : [];
+        activities.forEach(activity => {
+          const activityItem = document.createElement("li");
+          activityItem.className = "invoice-activity-item";
+
+          const activityName = document.createElement("span");
+          activityName.textContent = activity.name || "";
+
+          const activityTime = document.createElement("span");
+          activityTime.className = "invoice-activity-time";
+          activityTime.textContent = formatPreviewTime(activity.time);
+
+          activityItem.appendChild(activityName);
+          activityItem.appendChild(activityTime);
+          activityList.appendChild(activityItem);
+        });
+
+        const totalsElement = document.createElement("div");
+        totalsElement.className = "invoice-block-totals";
+
+        const totalTimeElement = document.createElement("span");
+        totalTimeElement.textContent = `Temps total : ${formatPreviewTime(block.totalTime)}`;
+
+        const totalPriceElement = document.createElement("span");
+        totalPriceElement.textContent = `Prix : ${formatPreviewMoney(block.totalPrice)}`;
+
+        totalsElement.appendChild(totalTimeElement);
+        totalsElement.appendChild(totalPriceElement);
+
+        blockElement.appendChild(headerElement);
+        blockElement.appendChild(descriptionElement);
+        blockElement.appendChild(activityList);
+        blockElement.appendChild(totalsElement);
+        blocksContainer.appendChild(blockElement);
+      });
+
+      const scrollElement = document.getElementById("invoicePreviewScroll");
+      scrollElement.onscroll = updateInvoiceScrollArrowState;
+      scrollElement.scrollTop = 0;
+      window.requestAnimationFrame(updateInvoiceScrollArrowState);
+    }
+
+    function confirmInvoicePreview() {
+      if (!pendingInvoiceSubmission) {
+        showErrorView(null);
+        return;
+      }
+      submitInvoiceRequest(pendingInvoiceSubmission, false);
+    }
+
+    function showInvoicePreviewConfirmView() {
+      setInvoicePreviewMode(true);
+      setInvoicePreviewPopupSize();
+      document.getElementById("technicalConfirmContent").style.display = "none";
+      document.getElementById("invoicePreviewContent").style.display = "flex";
+      renderInvoicePreviewConfirmView();
+      setPopupState({
+        view: "confirmView",
+        type: "confirm",
+        footer: {
+          primary: { label: "OK", visible: true },
+          secondary: { label: "Fermer", visible: true },
+          openPdf: { visible: false },
+          scrollArrow: { visible: true, enabled: false }
+        },
+        primaryAction: confirmInvoicePreview,
+        secondaryAction: () => google.script.host.close(),
+        openPdfAction: null
+      });
+      window.requestAnimationFrame(updateInvoiceScrollArrowState);
+    }
+
+    function validateEditTitleView() {
+      const titleInput = document.getElementById("editServiceTitleInput");
+      document.getElementById("submit").disabled = titleInput.value.trim() === "";
+    }
+
+    function showEditTitleView() {
+      if (!currentInvoicePreview) return;
+      setInvoicePreviewMode(true);
+      setInvoicePreviewPopupSize();
+      document.getElementById("editServiceTitleInput").value = currentInvoicePreview.serviceTitle || "";
+      setPopupState({
+        view: "editTitleView",
+        type: "form-complex",
+        footer: {
+          primary: { label: "Enregistrer", visible: true },
+          secondary: { label: "Fermer", visible: true },
+          openPdf: { visible: false },
+          scrollArrow: { visible: true, enabled: false }
+        },
+        primaryAction: saveEditedServiceTitle,
+        secondaryAction: showInvoicePreviewConfirmView,
+        openPdfAction: null
+      });
+      validateEditTitleView();
+      document.getElementById("editServiceTitleInput").focus();
+    }
+
+    function saveEditedServiceTitle() {
+      if (!currentInvoicePreview) return;
+      const nextTitle = document.getElementById("editServiceTitleInput").value.trim();
+      if (!nextTitle) {
+        validateEditTitleView();
+        return;
+      }
+      currentInvoicePreview.serviceTitle = nextTitle;
+      if (pendingInvoiceSubmission) {
+        pendingInvoiceSubmission.activityType = nextTitle;
+      }
+      showInvoicePreviewConfirmView();
+    }
+
+    function showEditDescriptionView(blockIndex) {
+      if (!currentInvoicePreview || !Array.isArray(currentInvoicePreview.blocks) || !currentInvoicePreview.blocks[blockIndex]) {
+        return;
+      }
+      currentEditingDescriptionIndex = blockIndex;
+      setInvoicePreviewMode(true);
+      setInvoicePreviewPopupSize();
+      document.getElementById("editDescriptionInput").value = currentInvoicePreview.blocks[blockIndex].description || "";
+      setPopupState({
+        view: "editDescriptionView",
+        type: "form-complex",
+        footer: {
+          primary: { label: "Enregistrer", visible: true },
+          secondary: { label: "Fermer", visible: true },
+          openPdf: { visible: false },
+          scrollArrow: { visible: true, enabled: false }
+        },
+        primaryAction: saveEditedDescription,
+        secondaryAction: showInvoicePreviewConfirmView,
+        openPdfAction: null
+      });
+      document.getElementById("editDescriptionInput").focus();
+    }
+
+    function saveEditedDescription() {
+      if (!currentInvoicePreview || !Array.isArray(currentInvoicePreview.blocks)) return;
+      const targetBlock = currentInvoicePreview.blocks[currentEditingDescriptionIndex];
+      if (!targetBlock) return;
+      targetBlock.description = document.getElementById("editDescriptionInput").value.trim();
+      currentEditingDescriptionIndex = null;
+      showInvoicePreviewConfirmView();
+    }
+
     function showConfirmView({ title, message, action, confirmLabel, cancelLabel }) {
+      setInvoicePreviewMode(false);
+      document.getElementById("technicalConfirmContent").style.display = "flex";
+      document.getElementById("invoicePreviewContent").style.display = "none";
       setPopupState({
         view: "confirmView",
         type: "confirm",
@@ -1368,13 +1995,7 @@
               contact: currentInvoicePreview.client || "",
               activityType: currentInvoicePreview.serviceTitle || ""
             };
-            showConfirmView({
-              title: "Confirmer la facture",
-              message: buildInvoicePreviewMessage(currentInvoicePreview),
-              action: "invoice_preview_confirm",
-              confirmLabel: "OK",
-              cancelLabel: "Retour"
-            });
+            showInvoicePreviewConfirmView();
           } else {
             pendingInvoiceSubmission = null;
             currentInvoicePreview = null;
