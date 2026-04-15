@@ -1337,10 +1337,15 @@
       const blocks = Array.isArray(preview.blocks) ? preview.blocks : [];
       const blockSummary = blocks.map(block => {
         const blockTitle = [block.campaign, block.project].filter(Boolean).join(" — ");
+        const description = String(block.description || "").trim();
         const activitySummary = Array.isArray(block.activities)
           ? block.activities.map(activity => `${activity.name} (${activity.time}h)`).join(", ")
           : "";
-        return `${block.blockNumber}. ${blockTitle}\n${activitySummary}`;
+        return [
+          `${block.blockNumber}. ${blockTitle}`,
+          description ? `Description : ${description}` : "",
+          activitySummary ? `Activités : ${activitySummary}` : ""
+        ].filter(Boolean).join("\n");
       }).join("\n\n");
 
       return [
@@ -1353,15 +1358,16 @@
     }
 
     function submit() {
-      const contact = getDefaultContactValue();
-      const activityType = getDefaultActivityTypeValue();
-
-      pendingInvoiceSubmission = { contact, activityType };
+      pendingInvoiceSubmission = null;
       showLoadingView("Préparation de la facture", "Veuillez patienter...");
       google.script.run
         .withSuccessHandler(result => {
           if (result && result.success) {
-            currentInvoicePreview = result.preview;
+            currentInvoicePreview = result.preview || {};
+            pendingInvoiceSubmission = {
+              contact: currentInvoicePreview.client || "",
+              activityType: currentInvoicePreview.serviceTitle || ""
+            };
             showConfirmView({
               title: "Confirmer la facture",
               message: buildInvoicePreviewMessage(currentInvoicePreview),
@@ -1386,7 +1392,7 @@
             secondaryLabel: "Fermer"
           });
         })
-        .prepareInvoicePreview(contact, activityType, window.initialInvoiceNumber);
+        .prepareInvoicePreview(window.initialInvoiceNumber);
     }
 
     // Remplir les menus déroulants au chargement

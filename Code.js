@@ -949,7 +949,7 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   }
 }
 
-function prepareInvoicePreview(contact, activityType, invoiceNumber) {
+function prepareInvoicePreview(invoiceNumber) {
   const extractInvoiceNumberParts = (value) => {
     const invoiceValue = String(value || "").trim();
     if (!/^\d+$/.test(invoiceValue)) return null;
@@ -968,9 +968,6 @@ function prepareInvoicePreview(contact, activityType, invoiceNumber) {
     facturerTrackingSheet
   } = validationResult;
 
-  if (contact === "Sélectionnez un contact" || activityType === "Sélectionnez une activité") {
-    return { success: false, message: "Veuillez sélectionner un contact et une activité générale." };
-  }
   if (invoiceNumber !== null && (!Number.isInteger(invoiceNumber) || invoiceNumber <= 0)) {
     return { success: false, message: "Le numéro de facture doit être un entier positif." };
   }
@@ -1006,6 +1003,70 @@ function prepareInvoicePreview(contact, activityType, invoiceNumber) {
   const toPreviewTime = (value) => value instanceof Date
     ? value.getHours() + value.getMinutes() / 60
     : Number(value);
+  const cleanPreviewText = (value) => String(value || "").replace(/\s+/g, " ").trim();
+  const joinPreviewList = (values) => {
+    if (values.length <= 1) return values.join("");
+    if (values.length === 2) return `${values[0]} et ${values[1]}`;
+    return `${values.slice(0, -1).join(", ")} et ${values[values.length - 1]}`;
+  };
+  const buildPreviewServiceTitle = (blocks) => {
+    const activityTotals = [];
+    blocks.forEach(block => {
+      block.activities.forEach(activity => {
+        const activityName = cleanPreviewText(activity.name);
+        if (!activityName) return;
+        const activityKey = normalizeString_(activityName);
+        const existingActivity = activityTotals.find(item => item.key === activityKey);
+        if (existingActivity) {
+          existingActivity.time += activity.time;
+        } else {
+          activityTotals.push({ key: activityKey, name: activityName, time: activity.time });
+        }
+      });
+    });
+    const orderedActivities = activityTotals
+      .sort((a, b) => b.time - a.time || a.name.localeCompare(b.name))
+      .map(activity => activity.name);
+    if (orderedActivities.length === 1) {
+      return `Service : ${orderedActivities[0]}`;
+    }
+    if (orderedActivities.length > 1) {
+      const titleActivities = orderedActivities.length > 2
+        ? `${joinPreviewList(orderedActivities.slice(0, 2))} et autres activités`
+        : joinPreviewList(orderedActivities);
+      return `Services : ${titleActivities}`;
+    }
+
+    const projectNames = [...new Set(blocks.map(block => cleanPreviewText(block.project)).filter(String))];
+    if (projectNames.length) {
+      return `Services pour ${joinPreviewList(projectNames)}`;
+    }
+    return "Services facturés";
+  };
+  const buildPreviewDescription = (block) => {
+    const cleanedNotes = [];
+    block.notes.forEach(note => {
+      const cleanNote = cleanPreviewText(note).replace(/[.;\s]+$/g, "");
+      if (!cleanNote) return;
+      const noteKey = normalizeString_(cleanNote);
+      if (!cleanedNotes.some(existingNote => normalizeString_(existingNote) === noteKey)) {
+        cleanedNotes.push(cleanNote);
+      }
+    });
+    if (cleanedNotes.length) {
+      return `Travaux réalisés : ${cleanedNotes.join("; ")}.`;
+    }
+
+    const activitiesSummary = block.activities
+      .map(activity => `${activity.name} (${activity.time.toFixed(2)} h)`)
+      .join(", ");
+    if (activitiesSummary) {
+      return `Activités réalisées : ${activitiesSummary}.`;
+    }
+
+    const blockContext = cleanPreviewText(block.project) || cleanPreviewText(block.campaign);
+    return blockContext ? `Travaux réalisés pour ${blockContext}.` : "Travaux réalisés.";
+  };
   const previewBlocks = [];
   facturerCheckedRows.forEach(({ row }) => {
     const campaign = String(row[2] || "").trim();
@@ -1045,16 +1106,13 @@ function prepareInvoicePreview(contact, activityType, invoiceNumber) {
   const facturerToday = new Date();
   const projects = [...new Set(facturerCheckedRows.map(({ row }) => String(row[3] || "").trim()).filter(String))];
   const totalAmount = previewBlocks.reduce((sum, block) => sum + block.totalPrice, 0);
+  const serviceTitle = buildPreviewServiceTitle(previewBlocks);
   const blocks = previewBlocks.map((block, index) => {
-    const activitiesSummary = block.activities
-      .map(activity => `${activity.name} (${activity.time.toFixed(2)}h)`)
-      .join(", ");
-    const notesSummary = block.notes.join(" ");
     return {
       blockNumber: index + 1,
       campaign: block.campaign,
       project: block.project,
-      description: notesSummary || activitiesSummary,
+      description: buildPreviewDescription(block),
       activities: block.activities.map(activity => ({
         name: activity.name,
         time: Number(activity.time.toFixed(2))
@@ -1071,7 +1129,7 @@ function prepareInvoicePreview(contact, activityType, invoiceNumber) {
       invoiceDate: Utilities.formatDate(facturerToday, Session.getScriptTimeZone(), "yyyy-MM-dd"),
       client: facturerClientName,
       projects,
-      serviceTitle: activityType,
+      serviceTitle,
       totalAmount: Number(totalAmount.toFixed(2)),
       blocks
     }
