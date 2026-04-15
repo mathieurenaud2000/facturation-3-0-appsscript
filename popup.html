@@ -252,7 +252,12 @@
       display: flex;
     }
 
-    .invoice-preview-scroll,
+    .invoice-preview-scroll {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding: 50px 0 0 0;
+    }
+
     .invoice-edit-body {
       flex: 1 1 auto;
       overflow-y: auto;
@@ -309,6 +314,7 @@
       font-size: 20px;
       line-height: 1;
       color: #00983a;
+      transform: translateY(5px);
     }
 
     .invoice-summary-meta {
@@ -333,6 +339,7 @@
       grid-template-columns: 40px minmax(0, 1fr);
       column-gap: 0;
       padding: 12px 0;
+      margin: 12px 0;
       border-top: 1px solid #000000;
       background: #ffffff;
     }
@@ -389,7 +396,7 @@
       font-size: 18px;
       line-height: 1.25;
       color: #000000;
-      margin: 0;
+      margin: 0 0 25px 0;
       white-space: pre-line;
     }
 
@@ -403,7 +410,7 @@
 
     .invoice-activity-item {
       display: grid;
-      grid-template-columns: 250px 60px minmax(0, 1fr);
+      grid-template-columns: 200px 60px minmax(0, 1fr);
       column-gap: 12px;
       font-size: 18px;
       line-height: 1.25;
@@ -570,9 +577,9 @@
 
     .invoice-preview-mode .footer {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);
+      grid-template-columns: minmax(52px, auto) minmax(0, 1fr) minmax(0, 1fr);
       column-gap: 30px;
-      align-items: start;
+      align-items: stretch;
       width: 100%;
       height: 80px;
       padding: 12px 0 0 0;
@@ -588,6 +595,9 @@
 
     .invoice-preview-mode #close {
       grid-column: 2;
+      align-self: stretch;
+      height: 100%;
+      min-height: 0;
       margin-left: 0;
       margin-right: 0;
       width: 100%;
@@ -595,13 +605,16 @@
 
     .invoice-preview-mode #submit {
       grid-column: 3;
+      align-self: stretch;
+      height: 100%;
+      min-height: 0;
       margin-left: 0;
       width: 100%;
     }
 
     .invoice-preview-mode .btn {
-      font-size: 18px;
-      font-weight: 500;
+      font-size: 22px;
+      font-weight: 700;
       font-family: Roboto, sans-serif;
     }
 
