@@ -949,6 +949,135 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   }
 }
 
+function prepareInvoicePreview(contact, activityType, invoiceNumber) {
+  const extractInvoiceNumberParts = (value) => {
+    const invoiceValue = String(value || "").trim();
+    if (!/^\d+$/.test(invoiceValue)) return null;
+    return {
+      numberText: invoiceValue,
+      number: Number(invoiceValue)
+    };
+  };
+  const formatInvoiceNumber = (number, padLength) => String(number).padStart(padLength, "0");
+  const validationResult = validateInvoiceGeneration_();
+  if (!validationResult.success) {
+    return validationResult;
+  }
+  const {
+    facturerTimeSheet,
+    facturerTrackingSheet
+  } = validationResult;
+
+  if (contact === "Sélectionnez un contact" || activityType === "Sélectionnez une activité") {
+    return { success: false, message: "Veuillez sélectionner un contact et une activité générale." };
+  }
+  if (invoiceNumber !== null && (!Number.isInteger(invoiceNumber) || invoiceNumber <= 0)) {
+    return { success: false, message: "Le numéro de facture doit être un entier positif." };
+  }
+
+  const facturerTrackingLastRow = facturerTrackingSheet.getLastRow();
+  const existingInvoiceValues = facturerTrackingLastRow >= 6
+    ? facturerTrackingSheet.getRange(`B6:B${facturerTrackingLastRow}`).getValues().flat().map(value => String(value || "").trim()).filter(String)
+    : [];
+  let facturerFullInvoiceNumber;
+  if (existingInvoiceValues.length === 0) {
+    if (!Number.isInteger(invoiceNumber) || invoiceNumber <= 0) {
+      return { success: false, message: "Le numéro de départ doit être un entier positif." };
+    }
+    const padLength = Math.max(3, String(invoiceNumber).length);
+    facturerFullInvoiceNumber = formatInvoiceNumber(invoiceNumber, padLength);
+  } else {
+    const parsedInvoices = existingInvoiceValues.map(extractInvoiceNumberParts);
+    if (parsedInvoices.some(parts => parts === null || Number.isNaN(parts.number))) {
+      return { success: false, message: "Impossible de générer le prochain numéro : FACTURATION!B contient une valeur invalide." };
+    }
+    const highestInvoiceParts = parsedInvoices.reduce((currentMax, currentInvoice) => {
+      return currentInvoice.number > currentMax.number ? currentInvoice : currentMax;
+    });
+    const facturerNextInvoiceNumber = highestInvoiceParts.number + 1;
+    const padLength = Math.max(3, highestInvoiceParts.numberText.length, String(facturerNextInvoiceNumber).length);
+    facturerFullInvoiceNumber = formatInvoiceNumber(facturerNextInvoiceNumber, padLength);
+  }
+
+  const facturerLastRow = facturerTimeSheet.getLastRow();
+  const facturerTimeData = facturerLastRow >= 7 ? facturerTimeSheet.getRange(`A7:U${facturerLastRow}`).getValues() : [];
+  const facturerCheckedRows = facturerTimeData.map((row, index) => ({ row: row, index: index + 7 }))
+    .filter(row => row.row[0] === true);
+  const toPreviewTime = (value) => value instanceof Date
+    ? value.getHours() + value.getMinutes() / 60
+    : Number(value);
+  const previewBlocks = [];
+  facturerCheckedRows.forEach(({ row }) => {
+    const campaign = String(row[2] || "").trim();
+    const project = String(row[3] || "").trim();
+    const blockKey = `${campaign}|||${project}`;
+    if (!previewBlocks.some(block => block.key === blockKey)) {
+      previewBlocks.push({
+        key: blockKey,
+        campaign,
+        project,
+        notes: [],
+        activities: [],
+        totalTime: 0,
+        totalPrice: 0
+      });
+    }
+    const previewBlock = previewBlocks.find(block => block.key === blockKey);
+    const activityName = String(row[4] || "").trim();
+    const time = toPreviewTime(row[8]);
+    const price = Number(row[10]);
+    const existingActivity = previewBlock.activities.find(activity => activity.name === activityName);
+    if (existingActivity) {
+      existingActivity.time += time;
+    } else {
+      previewBlock.activities.push({ name: activityName, time });
+    }
+    previewBlock.totalTime += time;
+    previewBlock.totalPrice += price;
+
+    const note = String(row[20] || "").trim();
+    if (note && !previewBlock.notes.includes(note)) {
+      previewBlock.notes.push(note);
+    }
+  });
+
+  const facturerClientName = String(facturerCheckedRows[0].row[1] || "");
+  const facturerToday = new Date();
+  const projects = [...new Set(facturerCheckedRows.map(({ row }) => String(row[3] || "").trim()).filter(String))];
+  const totalAmount = previewBlocks.reduce((sum, block) => sum + block.totalPrice, 0);
+  const blocks = previewBlocks.map((block, index) => {
+    const activitiesSummary = block.activities
+      .map(activity => `${activity.name} (${activity.time.toFixed(2)}h)`)
+      .join(", ");
+    const notesSummary = block.notes.join(" ");
+    return {
+      blockNumber: index + 1,
+      campaign: block.campaign,
+      project: block.project,
+      description: notesSummary || activitiesSummary,
+      activities: block.activities.map(activity => ({
+        name: activity.name,
+        time: Number(activity.time.toFixed(2))
+      })),
+      totalTime: Number(block.totalTime.toFixed(2)),
+      totalPrice: Number(block.totalPrice.toFixed(2))
+    };
+  });
+
+  return {
+    success: true,
+    preview: {
+      invoiceNumber: facturerFullInvoiceNumber,
+      invoiceDate: Utilities.formatDate(facturerToday, Session.getScriptTimeZone(), "yyyy-MM-dd"),
+      client: facturerClientName,
+      projects,
+      serviceTitle: activityType,
+      totalAmount: Number(totalAmount.toFixed(2)),
+      blocks
+    }
+  };
+}
+
 // NOUVELLE ENTRÉ DE TEMPS
 
 function newTimeEntry() {

@@ -527,6 +527,7 @@
     let pdfUrl = '';
     let currentInvoiceNumber = '';
     let currentInvoiceRecipientOptions = [];
+    let currentInvoicePreview = null;
     let currentPrimaryAction = null;
     let currentSecondaryAction = null;
     let currentOpenPdfAction = null;
@@ -725,6 +726,7 @@
         pdfUrl = "";
         currentInvoiceNumber = "";
         currentInvoiceRecipientOptions = [];
+        currentInvoicePreview = null;
         pendingInvoiceSubmission = null;
         emailSendCompleted = false;
       }
@@ -947,6 +949,20 @@
           return;
         }
         submitInvoiceRequest(pendingInvoiceSubmission, true);
+        return;
+      }
+
+      if (action === "invoice_preview_confirm") {
+        if (!confirmed) {
+          currentInvoicePreview = null;
+          showFormView();
+          return;
+        }
+        if (!pendingInvoiceSubmission) {
+          showErrorView(null);
+          return;
+        }
+        submitInvoiceRequest(pendingInvoiceSubmission, false);
         return;
       }
 
@@ -1314,6 +1330,28 @@
         .submitFacturerForm(submissionData.contact, submissionData.activityType, window.initialInvoiceNumber, overwriteExistingFile);
     }
 
+    function buildInvoicePreviewMessage(preview) {
+      if (!preview) {
+        return "Aperçu de facture prêt.";
+      }
+      const blocks = Array.isArray(preview.blocks) ? preview.blocks : [];
+      const blockSummary = blocks.map(block => {
+        const blockTitle = [block.campaign, block.project].filter(Boolean).join(" — ");
+        const activitySummary = Array.isArray(block.activities)
+          ? block.activities.map(activity => `${activity.name} (${activity.time}h)`).join(", ")
+          : "";
+        return `${block.blockNumber}. ${blockTitle}\n${activitySummary}`;
+      }).join("\n\n");
+
+      return [
+        `Facture ${preview.invoiceNumber}`,
+        `Client : ${preview.client}`,
+        `Titre : ${preview.serviceTitle}`,
+        `Total : ${preview.totalAmount}`,
+        blockSummary
+      ].filter(Boolean).join("\n\n");
+    }
+
     function submit() {
       const validation = validateForm(true);
       if (!validation.isValid) {
@@ -1325,7 +1363,30 @@
         document.getElementById("activityType").value;
 
       pendingInvoiceSubmission = { contact, activityType };
-      submitInvoiceRequest(pendingInvoiceSubmission, false);
+      showLoadingView("Préparation de la facture", "Veuillez patienter...");
+      google.script.run
+        .withSuccessHandler(result => {
+          if (result && result.success) {
+            currentInvoicePreview = result.preview;
+            showConfirmView({
+              title: "Confirmer la facture",
+              message: buildInvoicePreviewMessage(currentInvoicePreview),
+              action: "invoice_preview_confirm",
+              confirmLabel: "OK",
+              cancelLabel: "Retour"
+            });
+          } else {
+            pendingInvoiceSubmission = null;
+            currentInvoicePreview = null;
+            showErrorView(result && result.message ? result.message : null);
+          }
+        })
+        .withFailureHandler(error => {
+          pendingInvoiceSubmission = null;
+          currentInvoicePreview = null;
+          showErrorView(error && error.message ? `Erreur inattendue : ${error.message}` : null);
+        })
+        .prepareInvoicePreview(contact, activityType, window.initialInvoiceNumber);
     }
 
     // Remplir les menus déroulants au chargement
