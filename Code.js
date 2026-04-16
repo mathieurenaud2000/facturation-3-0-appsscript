@@ -774,8 +774,9 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
   const startRow = 21;
   const contentRowCount = 28;
   const bufferRow = 49;
-  const defaultRowHeight = 25;
-  const targetHeight = (contentRowCount + 1) * defaultRowHeight;
+  const targetHeight = Array.from({ length: contentRowCount + 1 }, (_, index) => {
+    return sheet.getRowHeight(startRow + index);
+  }).reduce((sum, height) => sum + height, 0);
   const layoutRows = buildFixedInvoiceLayoutRows_(blocks);
 
   if (layoutRows.length > contentRowCount) {
@@ -789,11 +790,7 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
   workRange.breakApart();
   workRange.clearContent();
   workRange.setWrap(false);
-  sheet.setRowHeights(startRow, contentRowCount, defaultRowHeight);
-  const bufferRange = sheet.getRange(bufferRow, 1, 1, 16);
-  bufferRange.breakApart();
-  bufferRange.clearContent();
-  bufferRange.setWrap(false);
+  sheet.setRowHeights(startRow, contentRowCount, 25);
 
   layoutRows.forEach((layoutRow, index) => {
     const rowNumber = startRow + index;
