@@ -618,6 +618,20 @@ function splitTextIntoLines(text, maxChars) {
   return lines;
 }
 
+function formatFrenchInvoiceList_(items) {
+  const values = Array.isArray(items)
+    ? items.map(item => String(item || "").trim()).filter(String)
+    : [];
+  const displayValues = values.map((value, index) => {
+    if (index === 0) return value;
+    return value.charAt(0).toLocaleLowerCase("fr-CA") + value.slice(1);
+  });
+  if (displayValues.length <= 2) {
+    return displayValues.join(" et ");
+  }
+  return `${displayValues.slice(0, -1).join(", ")} et ${displayValues[displayValues.length - 1]}`;
+}
+
 function buildFixedInvoiceBlocks_(facturerCheckedRows) {
   const toDecimalHours = (value) => {
     if (value instanceof Date) {
@@ -715,23 +729,23 @@ function buildFixedInvoiceLayoutRows_(blocks) {
     descriptionLines.forEach(line => {
       rows.push({
         type: "description",
-        height: 20,
+        height: 18,
         text: line
       });
     });
 
-    rows.push({ type: "description-space", height: 10 });
+    rows.push({ type: "description-space", height: 15 });
 
     block.activities.forEach(activity => {
       rows.push({
         type: "activity",
-        height: 25,
+        height: 20,
         activity
       });
     });
 
     if (blockIndex < blocks.length - 1) {
-      rows.push({ type: "separator", height: 25 });
+      rows.push({ type: "separator", height: 20 });
     }
   });
 
@@ -803,7 +817,7 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
       sheet.getRange(rowNumber, 2, 1, 11).merge()
         .setValue(layoutRow.text)
         .setFontFamily("Roboto")
-        .setFontSize(11)
+        .setFontSize(10)
         .setFontColor("#000000")
         .setHorizontalAlignment("left")
         .setVerticalAlignment("middle");
@@ -814,14 +828,14 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
       sheet.getRange(rowNumber, 2, 1, 3).merge()
         .setValue(layoutRow.activity.name)
         .setFontFamily("Roboto")
-        .setFontSize(11)
+        .setFontSize(10)
         .setFontColor("#999999")
         .setHorizontalAlignment("left")
         .setVerticalAlignment("middle");
       sheet.getRange(rowNumber, 5)
         .setValue(`${layoutRow.activity.time.toFixed(2)} h`)
         .setFontFamily("Roboto")
-        .setFontSize(11)
+        .setFontSize(10)
         .setFontColor("#999999")
         .setHorizontalAlignment("right")
         .setVerticalAlignment("middle");
@@ -1255,7 +1269,7 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   facturerTempSheet.getRange("L1").setValue(facturerFullInvoiceNumber);
   facturerTempSheet.getRange("C7").setValue(facturerToday).setNumberFormat("d mmmm yyyy");
   facturerTempSheet.getRange("C10").setValue(contact);
-  facturerTempSheet.getRange("C12").setValue([...new Set(facturerCheckedRows.map(row => row.row[1]))].join(", "));
+  facturerTempSheet.getRange("C12").setValue(formatFrenchInvoiceList_(facturerCampaignSummary));
   facturerTempSheet.getRange("C14").setValue(activityType);
   facturerTempSheet.getRange("C17").setValue(Number(facturerTotalAmount));
   facturerTempSheet.getRange("N43").setValue(Number(facturerTotalAmount));
