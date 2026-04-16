@@ -3,7 +3,7 @@
 <head>
   <base target="_top">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
   <style>
     * {
@@ -287,7 +287,7 @@
     }
 
     .invoice-summary-label {
-      font-weight: 300;
+      font-weight: 400;
       color: #aaaaaa;
       text-align: left;
     }
@@ -338,15 +338,15 @@
 
     #previewInvoiceNumberValue,
     #previewInvoiceDateValue {
-      font-weight: 300;
+      font-weight: 400;
       color: #aaaaaa;
     }
 
     .invoice-blocks {
       display: flex;
       flex-direction: column;
-      gap: 24px;
-      padding-top: 12px;
+      gap: 0;
+      padding-top: 25px;
     }
 
     .invoice-preview-block {
@@ -355,23 +355,15 @@
       column-gap: 12px;
       padding: 25px 0;
       margin: 0;
-      border-bottom: none;
-      background: #ffffff;
-    }
-
-    .invoice-preview-block:first-child {
       border-top: 1px solid #000000;
-    }
-
-    .invoice-preview-block:not(:last-child) {
-      border-bottom: 1px solid #000000;
+      background: #ffffff;
     }
 
     .invoice-block-number {
       grid-column: 1;
       grid-row: 1 / span 3;
       color: #aaaaaa;
-      font-weight: 300;
+      font-weight: 400;
       font-size: 18px;
       line-height: 1.25;
       text-align: left;
@@ -405,7 +397,7 @@
     .invoice-block-total {
       font-size: 18px;
       line-height: 1.25;
-      font-weight: 300;
+      font-weight: 400;
       color: #aaaaaa;
       text-align: right;
       white-space: nowrap;
@@ -1425,9 +1417,9 @@
       const tolerance = 1;
       return blocks.find(block => {
         const blockRect = block.getBoundingClientRect();
-        const intersectsVisibleArea = blockRect.bottom > containerRect.top + tolerance;
-        const isNotFullyVisible = blockRect.top < containerRect.top - tolerance || blockRect.bottom > containerRect.bottom - tolerance;
-        return intersectsVisibleArea && isNotFullyVisible;
+        const isNextBlock = blockRect.top > containerRect.top + tolerance;
+        const isNotFullyVisible = blockRect.bottom > containerRect.bottom - tolerance;
+        return isNextBlock && isNotFullyVisible;
       }) || null;
     }
 
