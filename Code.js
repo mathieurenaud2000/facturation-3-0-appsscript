@@ -271,7 +271,7 @@ function validateInvoiceGeneration_() {
   }
 
   const facturerLastRow = facturerTimeSheet.getLastRow();
-  const facturerTimeData = facturerLastRow >= 7 ? facturerTimeSheet.getRange(`A7:T${facturerLastRow}`).getValues() : [];
+  const facturerTimeData = facturerLastRow >= 7 ? facturerTimeSheet.getRange(`A7:U${facturerLastRow}`).getValues() : [];
   const facturerCheckedRows = facturerTimeData.map((row, index) => ({ row: row, index: index + 7 }))
     .filter(row => row.row[0] === true);
 
@@ -584,6 +584,281 @@ function generateInvoiceTextWithOpenAI(previewPayload) {
     Logger.log(`OpenAI invoice preview exception: ${error && error.message ? error.message : error}. Local fallback used.`);
     return null;
   }
+}
+
+function splitTextIntoLines(text, maxChars) {
+  const normalizedText = String(text || "").replace(/\s+/g, " ").trim();
+  if (!normalizedText) {
+    return [""];
+  }
+
+  const words = normalizedText.split(" ");
+  const lines = [];
+  let currentLine = "";
+
+  words.forEach(word => {
+    if (!currentLine) {
+      currentLine = word;
+      return;
+    }
+
+    const nextLine = `${currentLine} ${word}`;
+    if (nextLine.length <= maxChars) {
+      currentLine = nextLine;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  });
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines;
+}
+
+function buildFixedInvoiceBlocks_(facturerCheckedRows) {
+  const toDecimalHours = (value) => {
+    if (value instanceof Date) {
+      return value.getHours() + value.getMinutes() / 60 + value.getSeconds() / 3600;
+    }
+    return Number(value) || 0;
+  };
+  const cleanText = (value) => String(value || "").replace(/\s+/g, " ").trim();
+  const blocks = [];
+
+  facturerCheckedRows.forEach(({ row }) => {
+    const campaign = cleanText(row[2]);
+    const project = cleanText(row[3]);
+    const blockKey = `${normalizeString_(campaign)}|||${normalizeString_(project)}`;
+    let block = blocks.find(candidate => candidate.key === blockKey);
+    if (!block) {
+      block = {
+        key: blockKey,
+        campaign,
+        project,
+        notes: [],
+        activities: [],
+        totalTime: 0,
+        totalPrice: 0
+      };
+      blocks.push(block);
+    }
+
+    const activityName = cleanText(row[4]);
+    const time = toDecimalHours(row[8]);
+    const price = Number(row[10]) || 0;
+    const existingActivity = block.activities.find(activity => normalizeString_(activity.name) === normalizeString_(activityName));
+    if (existingActivity) {
+      existingActivity.time += time;
+    } else {
+      block.activities.push({ name: activityName, time });
+    }
+    block.totalTime += time;
+    block.totalPrice += price;
+
+    const note = cleanText(row[20]);
+    if (note && !block.notes.some(existingNote => normalizeString_(existingNote) === normalizeString_(note))) {
+      block.notes.push(note);
+    }
+  });
+
+  return blocks.map((block, index) => ({
+    blockNumber: index + 1,
+    campaign: block.campaign,
+    project: block.project,
+    title: [block.campaign, block.project].filter(Boolean).join(" — "),
+    description: buildFixedInvoiceBlockDescription_(block),
+    activities: block.activities,
+    totalTime: block.totalTime,
+    totalPrice: block.totalPrice
+  }));
+}
+
+function buildFixedInvoiceBlockDescription_(block) {
+  const notes = Array.isArray(block.notes) ? block.notes : [];
+  if (notes.length) {
+    return notes.join("; ");
+  }
+
+  const activityNames = Array.isArray(block.activities)
+    ? block.activities.map(activity => String(activity.name || "").trim()).filter(String)
+    : [];
+  if (activityNames.length) {
+    return `Travaux réalisés : ${activityNames.join(", ")}.`;
+  }
+
+  const context = [block.campaign, block.project].filter(Boolean).join(" — ");
+  return context ? `Travaux réalisés pour ${context}.` : "Travaux réalisés.";
+}
+
+function buildFixedInvoiceLayoutRows_(blocks) {
+  const rows = [];
+
+  blocks.forEach((block, blockIndex) => {
+    const titleLines = splitTextIntoLines(block.title, 75);
+    const descriptionLines = splitTextIntoLines(block.description, 75);
+
+    titleLines.forEach((line, lineIndex) => {
+      rows.push({
+        type: "title",
+        height: 25,
+        block,
+        text: line,
+        isFirstTitleLine: lineIndex === 0
+      });
+    });
+
+    rows.push({ type: "title-space", height: 5 });
+
+    descriptionLines.forEach(line => {
+      rows.push({
+        type: "description",
+        height: 20,
+        text: line
+      });
+    });
+
+    rows.push({ type: "description-space", height: 10 });
+
+    block.activities.forEach(activity => {
+      rows.push({
+        type: "activity",
+        height: 25,
+        activity
+      });
+    });
+
+    if (blockIndex < blocks.length - 1) {
+      rows.push({ type: "separator", height: 25 });
+    }
+  });
+
+  return rows;
+}
+
+function writeFixedInvoiceBlocks_(sheet, blocks) {
+  const startRow = 21;
+  const contentRowCount = 20;
+  const bufferRow = 41;
+  const targetHeight = 560;
+  const layoutRows = buildFixedInvoiceLayoutRows_(blocks);
+
+  if (layoutRows.length > contentRowCount) {
+    return {
+      success: false,
+      message: "Trop d’informations pour une seule facture. Veuillez réduire le nombre de blocs, d’activités ou de descriptions."
+    };
+  }
+
+  const workRange = sheet.getRange(startRow, 1, contentRowCount + 1, 16);
+  workRange.breakApart();
+  workRange.clearContent();
+  workRange.setWrap(false);
+  sheet.setRowHeights(startRow, contentRowCount, 25);
+
+  layoutRows.forEach((layoutRow, index) => {
+    const rowNumber = startRow + index;
+    sheet.setRowHeight(rowNumber, layoutRow.height);
+
+    if (layoutRow.type === "title") {
+      if (layoutRow.isFirstTitleLine) {
+        sheet.getRange(rowNumber, 1)
+          .setValue(layoutRow.block.blockNumber)
+          .setFontFamily("Roboto")
+          .setFontSize(10)
+          .setFontColor("#000000")
+          .setHorizontalAlignment("left")
+          .setVerticalAlignment("middle");
+        sheet.getRange(rowNumber, 13, 1, 2).merge()
+          .setValue(`${layoutRow.block.totalTime.toFixed(2)} h`)
+          .setFontFamily("Roboto")
+          .setFontSize(12)
+          .setFontColor("#000000")
+          .setHorizontalAlignment("right")
+          .setVerticalAlignment("middle");
+        sheet.getRange(rowNumber, 15, 1, 2).merge()
+          .setValue(Number(layoutRow.block.totalPrice.toFixed(2)))
+          .setNumberFormat("0.00 $")
+          .setFontFamily("Roboto")
+          .setFontSize(12)
+          .setFontColor("#000000")
+          .setFontWeight("bold")
+          .setHorizontalAlignment("right")
+          .setVerticalAlignment("middle");
+      }
+      sheet.getRange(rowNumber, 2, 1, 11).merge()
+        .setValue(layoutRow.text)
+        .setFontFamily("Roboto")
+        .setFontSize(12)
+        .setFontColor("#000000")
+        .setFontWeight("bold")
+        .setHorizontalAlignment("left")
+        .setVerticalAlignment("middle");
+      return;
+    }
+
+    if (layoutRow.type === "description") {
+      sheet.getRange(rowNumber, 2, 1, 11).merge()
+        .setValue(layoutRow.text)
+        .setFontFamily("Roboto")
+        .setFontSize(11)
+        .setFontColor("#000000")
+        .setHorizontalAlignment("left")
+        .setVerticalAlignment("middle");
+      return;
+    }
+
+    if (layoutRow.type === "activity") {
+      sheet.getRange(rowNumber, 2, 1, 3).merge()
+        .setValue(layoutRow.activity.name)
+        .setFontFamily("Roboto")
+        .setFontSize(11)
+        .setFontColor("#999999")
+        .setHorizontalAlignment("left")
+        .setVerticalAlignment("middle");
+      sheet.getRange(rowNumber, 5)
+        .setValue(`${layoutRow.activity.time.toFixed(2)} h`)
+        .setFontFamily("Roboto")
+        .setFontSize(11)
+        .setFontColor("#999999")
+        .setHorizontalAlignment("right")
+        .setVerticalAlignment("middle");
+    }
+  });
+
+  const usedHeight = Array.from({ length: contentRowCount }, (_, index) => {
+    const layoutRow = layoutRows[index];
+    return layoutRow ? layoutRow.height : 25;
+  }).reduce((sum, height) => sum + height, 0);
+  let remainingHeight = targetHeight - usedHeight;
+  if (remainingHeight >= 0) {
+    sheet.setRowHeight(bufferRow, remainingHeight);
+    return { success: true };
+  }
+
+  sheet.setRowHeight(bufferRow, 0);
+  let overflow = Math.abs(remainingHeight);
+  for (let rowNumber = startRow + contentRowCount - 1; rowNumber >= startRow && overflow > 0; rowNumber--) {
+    const layoutIndex = rowNumber - startRow;
+    if (layoutRows[layoutIndex]) {
+      break;
+    }
+    const currentHeight = sheet.getRowHeight(rowNumber);
+    const reduction = Math.min(currentHeight, overflow);
+    sheet.setRowHeight(rowNumber, currentHeight - reduction);
+    overflow -= reduction;
+  }
+
+  if (overflow > 0) {
+    return {
+      success: false,
+      message: "Trop d’informations pour une seule facture. Veuillez réduire le nombre de blocs, d’activités ou de descriptions."
+    };
+  }
+
+  return { success: true };
 }
 
 function getInvoiceRecipientOptions(invoiceNumber) {
@@ -960,28 +1235,8 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   }
   Logger.log(`Temp invoice sheet created: name="${facturerTempSheet.getName()}", sheetId=${facturerTempSheet.getSheetId()}, index=${facturerTempSheet.getIndex()}`);
 
-  const facturerItems = [];
-  facturerCheckedRows.forEach(row => {
-    const facturerClient = row.row[1];
-    const facturerCampaign = row.row[2];
-    const facturerKey = `${facturerClient}:${facturerCampaign}`;
-    if (!facturerItems.some(item => item.key === facturerKey)) {
-      facturerItems.push({ key: facturerKey, client: facturerClient, campaign: facturerCampaign, projects: [], activities: [], totalTime: 0, totalPrice: 0 });
-    }
-    const facturerItem = facturerItems.find(item => item.key === facturerKey);
-    if (!facturerItem.projects.includes(row.row[3])) facturerItem.projects.push(row.row[3]);
-    const existingActivity = facturerItem.activities.find(a => a.activity === row.row[4]);
-    const time = row.row[8] instanceof Date ? (row.row[8].getHours() + row.row[8].getMinutes() / 60) : Number(row.row[8]);
-    if (existingActivity) {
-      existingActivity.time += time;
-    } else {
-      facturerItem.activities.push({ activity: row.row[4], time: time });
-    }
-    facturerItem.totalTime += time;
-    facturerItem.totalPrice += Number(row.row[10]);
-  });
-
-  const facturerTotalAmount = facturerItems.reduce((sum, item) => sum + item.totalPrice, 0).toFixed(2);
+  const facturerInvoiceBlocks = buildFixedInvoiceBlocks_(facturerCheckedRows);
+  const facturerTotalAmount = facturerInvoiceBlocks.reduce((sum, block) => sum + block.totalPrice, 0).toFixed(2);
   const facturerClientName = String(facturerCheckedRows[0].row[1] || "");
   const facturerToday = new Date();
   const facturerCampaignSummary = [];
@@ -1004,22 +1259,11 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   facturerTempSheet.getRange("C14").setValue(activityType);
   facturerTempSheet.getRange("C17").setValue(Number(facturerTotalAmount));
   facturerTempSheet.getRange("N43").setValue(Number(facturerTotalAmount));
-  facturerTempSheet.getRange("C45").setValue(Number(facturerTotalAmount));
-
-  let facturerCurrentRow = 21;
-  facturerItems.forEach((item, index) => {
-    facturerTempSheet.getRange(`A${facturerCurrentRow}`).setValue(index + 1).setFontSize(10).setFontFamily("Roboto").setFontColor("#000000");
-    const facturerProjectsStr = item.projects.join(", ");
-    facturerTempSheet.getRange(`B${facturerCurrentRow}`).setValue(`${item.client} : ${item.campaign} (${facturerProjectsStr})`)
-      .setFontFamily("Roboto").setFontSize(12).setFontColor("#000000").setFontWeight("bold");
-    facturerTempSheet.getRange(`M${facturerCurrentRow}`).setValue(`${item.totalTime.toFixed(2)} h`).setFontFamily("Roboto").setFontSize(12).setFontColor("#000000");
-    facturerTempSheet.getRange(`O${facturerCurrentRow}`).setValue(Number(item.totalPrice))
-      .setFontFamily("Roboto").setFontSize(12).setFontColor("#000000").setFontWeight("bold").setHorizontalAlignment("right");
-    const facturerActivitiesStr = item.activities.map(a => `${a.activity} (${a.time.toFixed(2)}h)`).join(", ");
-    facturerTempSheet.getRange(`B${facturerCurrentRow + 1}`).setValue(facturerActivitiesStr)
-      .setFontFamily("Roboto").setFontSize(11).setFontColor("#999999");
-    facturerCurrentRow += 3;
-  });
+  const fixedBlockWriteResult = writeFixedInvoiceBlocks_(facturerTempSheet, facturerInvoiceBlocks);
+  if (!fixedBlockWriteResult.success) {
+    facturerSpreadsheet.deleteSheet(facturerTempSheet);
+    return fixedBlockWriteResult;
+  }
 
   SpreadsheetApp.flush();
   let facturerPdfFile = null;
