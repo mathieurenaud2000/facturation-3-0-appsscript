@@ -828,7 +828,7 @@
               <div id="previewInvoiceDateValue"></div>
               <div id="previewTotalValue"></div>
             </div>
-            <div class="invoice-summary-label">Projet</div>
+            <div class="invoice-summary-label" id="previewProjectsLabel">Projet</div>
             <div class="invoice-summary-value" id="previewProjectsValue"></div>
             <div class="invoice-summary-label">Titre</div>
             <div class="invoice-summary-value-row">
@@ -1399,6 +1399,16 @@
       return titleParts.length ? titleParts.join(" — ") : "Bloc sans titre";
     }
 
+    function formatFrenchList(items) {
+      const values = Array.isArray(items)
+        ? items.map(item => String(item || "").trim()).filter(Boolean)
+        : [];
+      if (values.length <= 2) {
+        return values.join(" et ");
+      }
+      return `${values.slice(0, -1).join(", ")} et ${values[values.length - 1]}`;
+    }
+
     function setInvoiceScrollArrowEnabled(enabled) {
       const scrollArrowButton = document.getElementById("invoiceScrollArrow");
       scrollArrowButton.disabled = !enabled;
@@ -1452,7 +1462,8 @@
       const blocks = Array.isArray(preview.blocks) ? preview.blocks : [];
       const campaigns = [...new Set(blocks.map(block => String(block.campaign || "").trim()).filter(Boolean))];
       document.getElementById("previewClientValue").textContent = preview.client || "";
-      document.getElementById("previewProjectsValue").textContent = campaigns.join(", ");
+      document.getElementById("previewProjectsLabel").textContent = campaigns.length > 1 ? "Projets" : "Projet";
+      document.getElementById("previewProjectsValue").textContent = formatFrenchList(campaigns);
       document.getElementById("previewServiceTitleValue").textContent = preview.serviceTitle || "";
       document.getElementById("previewInvoiceNumberValue").textContent = preview.invoiceNumber ? `#${preview.invoiceNumber}` : "";
       document.getElementById("previewInvoiceDateValue").textContent = preview.invoiceDate || "";
