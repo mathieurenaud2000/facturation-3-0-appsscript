@@ -3,7 +3,7 @@
 <head>
   <base target="_top">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@200;400;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
   <style>
     * {
@@ -287,7 +287,8 @@
     }
 
     .invoice-summary-label {
-      font-weight: 200;
+      font-weight: 300;
+      color: #aaaaaa;
       text-align: left;
     }
 
@@ -337,13 +338,15 @@
 
     #previewInvoiceNumberValue,
     #previewInvoiceDateValue {
-      font-weight: 200;
+      font-weight: 300;
+      color: #aaaaaa;
     }
 
     .invoice-blocks {
       display: flex;
       flex-direction: column;
-      gap: 0;
+      gap: 24px;
+      padding-top: 12px;
     }
 
     .invoice-preview-block {
@@ -351,7 +354,7 @@
       grid-template-columns: 60px minmax(0, 1fr);
       column-gap: 12px;
       padding: 25px 0;
-      margin: 12px 0;
+      margin: 0;
       border-bottom: none;
       background: #ffffff;
     }
@@ -367,8 +370,8 @@
     .invoice-block-number {
       grid-column: 1;
       grid-row: 1 / span 3;
-      color: #000000;
-      font-weight: 200;
+      color: #aaaaaa;
+      font-weight: 300;
       font-size: 18px;
       line-height: 1.25;
       text-align: left;
@@ -402,8 +405,8 @@
     .invoice-block-total {
       font-size: 18px;
       line-height: 1.25;
-      font-weight: 400;
-      color: #000000;
+      font-weight: 300;
+      color: #aaaaaa;
       text-align: right;
       white-space: nowrap;
     }
