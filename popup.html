@@ -425,7 +425,7 @@
       column-gap: 12px;
       font-size: 18px;
       line-height: 1.25;
-      color: #000000;
+      color: #aaaaaa;
     }
 
     .invoice-activity-name {
@@ -434,7 +434,7 @@
     }
 
     .invoice-activity-time {
-      color: #000000;
+      color: #aaaaaa;
       white-space: nowrap;
       text-align: right;
     }
@@ -1413,8 +1413,13 @@
         return null;
       }
 
-      const containerRect = scrollElement.getBoundingClientRect();
       const tolerance = 1;
+      const isScrolledToBottom = scrollElement.scrollTop + scrollElement.clientHeight >= scrollElement.scrollHeight - tolerance;
+      if (isScrolledToBottom) {
+        return null;
+      }
+
+      const containerRect = scrollElement.getBoundingClientRect();
       return blocks.find(block => {
         const blockRect = block.getBoundingClientRect();
         const isNextBlock = blockRect.top > containerRect.top + tolerance;
