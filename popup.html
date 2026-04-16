@@ -507,6 +507,50 @@
       padding: 40px 0 0 0;
     }
 
+    .error-view .invoice-overflow-alert-content {
+      display: none;
+    }
+
+    .invoice-preview-mode .error-view.invoice-overflow-alert {
+      align-items: stretch;
+      justify-content: center;
+      width: 100%;
+      height: calc(100vh - 80px);
+      max-width: none !important;
+      padding: 0;
+      font-family: Roboto, sans-serif;
+    }
+
+    .invoice-overflow-alert .invoice-overflow-alert-content {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .invoice-overflow-alert-icon {
+      font-size: 125px;
+      line-height: 1;
+      color: #00983a;
+      margin-bottom: 18px;
+    }
+
+    .invoice-overflow-alert-title {
+      font-size: 18pt;
+      font-weight: 700;
+      line-height: 1.25;
+      color: #000000;
+    }
+
+    .invoice-overflow-alert-line {
+      font-size: 18pt;
+      font-weight: 400;
+      line-height: 1.25;
+      color: #aaaaaa;
+    }
+
     .popup-view.active {
       display: flex;
     }
@@ -917,6 +961,12 @@
     </div>
     <!-- État d'erreur -->
     <div id="errorView" class="popup-view error-view">
+      <div id="invoiceOverflowAlertContent" class="invoice-overflow-alert-content" aria-live="polite">
+        <span class="material-symbols-outlined invoice-overflow-alert-icon">error</span>
+        <div class="invoice-overflow-alert-title">Trop d’informations pour une seule facture.</div>
+        <div class="invoice-overflow-alert-line">Veuillez simplifier les descriptions ou</div>
+        <div class="invoice-overflow-alert-line">diminuer le nombre d’entrées à facturer.</div>
+      </div>
       <div class="message" id="errorMessage"></div>
     </div>
     <!-- Pied de page -->
@@ -1139,9 +1189,13 @@
       footer,
       primaryAction,
       secondaryAction,
-      openPdfAction
+      openPdfAction,
+      invoicePreviewMode,
+      overflowAlert
     }) {
-      if (!["confirmView", "editTitleView", "editDescriptionView"].includes(view)) {
+      if (invoicePreviewMode) {
+        setInvoicePreviewMode(true);
+      } else if (!["confirmView", "editTitleView", "editDescriptionView"].includes(view)) {
         setInvoicePreviewMode(false);
       }
 
@@ -1153,6 +1207,8 @@
         pendingInvoiceSubmission = null;
         emailSendCompleted = false;
       }
+
+      setErrorOverflowAlertMode(view === "errorView" && Boolean(overflowAlert));
 
       if (view === "confirmView") {
         document.getElementById("confirmTitle").textContent = title || "";
@@ -1182,6 +1238,15 @@
       currentPrimaryAction = typeof primaryAction === "function" ? primaryAction : null;
       currentSecondaryAction = typeof secondaryAction === "function" ? secondaryAction : null;
       currentOpenPdfAction = typeof openPdfAction === "function" ? openPdfAction : null;
+    }
+
+    function setErrorOverflowAlertMode(enabled) {
+      const errorView = document.getElementById("errorView");
+      const overflowContent = document.getElementById("invoiceOverflowAlertContent");
+      const errorMessage = document.getElementById("errorMessage");
+      errorView.classList.toggle("invoice-overflow-alert", Boolean(enabled));
+      overflowContent.style.display = enabled ? "flex" : "none";
+      errorMessage.style.display = enabled ? "none" : "";
     }
 
     function handlePrimaryAction() {
@@ -1941,6 +2006,31 @@
       });
     }
 
+    function isInvoiceOverflowErrorMessage(message) {
+      return typeof message === "string"
+        && message.indexOf("Trop d’informations pour une seule facture.") !== -1;
+    }
+
+    function showInvoiceOverflowAlertView() {
+      setInvoicePreviewPopupSize();
+      setPopupState({
+        view: "errorView",
+        type: "confirm",
+        message: "",
+        footer: {
+          primary: { label: "Modifier", visible: true },
+          secondary: { label: "Fermer", visible: true },
+          openPdf: { visible: false },
+          scrollArrow: { visible: false, enabled: false }
+        },
+        primaryAction: showInvoicePreviewConfirmView,
+        secondaryAction: () => google.script.host.close(),
+        openPdfAction: null,
+        invoicePreviewMode: true,
+        overflowAlert: true
+      });
+    }
+
     function openPdfAndClose() {
       window.open(pdfUrl, '_blank');
       google.script.host.close();
@@ -2035,13 +2125,25 @@
               cancelLabel: result.confirmSecondaryLabel
             });
           } else {
+            const resultMessage = result && result.message ? result.message : null;
+            if (isInvoiceOverflowErrorMessage(resultMessage)) {
+              pendingInvoiceSubmission = submissionData;
+              showInvoiceOverflowAlertView();
+              return;
+            }
             pendingInvoiceSubmission = null;
-            showErrorView(result.message);
+            showErrorView(resultMessage);
           }
         })
         .withFailureHandler(error => {
+          const errorMessage = error && error.message ? `Erreur inattendue : ${error.message}` : null;
+          if (isInvoiceOverflowErrorMessage(errorMessage)) {
+            pendingInvoiceSubmission = submissionData;
+            showInvoiceOverflowAlertView();
+            return;
+          }
           pendingInvoiceSubmission = null;
-          showErrorView(error && error.message ? `Erreur inattendue : ${error.message}` : null);
+          showErrorView(errorMessage);
         })
         .submitFacturerForm(submissionData.contact, submissionData.activityType, window.initialInvoiceNumber, overwriteExistingFile, submissionData.invoicePreview || null);
     }
