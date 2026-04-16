@@ -690,6 +690,24 @@ function buildFixedInvoiceBlocks_(facturerCheckedRows) {
   }));
 }
 
+function applyValidatedInvoicePreviewToBlocks_(blocks, invoicePreview) {
+  const previewBlocks = invoicePreview && Array.isArray(invoicePreview.blocks) ? invoicePreview.blocks : [];
+  if (!previewBlocks.length) {
+    return blocks;
+  }
+
+  return blocks.map((block, index) => {
+    const previewBlock = previewBlocks.find(candidate => Number(candidate.blockNumber) === block.blockNumber)
+      || previewBlocks.find(candidate => normalizeString_(candidate.campaign) === normalizeString_(block.campaign)
+        && normalizeString_(candidate.project) === normalizeString_(block.project))
+      || previewBlocks[index];
+    const validatedDescription = previewBlock ? cleanGeneratedInvoiceText_(previewBlock.description) : "";
+    return validatedDescription
+      ? Object.assign({}, block, { description: validatedDescription })
+      : block;
+  });
+}
+
 function buildFixedInvoiceBlockDescription_(block) {
   const notes = Array.isArray(block.notes) ? block.notes : [];
   if (notes.length) {
@@ -729,7 +747,7 @@ function buildFixedInvoiceLayoutRows_(blocks) {
     descriptionLines.forEach(line => {
       rows.push({
         type: "description",
-        height: 18,
+        height: 12,
         text: line
       });
     });
@@ -1114,7 +1132,7 @@ function registerInvoicePayments(selectedInvoiceNumbers) {
   }
 }
 
-function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExistingFile) {
+function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExistingFile, invoicePreview) {
   const extractInvoiceNumberParts = (value) => {
     const invoiceValue = String(value || "").trim();
     if (!/^\d+$/.test(invoiceValue)) return null;
@@ -1217,7 +1235,9 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   }
   Logger.log(`Temp invoice sheet created: name="${facturerTempSheet.getName()}", sheetId=${facturerTempSheet.getSheetId()}, index=${facturerTempSheet.getIndex()}`);
 
-  const facturerInvoiceBlocks = buildFixedInvoiceBlocks_(facturerCheckedRows);
+  const facturerInvoiceBlocks = applyValidatedInvoicePreviewToBlocks_(buildFixedInvoiceBlocks_(facturerCheckedRows), invoicePreview);
+  const validatedServiceTitle = cleanGeneratedInvoiceText_(invoicePreview && invoicePreview.serviceTitle);
+  const facturerServiceTitle = validatedServiceTitle || activityType;
   const facturerTotalAmount = facturerInvoiceBlocks.reduce((sum, block) => sum + block.totalPrice, 0).toFixed(2);
   const facturerClientName = String(facturerCheckedRows[0].row[1] || "");
   const facturerToday = new Date();
@@ -1238,7 +1258,7 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   facturerTempSheet.getRange("C7").setValue(facturerToday).setNumberFormat("d mmmm yyyy");
   facturerTempSheet.getRange("C10").setValue(contact);
   facturerTempSheet.getRange("C12").setValue(formatFrenchInvoiceList_(facturerCampaignSummary));
-  facturerTempSheet.getRange("C14").setValue(activityType);
+  facturerTempSheet.getRange("C14").setValue(facturerServiceTitle);
   facturerTempSheet.getRange("C17").setValue(Number(facturerTotalAmount));
   facturerTempSheet.getRange("N51").setValue(Number(facturerTotalAmount));
   const fixedBlockWriteResult = writeFixedInvoiceBlocks_(facturerTempSheet, facturerInvoiceBlocks);
