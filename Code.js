@@ -512,9 +512,11 @@ function generateInvoiceTextWithOpenAI(previewPayload) {
       "Analyse l'ensemble des blocs avant de choisir serviceTitle: si plusieurs types de projets ou livrables sont presents, produis un titre global et englobant qui represente l'ensemble, sans te limiter a un seul type.",
       "Ne liste pas les projets dans serviceTitle, ne concatene pas les livrables et produis un intitule synthetique representatif.",
       "Style vise pour serviceTitle, sans copier ces exemples: Conception de materiel promotionnel, Creation de visuels promotionnels, Conception de supports visuels.",
-      "Chaque blocks[].description doit etre une seule phrase courte, idealement entre 15 et 25 mots, fluide, professionnelle et agreable a lire.",
+      "Chaque blocks[].description doit etre une seule phrase fluide, idealement entre 20 et 35 mots, professionnelle et agreable a lire.",
       "Chaque description doit commencer par une action principale comme Creation, Developpement ou Conception, puis resumer le travail en grandes phases.",
       "Regroupe les etapes en processus global: mise en place ou structuration, developpement visuel, puis ajustements ou livraison.",
+      "Conserve explicitement une ou deux composantes importantes du mandat quand elles structurent le travail, comme illustrations, declinaisons, adaptations visuelles ou ajustements finaux.",
+      "Ne compresse pas au point d'effacer un element significatif, mais integre ces composantes dans une phrase naturelle plutot que dans une enumeration.",
       "Utilise au besoin une structure fluide comme depuis ... jusqu'a ..., incluant ... et ..., ou avec ... et ..., sans alourdir la phrase.",
       "Ne detaille pas chaque etape, ne reprends pas les notes une a une, ne produis pas de liste separee par des virgules et n'ecris pas un inventaire.",
       "N'utilise pas de phrases commencant par Apres ou Les fichiers ont ete, et evite les textes froids, telegraphiques, promotionnels ou exageres."

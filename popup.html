@@ -1403,10 +1403,14 @@
       const values = Array.isArray(items)
         ? items.map(item => String(item || "").trim()).filter(Boolean)
         : [];
-      if (values.length <= 2) {
-        return values.join(" et ");
+      const displayValues = values.map((value, index) => {
+        if (index === 0) return value;
+        return value.charAt(0).toLocaleLowerCase("fr-CA") + value.slice(1);
+      });
+      if (displayValues.length <= 2) {
+        return displayValues.join(" et ");
       }
-      return `${values.slice(0, -1).join(", ")} et ${values[values.length - 1]}`;
+      return `${displayValues.slice(0, -1).join(", ")} et ${displayValues[displayValues.length - 1]}`;
     }
 
     function setInvoiceScrollArrowEnabled(enabled) {
