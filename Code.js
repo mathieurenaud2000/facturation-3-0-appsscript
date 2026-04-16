@@ -442,6 +442,140 @@ function sendInvoiceEmail(invoiceNumber, pdfUrl, recipient, ccRecipient) {
   return sendInvoiceEmail_(invoiceNumber, pdfUrl, recipient, ccRecipient);
 }
 
+function cleanGeneratedInvoiceText_(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function extractOpenAIInvoiceResponseText_(responseData) {
+  if (responseData && typeof responseData.output_text === "string") {
+    return responseData.output_text.trim();
+  }
+
+  const outputItems = responseData && Array.isArray(responseData.output) ? responseData.output : [];
+  for (const outputItem of outputItems) {
+    const contentItems = Array.isArray(outputItem.content) ? outputItem.content : [];
+    for (const contentItem of contentItems) {
+      if (typeof contentItem.text === "string" && contentItem.text.trim()) {
+        return contentItem.text.trim();
+      }
+    }
+  }
+
+  return "";
+}
+
+function parseOpenAIInvoiceText_(rawText) {
+  const jsonText = String(rawText || "")
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "");
+  if (!jsonText) {
+    return null;
+  }
+
+  const parsed = JSON.parse(jsonText);
+  if (!parsed || typeof parsed !== "object") {
+    return null;
+  }
+
+  const serviceTitle = cleanGeneratedInvoiceText_(parsed.serviceTitle);
+  const blocks = Array.isArray(parsed.blocks)
+    ? parsed.blocks.map(block => ({
+      blockNumber: Number(block.blockNumber),
+      campaign: cleanGeneratedInvoiceText_(block.campaign),
+      project: cleanGeneratedInvoiceText_(block.project),
+      description: cleanGeneratedInvoiceText_(block.description)
+    })).filter(block => block.description)
+    : [];
+
+  if (!serviceTitle && blocks.length === 0) {
+    return null;
+  }
+
+  return { serviceTitle, blocks };
+}
+
+function generateInvoiceTextWithOpenAI(previewPayload) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty("OPENAI_API_KEY");
+  if (!apiKey) {
+    Logger.log("OpenAI invoice preview skipped: missing OPENAI_API_KEY. Local fallback used.");
+    return null;
+  }
+
+  const requestPayload = {
+    model: "gpt-4o-mini",
+    instructions: [
+      "Tu aides a preparer un apercu de facture pour un client.",
+      "Retourne uniquement du JSON valide, sans Markdown ni texte hors JSON.",
+      "Genere un titre global court, professionnel, specifique et fonde sur le contenu facture.",
+      "Genere une description concise par bloc, basee d'abord sur les notes, comme resume de travaux realises.",
+      "Le ton doit rester sobre, clair, non promotionnel, sans listes a puces."
+    ].join(" "),
+    input: JSON.stringify(previewPayload),
+    text: {
+      format: {
+        type: "json_schema",
+        name: "invoice_preview_text",
+        strict: true,
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            serviceTitle: { type: "string" },
+            blocks: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  blockNumber: { type: "number" },
+                  campaign: { type: "string" },
+                  project: { type: "string" },
+                  description: { type: "string" }
+                },
+                required: ["blockNumber", "campaign", "project", "description"]
+              }
+            }
+          },
+          required: ["serviceTitle", "blocks"]
+        }
+      }
+    },
+    temperature: 0.2,
+    max_output_tokens: 1200
+  };
+
+  try {
+    const response = UrlFetchApp.fetch("https://api.openai.com/v1/responses", {
+      method: "post",
+      contentType: "application/json",
+      headers: {
+        Authorization: `Bearer ${apiKey}`
+      },
+      payload: JSON.stringify(requestPayload),
+      muteHttpExceptions: true
+    });
+    const responseCode = response.getResponseCode();
+    if (responseCode < 200 || responseCode >= 300) {
+      Logger.log(`OpenAI invoice preview failed: HTTP ${responseCode}. Local fallback used.`);
+      return null;
+    }
+
+    const responseData = JSON.parse(response.getContentText());
+    const outputText = extractOpenAIInvoiceResponseText_(responseData);
+    const generatedText = parseOpenAIInvoiceText_(outputText);
+    if (!generatedText) {
+      Logger.log("OpenAI invoice preview failed: invalid or empty JSON. Local fallback used.");
+      return null;
+    }
+
+    return generatedText;
+  } catch (error) {
+    Logger.log(`OpenAI invoice preview exception: ${error && error.message ? error.message : error}. Local fallback used.`);
+    return null;
+  }
+}
+
 function getInvoiceRecipientOptions(invoiceNumber) {
   const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const facturerTrackingSheet = facturerSpreadsheet.getSheetByName("FACTURATION");
@@ -1105,8 +1239,9 @@ function prepareInvoicePreview(invoiceNumber) {
   const facturerClientName = String(facturerCheckedRows[0].row[1] || "");
   const facturerToday = new Date();
   const projects = [...new Set(facturerCheckedRows.map(({ row }) => String(row[3] || "").trim()).filter(String))];
+  const campaigns = [...new Set(previewBlocks.map(block => String(block.campaign || "").trim()).filter(String))];
   const totalAmount = previewBlocks.reduce((sum, block) => sum + block.totalPrice, 0);
-  const serviceTitle = buildPreviewServiceTitle(previewBlocks);
+  let serviceTitle = buildPreviewServiceTitle(previewBlocks);
   const blocks = previewBlocks.map((block, index) => {
     return {
       blockNumber: index + 1,
@@ -1121,6 +1256,39 @@ function prepareInvoicePreview(invoiceNumber) {
       totalPrice: Number(block.totalPrice.toFixed(2))
     };
   });
+  const generatedInvoiceText = generateInvoiceTextWithOpenAI({
+    client: facturerClientName,
+    campaigns,
+    projects,
+    blocks: previewBlocks.map((block, index) => ({
+      blockNumber: index + 1,
+      campaign: block.campaign,
+      project: block.project,
+      activities: block.activities.map(activity => ({
+        name: activity.name,
+        time: Number(activity.time.toFixed(2))
+      })),
+      notes: block.notes
+    }))
+  });
+  if (generatedInvoiceText) {
+    const generatedServiceTitle = cleanGeneratedInvoiceText_(generatedInvoiceText.serviceTitle);
+    if (generatedServiceTitle) {
+      serviceTitle = generatedServiceTitle;
+    }
+
+    blocks.forEach((block, index) => {
+      const generatedBlocks = Array.isArray(generatedInvoiceText.blocks) ? generatedInvoiceText.blocks : [];
+      const generatedBlock = generatedBlocks.find(candidate => Number(candidate.blockNumber) === block.blockNumber)
+        || generatedBlocks.find(candidate => normalizeString_(candidate.campaign) === normalizeString_(block.campaign)
+          && normalizeString_(candidate.project) === normalizeString_(block.project))
+        || generatedBlocks[index];
+      const generatedDescription = generatedBlock ? cleanGeneratedInvoiceText_(generatedBlock.description) : "";
+      if (generatedDescription) {
+        block.description = generatedDescription;
+      }
+    });
+  }
 
   return {
     success: true,
