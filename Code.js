@@ -512,11 +512,12 @@ function generateInvoiceTextWithOpenAI(previewPayload) {
       "Analyse l'ensemble des blocs avant de choisir serviceTitle: si plusieurs types de projets ou livrables sont presents, produis un titre global et englobant qui represente l'ensemble, sans te limiter a un seul type.",
       "Ne liste pas les projets dans serviceTitle, ne concatene pas les livrables et produis un intitule synthetique representatif.",
       "Style vise pour serviceTitle, sans copier ces exemples: Conception de materiel promotionnel, Creation de visuels promotionnels, Conception de supports visuels.",
-      "Chaque blocks[].description doit etre une synthese editoriale courte du travail realise, professionnelle, sobre, naturelle et agreable a lire.",
-      "Chaque description doit tenir en une phrase; deux phrases maximum seulement si necessaire.",
-      "Les descriptions doivent s'appuyer d'abord sur les notes du bloc, puis sur les activites, sans inventer d'elements absents.",
-      "Ne fais pas de liste d'actions separees par des virgules, ne reprends pas les notes une a une dans le meme ordre et ne reformule pas mecaniquement chaque note.",
-      "Evite les textes froids, telegraphiques, purement enumeratifs, promotionnels ou exageres."
+      "Chaque blocks[].description doit etre une seule phrase courte, idealement entre 15 et 25 mots, fluide, professionnelle et agreable a lire.",
+      "Chaque description doit commencer par une action principale comme Creation, Developpement ou Conception, puis resumer le travail en grandes phases.",
+      "Regroupe les etapes en processus global: mise en place ou structuration, developpement visuel, puis ajustements ou livraison.",
+      "Utilise au besoin une structure fluide comme depuis ... jusqu'a ..., incluant ... et ..., ou avec ... et ..., sans alourdir la phrase.",
+      "Ne detaille pas chaque etape, ne reprends pas les notes une a une, ne produis pas de liste separee par des virgules et n'ecris pas un inventaire.",
+      "N'utilise pas de phrases commencant par Apres ou Les fichiers ont ete, et evite les textes froids, telegraphiques, promotionnels ou exageres."
     ].join(" "),
     input: JSON.stringify(previewPayload),
     text: {
