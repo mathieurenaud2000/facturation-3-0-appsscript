@@ -486,7 +486,7 @@
 
     #loadingView.status-view {
       justify-content: center;
-      padding: 0 0 100px 0;
+      padding: 0 0 75px 0;
     }
 
     #loadingTitle,
@@ -1453,10 +1453,9 @@
     function renderInvoicePreviewConfirmView() {
       const preview = currentInvoicePreview || {};
       const blocks = Array.isArray(preview.blocks) ? preview.blocks : [];
+      const campaigns = [...new Set(blocks.map(block => String(block.campaign || "").trim()).filter(Boolean))];
       document.getElementById("previewClientValue").textContent = preview.client || "";
-      document.getElementById("previewProjectsValue").textContent = Array.isArray(preview.projects) && preview.projects.length
-        ? preview.projects.join(", ")
-        : "";
+      document.getElementById("previewProjectsValue").textContent = campaigns.join(", ");
       document.getElementById("previewServiceTitleValue").textContent = preview.serviceTitle || "";
       document.getElementById("previewInvoiceNumberValue").textContent = preview.invoiceNumber ? `#${preview.invoiceNumber}` : "";
       document.getElementById("previewInvoiceDateValue").textContent = preview.invoiceDate || "";
