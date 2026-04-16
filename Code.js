@@ -730,7 +730,7 @@ function buildFixedInvoiceLayoutRows_(blocks) {
 
   blocks.forEach((block, blockIndex) => {
     const titleLines = splitTextIntoLines(block.title, 75);
-    const descriptionLines = splitTextIntoLines(block.description, 75);
+    const descriptionLines = splitTextIntoLines(block.description, 85);
 
     titleLines.forEach((line, lineIndex) => {
       rows.push({
@@ -773,6 +773,10 @@ function buildFixedInvoiceLayoutRows_(blocks) {
 function writeFixedInvoiceBlocks_(sheet, blocks) {
   const startRow = 21;
   const contentRowCount = 28;
+  const bufferRow = 49;
+  const targetHeight = Array.from({ length: contentRowCount + 1 }, (_, index) => {
+    return sheet.getRowHeight(startRow + index);
+  }).reduce((sum, height) => sum + height, 0);
   const layoutRows = buildFixedInvoiceLayoutRows_(blocks);
 
   if (layoutRows.length > contentRowCount) {
@@ -857,6 +861,24 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
         .setVerticalAlignment("middle");
     }
   });
+
+  layoutRows.forEach((layoutRow, index) => {
+    sheet.setRowHeight(startRow + index, layoutRow.height);
+  });
+
+  const usedHeight = Array.from({ length: contentRowCount }, (_, index) => {
+    const layoutRow = layoutRows[index];
+    return layoutRow ? layoutRow.height : 25;
+  }).reduce((sum, height) => sum + height, 0);
+  const bufferHeight = targetHeight - usedHeight;
+  if (bufferHeight < 0) {
+    sheet.setRowHeight(bufferRow, 0);
+    return {
+      success: false,
+      message: "Trop d’informations pour une seule facture. Veuillez réduire le nombre de blocs, d’activités ou de descriptions."
+    };
+  }
+  sheet.setRowHeight(bufferRow, bufferHeight);
 
   return { success: true };
 }
