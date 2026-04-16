@@ -507,9 +507,14 @@ function generateInvoiceTextWithOpenAI(previewPayload) {
     instructions: [
       "Tu aides a preparer un apercu de facture pour un client.",
       "Retourne uniquement du JSON valide, sans Markdown ni texte hors JSON.",
-      "Genere un titre global court, professionnel, specifique et fonde sur le contenu facture.",
-      "Genere une description concise par bloc, basee d'abord sur les notes, comme resume de travaux realises.",
-      "Le ton doit rester sobre, clair, non promotionnel, sans listes a puces."
+      "Le champ serviceTitle doit etre un titre nominal, court, precis, idealement entre 2 et 5 mots, qui designe le mandat ou le livrable principal.",
+      "Le serviceTitle ne doit jamais commencer par 'Facture pour', ne doit jamais contenir 'Services de', ne doit pas etre une phrase complete et ne doit pas repeter qu'il s'agit d'une facture.",
+      "Style vise pour serviceTitle, sans copier ces exemples: Creation d'affiche, Conception d'affiche, Conception visuelle, Creation et declinaisons d'affiche.",
+      "Chaque blocks[].description doit etre une synthese editoriale courte du travail realise, professionnelle, sobre, naturelle et agreable a lire.",
+      "Chaque description doit tenir en une phrase; deux phrases maximum seulement si necessaire.",
+      "Les descriptions doivent s'appuyer d'abord sur les notes du bloc, puis sur les activites, sans inventer d'elements absents.",
+      "Ne fais pas de liste d'actions separees par des virgules, ne reprends pas les notes une a une dans le meme ordre et ne reformule pas mecaniquement chaque note.",
+      "Evite les textes froids, telegraphiques, purement enumeratifs, promotionnels ou exageres."
     ].join(" "),
     input: JSON.stringify(previewPayload),
     text: {
