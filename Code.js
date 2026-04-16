@@ -1099,6 +1099,7 @@ function prepareInvoicePreview(invoiceNumber) {
   }
   const {
     facturerTimeSheet,
+    facturerConfigSheet,
     facturerTrackingSheet
   } = validationResult;
 
@@ -1241,6 +1242,7 @@ function prepareInvoicePreview(invoiceNumber) {
   const projects = [...new Set(facturerCheckedRows.map(({ row }) => String(row[3] || "").trim()).filter(String))];
   const campaigns = [...new Set(previewBlocks.map(block => String(block.campaign || "").trim()).filter(String))];
   const totalAmount = previewBlocks.reduce((sum, block) => sum + block.totalPrice, 0);
+  const shouldUseOpenAI = facturerConfigSheet.getRange("A2").getValue() === true;
   let serviceTitle = buildPreviewServiceTitle(previewBlocks);
   const blocks = previewBlocks.map((block, index) => {
     return {
@@ -1256,21 +1258,23 @@ function prepareInvoicePreview(invoiceNumber) {
       totalPrice: Number(block.totalPrice.toFixed(2))
     };
   });
-  const generatedInvoiceText = generateInvoiceTextWithOpenAI({
-    client: facturerClientName,
-    campaigns,
-    projects,
-    blocks: previewBlocks.map((block, index) => ({
-      blockNumber: index + 1,
-      campaign: block.campaign,
-      project: block.project,
-      activities: block.activities.map(activity => ({
-        name: activity.name,
-        time: Number(activity.time.toFixed(2))
-      })),
-      notes: block.notes
-    }))
-  });
+  const generatedInvoiceText = shouldUseOpenAI
+    ? generateInvoiceTextWithOpenAI({
+      client: facturerClientName,
+      campaigns,
+      projects,
+      blocks: previewBlocks.map((block, index) => ({
+        blockNumber: index + 1,
+        campaign: block.campaign,
+        project: block.project,
+        activities: block.activities.map(activity => ({
+          name: activity.name,
+          time: Number(activity.time.toFixed(2))
+        })),
+        notes: block.notes
+      }))
+    })
+    : null;
   if (generatedInvoiceText) {
     const generatedServiceTitle = cleanGeneratedInvoiceText_(generatedInvoiceText.serviceTitle);
     if (generatedServiceTitle) {
