@@ -754,9 +754,7 @@ function buildFixedInvoiceLayoutRows_(blocks) {
 
 function writeFixedInvoiceBlocks_(sheet, blocks) {
   const startRow = 21;
-  const contentRowCount = 20;
-  const bufferRow = 41;
-  const targetHeight = 560;
+  const contentRowCount = 28;
   const layoutRows = buildFixedInvoiceLayoutRows_(blocks);
 
   if (layoutRows.length > contentRowCount) {
@@ -766,7 +764,7 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
     };
   }
 
-  const workRange = sheet.getRange(startRow, 1, contentRowCount + 1, 16);
+  const workRange = sheet.getRange(startRow, 1, contentRowCount, 16);
   workRange.breakApart();
   workRange.clearContent();
   workRange.setWrap(false);
@@ -841,36 +839,6 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
         .setVerticalAlignment("middle");
     }
   });
-
-  const usedHeight = Array.from({ length: contentRowCount }, (_, index) => {
-    const layoutRow = layoutRows[index];
-    return layoutRow ? layoutRow.height : 25;
-  }).reduce((sum, height) => sum + height, 0);
-  let remainingHeight = targetHeight - usedHeight;
-  if (remainingHeight >= 0) {
-    sheet.setRowHeight(bufferRow, remainingHeight);
-    return { success: true };
-  }
-
-  sheet.setRowHeight(bufferRow, 0);
-  let overflow = Math.abs(remainingHeight);
-  for (let rowNumber = startRow + contentRowCount - 1; rowNumber >= startRow && overflow > 0; rowNumber--) {
-    const layoutIndex = rowNumber - startRow;
-    if (layoutRows[layoutIndex]) {
-      break;
-    }
-    const currentHeight = sheet.getRowHeight(rowNumber);
-    const reduction = Math.min(currentHeight, overflow);
-    sheet.setRowHeight(rowNumber, currentHeight - reduction);
-    overflow -= reduction;
-  }
-
-  if (overflow > 0) {
-    return {
-      success: false,
-      message: "Trop d’informations pour une seule facture. Veuillez réduire le nombre de blocs, d’activités ou de descriptions."
-    };
-  }
 
   return { success: true };
 }
@@ -1272,7 +1240,7 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   facturerTempSheet.getRange("C12").setValue(formatFrenchInvoiceList_(facturerCampaignSummary));
   facturerTempSheet.getRange("C14").setValue(activityType);
   facturerTempSheet.getRange("C17").setValue(Number(facturerTotalAmount));
-  facturerTempSheet.getRange("N43").setValue(Number(facturerTotalAmount));
+  facturerTempSheet.getRange("N51").setValue(Number(facturerTotalAmount));
   const fixedBlockWriteResult = writeFixedInvoiceBlocks_(facturerTempSheet, facturerInvoiceBlocks);
   if (!fixedBlockWriteResult.success) {
     facturerSpreadsheet.deleteSheet(facturerTempSheet);
