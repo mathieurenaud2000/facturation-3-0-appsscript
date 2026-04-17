@@ -391,8 +391,7 @@ function exportInvoiceSheetPdfBlob_(spreadsheetId, sheetId, fileName) {
     printtitle: "false",
     pagenumbers: "false",
     gridlines: "false",
-    fzr: "false",
-    bottom_margin: "0.3"
+    fzr: "false"
   };
   const exportQuery = Object.keys(exportParams)
     .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(exportParams[key])}`)
