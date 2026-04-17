@@ -780,21 +780,7 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
     return sheet.getRowHeight(startRow + index);
   }).reduce((sum, height) => sum + height, 0);
   const layoutRows = buildFixedInvoiceLayoutRows_(blocks);
-  const initialHeights21To49 = Array.from({ length: contentRowCount + 1 }, (_, index) => {
-    const row = startRow + index;
-    return { row, height: sheet.getRowHeight(row) };
-  });
-  Logger.log(`PDF_LAYOUT_DEBUG blocks=${blocks.length}, layoutRows=${layoutRows.length}`);
-  Logger.log(`PDF_LAYOUT_DEBUG layoutRows=${JSON.stringify(layoutRows.map((row, index) => ({
-    index,
-    targetRow: startRow + index,
-    type: row.type,
-    height: row.height,
-    textLength: row.text ? String(row.text).length : null,
-    activity: row.activity ? row.activity.name : null
-  })))}`);
-  Logger.log(`PDF_LAYOUT_DEBUG initialHeights21To49=${JSON.stringify(initialHeights21To49)}`);
-  Logger.log(`PDF_LAYOUT_DEBUG targetHeight=${targetHeight}, bufferRowExtensionPx=${bufferRowExtensionPx}`);
+  const targetTotalHeight = targetHeight + bufferRowExtensionPx;
 
   if (layoutRows.length > contentRowCount) {
     return {
@@ -803,11 +789,10 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
     };
   }
 
-  const requestedContentHeight = Array.from({ length: contentRowCount }, (_, index) => {
-    const layoutRow = layoutRows[index];
-    return layoutRow ? layoutRow.height : minimumRowHeight;
-  }).reduce((sum, height) => sum + height, 0);
-  const preliminaryBufferHeight = targetHeight - requestedContentHeight + bufferRowExtensionPx;
+  const requestedContentHeight = layoutRows.reduce((sum, layoutRow) => {
+    return sum + layoutRow.height;
+  }, 0);
+  const preliminaryBufferHeight = targetTotalHeight - requestedContentHeight;
   if (preliminaryBufferHeight < minimumRowHeight) {
     return {
       success: false,
@@ -897,16 +882,12 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
   });
 
   SpreadsheetApp.flush();
-  const actualContentHeight = Array.from({ length: contentRowCount }, (_, index) => {
+  const actualContentHeight = Array.from({ length: layoutRows.length }, (_, index) => {
     return sheet.getRowHeight(startRow + index);
   }).reduce((sum, height) => sum + height, 0);
-  const actualHeights21To48 = Array.from({ length: contentRowCount }, (_, index) => {
-    const row = startRow + index;
-    return { row, height: sheet.getRowHeight(row) };
-  });
-  Logger.log(`PDF_LAYOUT_DEBUG actualHeights21To48=${JSON.stringify(actualHeights21To48)}`);
-  Logger.log(`PDF_LAYOUT_DEBUG requestedContentHeight=${requestedContentHeight}, actualContentHeight=${actualContentHeight}, preliminaryBufferHeight=${preliminaryBufferHeight}`);
-  const bufferHeight = targetHeight - actualContentHeight + bufferRowExtensionPx;
+  const firstTrailingEmptyRow = startRow + layoutRows.length;
+  const rowsToDelete = contentRowCount - layoutRows.length;
+  const bufferHeight = targetTotalHeight - actualContentHeight;
   if (bufferHeight < minimumRowHeight) {
     return {
       success: false,
@@ -914,23 +895,13 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
     };
   }
 
-  sheet.setRowHeight(bufferRow, bufferHeight);
-  SpreadsheetApp.flush();
-  const finalHeights21To49 = Array.from({ length: contentRowCount + 1 }, (_, index) => {
-    const row = startRow + index;
-    return { row, height: sheet.getRowHeight(row) };
-  });
-  const finalHeight21To49 = finalHeights21To49.reduce((sum, item) => sum + item.height, 0);
-  const finalHeights21To51 = Array.from({ length: contentRowCount + 3 }, (_, index) => {
-    const row = startRow + index;
-    return { row, height: sheet.getRowHeight(row) };
-  });
-  const finalHeight21To51 = finalHeights21To51.reduce((sum, item) => sum + item.height, 0);
-  Logger.log(`PDF_LAYOUT_DEBUG bufferHeightRequested=${bufferHeight}, bufferHeightActual=${sheet.getRowHeight(bufferRow)}`);
-  Logger.log(`PDF_LAYOUT_DEBUG finalHeights21To49=${JSON.stringify(finalHeights21To49)}`);
-  Logger.log(`PDF_LAYOUT_DEBUG finalHeight21To49=${finalHeight21To49}, expected=${targetHeight + bufferRowExtensionPx}`);
-  Logger.log(`PDF_LAYOUT_DEBUG finalHeights21To51=${JSON.stringify(finalHeights21To51)}`);
-  Logger.log(`PDF_LAYOUT_DEBUG finalHeight21To51=${finalHeight21To51}`);
+  if (rowsToDelete > 0) {
+    sheet.deleteRows(firstTrailingEmptyRow, rowsToDelete);
+    SpreadsheetApp.flush();
+  }
+
+  const finalBufferRow = firstTrailingEmptyRow;
+  sheet.setRowHeight(finalBufferRow, bufferHeight);
 
   return { success: true };
 }
@@ -1342,12 +1313,6 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   }
 
   SpreadsheetApp.flush();
-  const postSubmitFlushHeights21To51 = Array.from({ length: 31 }, (_, index) => {
-    const row = 21 + index;
-    return { row, height: facturerTempSheet.getRowHeight(row) };
-  });
-  Logger.log(`PDF_LAYOUT_DEBUG postSubmitFlushHeights21To51=${JSON.stringify(postSubmitFlushHeights21To51)}`);
-  Logger.log(`PDF_LAYOUT_DEBUG postSubmitFlushHeight21To51=${postSubmitFlushHeights21To51.reduce((sum, item) => sum + item.height, 0)}`);
   let facturerPdfFile = null;
   try {
     const facturerSheetNamesBeforeExport = facturerSpreadsheet.getSheets().map(sheet => sheet.getName());
