@@ -774,24 +774,25 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
   const startRow = 21;
   const contentRowCount = 28;
   const bufferRow = 49;
+  const minimumRowHeight = 1;
   const targetHeight = Array.from({ length: contentRowCount + 1 }, (_, index) => {
     return sheet.getRowHeight(startRow + index);
   }).reduce((sum, height) => sum + height, 0);
   const layoutRows = buildFixedInvoiceLayoutRows_(blocks);
-  Logger.log(JSON.stringify({
-    context: "writeFixedInvoiceBlocks_start",
-    sheetName: sheet.getName(),
-    sheetId: sheet.getSheetId(),
-    maxRows: sheet.getMaxRows(),
-    maxColumns: sheet.getMaxColumns(),
-    startRow,
-    contentRowCount,
-    bufferRow,
-    targetHeight,
-    layoutRowsCount: layoutRows.length
-  }));
 
   if (layoutRows.length > contentRowCount) {
+    return {
+      success: false,
+      message: "Trop d’informations pour une seule facture. Veuillez réduire le nombre de blocs, d’activités ou de descriptions."
+    };
+  }
+
+  const usedHeight = Array.from({ length: contentRowCount }, (_, index) => {
+    const layoutRow = layoutRows[index];
+    return layoutRow ? layoutRow.height : minimumRowHeight;
+  }).reduce((sum, height) => sum + height, 0);
+  const bufferHeight = targetHeight - usedHeight;
+  if (bufferHeight < minimumRowHeight) {
     return {
       success: false,
       message: "Trop d’informations pour une seule facture. Veuillez réduire le nombre de blocs, d’activités ou de descriptions."
@@ -802,23 +803,10 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
   workRange.breakApart();
   workRange.clearContent();
   workRange.setWrap(false);
-  Logger.log(JSON.stringify({
-    context: "writeFixedInvoiceBlocks_setRowHeights_reset",
-    startRow,
-    contentRowCount,
-    height: 25
-  }));
-  sheet.setRowHeights(startRow, contentRowCount, 25);
+  sheet.setRowHeights(startRow, contentRowCount, minimumRowHeight);
 
   layoutRows.forEach((layoutRow, index) => {
     const rowNumber = startRow + index;
-    Logger.log(JSON.stringify({
-      context: "writeFixedInvoiceBlocks_setRowHeight_first_pass",
-      rowNumber,
-      type: layoutRow.type,
-      height: layoutRow.height,
-      isFiniteHeight: Number.isFinite(layoutRow.height)
-    }));
     sheet.setRowHeight(rowNumber, layoutRow.height);
 
     if (layoutRow.type === "title") {
@@ -889,48 +877,9 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
 
   layoutRows.forEach((layoutRow, index) => {
     const rowNumber = startRow + index;
-    Logger.log(JSON.stringify({
-      context: "writeFixedInvoiceBlocks_setRowHeight_second_pass",
-      rowNumber,
-      type: layoutRow.type,
-      height: layoutRow.height,
-      isFiniteHeight: Number.isFinite(layoutRow.height)
-    }));
     sheet.setRowHeight(rowNumber, layoutRow.height);
   });
 
-  const usedHeight = Array.from({ length: contentRowCount }, (_, index) => {
-    const layoutRow = layoutRows[index];
-    return layoutRow ? layoutRow.height : 25;
-  }).reduce((sum, height) => sum + height, 0);
-  const bufferHeight = targetHeight - usedHeight;
-  Logger.log(JSON.stringify({
-    context: "writeFixedInvoiceBlocks_buffer_calculation",
-    targetHeight,
-    usedHeight,
-    bufferRow,
-    bufferHeight,
-    maxRows: sheet.getMaxRows()
-  }));
-  if (bufferHeight < 0) {
-    Logger.log(JSON.stringify({
-      context: "writeFixedInvoiceBlocks_setRowHeight_buffer_overflow",
-      rowNumber: bufferRow,
-      height: 0,
-      bufferHeight
-    }));
-    sheet.setRowHeight(bufferRow, 1);
-    return {
-      success: false,
-      message: "Trop d’informations pour une seule facture. Veuillez réduire le nombre de blocs, d’activités ou de descriptions."
-    };
-  }
-  Logger.log(JSON.stringify({
-    context: "writeFixedInvoiceBlocks_setRowHeight_buffer",
-    rowNumber: bufferRow,
-    height: bufferHeight,
-    isFiniteHeight: Number.isFinite(bufferHeight)
-  }));
   sheet.setRowHeight(bufferRow, bufferHeight);
 
   return { success: true };
