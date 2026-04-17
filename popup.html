@@ -532,9 +532,10 @@
     }
 
     .invoice-overflow-alert-icon {
-      font-size: 200px;
-      line-height: 1;
-      color: #00983a;
+      display: block;
+      width: 300px;
+      height: 300px;
+      object-fit: contain;
       margin-bottom: 9px;
     }
 
@@ -804,13 +805,11 @@
     }
 
     .loading-spinner {
-      border: 8px solid #f3f3f3;
-      border-top: 8px solid #4CAF50;
-      border-radius: 50%;
-      width: 90px;
-      height: 90px;
-      animation: spin 1s linear infinite;
-      margin-bottom: 15px;
+      display: block;
+      width: 300px;
+      height: 300px;
+      object-fit: contain;
+      margin-bottom: 0;
     }
 
     @keyframes spin {
@@ -944,7 +943,7 @@
     </div>
     <!-- État de chargement -->
     <div id="loadingView" class="popup-view status-view">
-      <div class="loading-spinner"></div>
+      <img class="loading-spinner" src="https://drive.google.com/thumbnail?id=1lL-31VG7OALHrcuzGB6asjqEoaKJP4K0&amp;sz=w300" alt="">
       <div class="message-title" id="loadingTitle">Création de la facture</div>
       <div class="message-sub" id="loadingMessage">Veuillez patienter...</div>
     </div>
@@ -963,7 +962,7 @@
     <!-- État d'erreur -->
     <div id="errorView" class="popup-view error-view">
       <div id="invoiceOverflowAlertContent" class="invoice-overflow-alert-content" aria-live="polite">
-        <span class="material-symbols-outlined invoice-overflow-alert-icon">error</span>
+        <img class="invoice-overflow-alert-icon" src="https://drive.google.com/thumbnail?id=10xXEtKTwvC_Xw3SdLImqVNAaYsFjVlMM&amp;sz=w300" alt="Attention">
         <div class="invoice-overflow-alert-title">Trop d’informations pour une seule facture.</div>
         <div class="invoice-overflow-alert-line">Veuillez simplifier les descriptions ou diminuer</div>
         <div class="invoice-overflow-alert-line">le nombre d’entrées à facturer.</div>
