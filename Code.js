@@ -391,7 +391,8 @@ function exportInvoiceSheetPdfBlob_(spreadsheetId, sheetId, fileName) {
     printtitle: "false",
     pagenumbers: "false",
     gridlines: "false",
-    fzr: "false"
+    fzr: "false",
+    bottom_margin: "0"
   };
   const exportQuery = Object.keys(exportParams)
     .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(exportParams[key])}`)
@@ -775,9 +776,10 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
   const contentRowCount = 28;
   const bufferRow = 49;
   const minimumRowHeight = 1;
+  const bottomBufferExtensionPx = 40;
   const targetHeight = Array.from({ length: contentRowCount + 1 }, (_, index) => {
     return sheet.getRowHeight(startRow + index);
-  }).reduce((sum, height) => sum + height, 0);
+  }).reduce((sum, height) => sum + height, 0) + bottomBufferExtensionPx;
   const layoutRows = buildFixedInvoiceLayoutRows_(blocks);
 
   if (layoutRows.length > contentRowCount) {
