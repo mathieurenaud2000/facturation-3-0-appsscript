@@ -788,12 +788,12 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
     };
   }
 
-  const usedHeight = Array.from({ length: contentRowCount }, (_, index) => {
+  const requestedContentHeight = Array.from({ length: contentRowCount }, (_, index) => {
     const layoutRow = layoutRows[index];
     return layoutRow ? layoutRow.height : minimumRowHeight;
   }).reduce((sum, height) => sum + height, 0);
-  const bufferHeight = targetHeight - usedHeight + bufferRowExtensionPx;
-  if (bufferHeight < minimumRowHeight) {
+  const preliminaryBufferHeight = targetHeight - requestedContentHeight + bufferRowExtensionPx;
+  if (preliminaryBufferHeight < minimumRowHeight) {
     return {
       success: false,
       message: "Trop d’informations pour une seule facture. Veuillez réduire le nombre de blocs, d’activités ou de descriptions."
@@ -880,6 +880,18 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
     const rowNumber = startRow + index;
     sheet.setRowHeight(rowNumber, layoutRow.height);
   });
+
+  SpreadsheetApp.flush();
+  const actualContentHeight = Array.from({ length: contentRowCount }, (_, index) => {
+    return sheet.getRowHeight(startRow + index);
+  }).reduce((sum, height) => sum + height, 0);
+  const bufferHeight = targetHeight - actualContentHeight + bufferRowExtensionPx;
+  if (bufferHeight < minimumRowHeight) {
+    return {
+      success: false,
+      message: "Trop d’informations pour une seule facture. Veuillez réduire le nombre de blocs, d’activités ou de descriptions."
+    };
+  }
 
   sheet.setRowHeight(bufferRow, bufferHeight);
 
