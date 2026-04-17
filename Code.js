@@ -919,7 +919,7 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
       height: 0,
       bufferHeight
     }));
-    sheet.setRowHeight(bufferRow, 0);
+    sheet.setRowHeight(bufferRow, 1);
     return {
       success: false,
       message: "Trop d’informations pour une seule facture. Veuillez réduire le nombre de blocs, d’activités ou de descriptions."
