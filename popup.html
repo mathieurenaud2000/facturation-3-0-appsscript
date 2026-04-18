@@ -1513,7 +1513,7 @@
         return;
       }
 
-      const normalizedType = `popup-type-${type.trim()}`;
+      const normalizedType = "popup-type-" + type.trim();
       if (popupTypeClasses.includes(normalizedType)) {
         popupContainer.classList.add(normalizedType);
       }
