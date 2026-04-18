@@ -1993,9 +1993,7 @@
       const containerRect = scrollElement.getBoundingClientRect();
       return blocks.find(block => {
         const blockRect = block.getBoundingClientRect();
-        const isNextBlock = blockRect.top > containerRect.top + tolerance;
-        const isNotFullyVisible = blockRect.bottom > containerRect.bottom - tolerance;
-        return isNextBlock && isNotFullyVisible;
+        return blockRect.top > containerRect.top + tolerance;
       }) || null;
     }
 
