@@ -721,12 +721,14 @@
 
     .invoice-preview-mode .footer {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);
-      column-gap: 30px;
-      align-items: end;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 24px minmax(0, 2fr);
+      grid-template-rows: 40px;
+      column-gap: 0;
+      align-items: stretch;
+      align-content: start;
       width: 100%;
-      height: 80px;
-      padding: 27px 0 0 0;
+      height: 68px;
+      padding: 24px 0 4px 0;
       background: #ffffff;
       border-top: none;
     }
@@ -741,11 +743,11 @@
     .invoice-preview-mode #close {
       grid-column: 2;
       grid-row: 1;
-      align-self: end;
+      align-self: stretch;
       justify-self: stretch;
       display: inline-flex !important;
-      height: 53px;
-      min-height: 53px;
+      height: 40px;
+      min-height: 40px;
       min-width: 0;
       max-width: 100%;
       margin-left: 0;
@@ -756,13 +758,13 @@
     }
 
     .invoice-preview-mode #submit {
-      grid-column: 3;
+      grid-column: 4;
       grid-row: 1;
-      align-self: end;
+      align-self: stretch;
       justify-self: stretch;
       display: inline-flex !important;
-      height: 53px;
-      min-height: 53px;
+      height: 40px;
+      min-height: 40px;
       min-width: 0;
       max-width: 100%;
       margin-left: 0;
