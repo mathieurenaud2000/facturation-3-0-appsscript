@@ -161,19 +161,6 @@ function Facturer() {
     return;
   }
 
-  const facturerContacts = facturerConfigSheet.getRange("B2:B" + facturerConfigSheet.getLastRow()).getValues().flat().filter(String);
-  const facturerActivityTypes = facturerConfigSheet.getRange("C2:C" + facturerConfigSheet.getLastRow()).getValues().flat().filter(String);
-
-  if (facturerContacts.length === 0 || facturerActivityTypes.length === 0) {
-    openStandaloneMessageView_("Erreur : La feuille CONFIG doit contenir au moins un contact (B2:B) et un type d'activité (C2:C).");
-    return;
-  }
-
-  if (facturerContacts.some(c => c.includes("${c}")) || facturerActivityTypes.some(a => a.includes("${a}"))) {
-    openStandaloneMessageView_("Erreur : Les colonnes B (contacts) ou C (types d'activité) dans CONFIG contiennent des données invalides (ex. : ${c}, ${a}). Veuillez corriger.");
-    return;
-  }
-
   const facturerTimeData = facturerTimeSheet.getRange("A7:Q" + facturerTimeSheet.getLastRow()).getValues();
   const facturerCheckedRows = facturerTimeData.map((row, index) => ({ row: row, index: index + 7 }))
     .filter(row => row.row[0] === true);
@@ -219,7 +206,7 @@ function Facturer() {
   }
 
   const invoiceNumberingSetup = checkInvoiceNumberingSetup();
-  showFacturerPopup(facturerContacts, facturerActivityTypes, null, invoiceNumberingSetup.requiresInitialInvoiceSetup);
+  showFacturerPopup([], [], null, invoiceNumberingSetup.requiresInitialInvoiceSetup);
 }
 
 function checkInvoiceNumberingSetup() {
