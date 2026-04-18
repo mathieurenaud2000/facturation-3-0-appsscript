@@ -1649,6 +1649,12 @@
       submitInvoiceRequest(pendingInvoiceSubmission, false);
     }
 
+    function openBlankBlueModelessFromPreviewClose() {
+      google.script.run
+        .withSuccessHandler(() => google.script.host.close())
+        .openBlankBlueModelessTest();
+    }
+
     function showInvoicePreviewConfirmView() {
       setInvoicePreviewMode(true);
       setInvoicePreviewPopupSize();
@@ -1665,7 +1671,7 @@
           scrollArrow: { visible: true, enabled: false }
         },
         primaryAction: confirmInvoicePreview,
-        secondaryAction: () => google.script.host.close(),
+        secondaryAction: openBlankBlueModelessFromPreviewClose,
         openPdfAction: null
       });
       window.requestAnimationFrame(updateInvoiceScrollArrowState);

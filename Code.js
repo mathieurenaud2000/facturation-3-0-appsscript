@@ -10,6 +10,14 @@ function openStandaloneMessageView_(message, title = "Erreur", options = {}) {
   SpreadsheetApp.getUi().showModelessDialog(html, title);
 }
 
+function openBlankBlueModelessTest() {
+  const html = HtmlService.createHtmlOutputFromFile("fondDesChoses")
+    .setWidth(900)
+    .setHeight(450);
+  html.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  SpreadsheetApp.getUi().showModelessDialog(html, "FOND DES CHOSES");
+}
+
 function ouvrirPopup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getActiveSheet();
@@ -747,7 +755,7 @@ function buildFixedInvoiceLayoutRows_(blocks) {
     descriptionLines.forEach(line => {
       rows.push({
         type: "description",
-        height: 12,
+        height: 21,
         text: line
       });
     });
@@ -757,7 +765,7 @@ function buildFixedInvoiceLayoutRows_(blocks) {
     block.activities.forEach(activity => {
       rows.push({
         type: "activity",
-        height: 20,
+        height: 21,
         activity
       });
     });
@@ -776,9 +784,7 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
   const bufferRow = 49;
   const minimumRowHeight = 1;
   const bufferRowExtensionPx = 40;
-  const targetHeight = Array.from({ length: contentRowCount + 1 }, (_, index) => {
-    return sheet.getRowHeight(startRow + index);
-  }).reduce((sum, height) => sum + height, 0);
+  const targetHeight = 640; //625 605
   const layoutRows = buildFixedInvoiceLayoutRows_(blocks);
   const targetTotalHeight = targetHeight + bufferRowExtensionPx;
 
