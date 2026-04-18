@@ -1347,7 +1347,7 @@ function prepareInvoicePreview(invoiceNumber) {
   }
   const {
     facturerTimeSheet,
-    facturerConfigSheet,
+    facturerGestionSheet,
     facturerTrackingSheet
   } = validationResult;
 
@@ -1490,7 +1490,7 @@ function prepareInvoicePreview(invoiceNumber) {
   const projects = [...new Set(facturerCheckedRows.map(({ row }) => String(row[3] || "").trim()).filter(String))];
   const campaigns = [...new Set(previewBlocks.map(block => String(block.campaign || "").trim()).filter(String))];
   const totalAmount = previewBlocks.reduce((sum, block) => sum + block.totalPrice, 0);
-  const shouldUseOpenAI = facturerConfigSheet.getRange("A2").getValue() === true;
+  const shouldUseOpenAI = facturerGestionSheet.getRange("G2").getValue() === true;
   let serviceTitle = buildPreviewServiceTitle(previewBlocks);
   const blocks = previewBlocks.map((block, index) => {
     return {
