@@ -2083,27 +2083,25 @@ function checkAndSetTime() {
   }
 }
 
-// INFO : Change les données sur MODÈLE
+// INFO : Change les coordonnées de l'entreprise
 
 function info() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheetModele = ss.getSheetByName("MODÈLE");
   const sheetGestion = ss.getSheetByName("GESTION");
 
-  if (!sheetModele || !sheetGestion) {
-    openStandaloneMessageView_("Erreur : La feuille 'MODÈLE' ou 'GESTION' est manquante.");
+  if (!sheetGestion) {
+    openStandaloneMessageView_("Erreur : La feuille 'GESTION' est manquante.");
     return;
   }
 
-  const name = String(sheetModele.getRange("L10").getValue() || "");
-  const address = String(sheetModele.getRange("L11").getValue() || "");
-  const addressLines = address ? address.split("\n") : ["", "", "", ""];
-  const address1 = String(addressLines[0] || "");
-  const address2 = String(addressLines[1] || "");
-  const address3 = String(addressLines[2] || "");
-  const address4 = String(addressLines[3] || "");
-  const email = String(sheetModele.getRange("L16").getValue() || "");
-  const website = String(sheetModele.getRange("L17").getValue() || "");
+  const companyInfo = sheetGestion.getRange("F2:F8").getValues().flat();
+  const name = String(companyInfo[0] || "");
+  const address1 = String(companyInfo[1] || "");
+  const address2 = String(companyInfo[2] || "");
+  const address3 = String(companyInfo[3] || "");
+  const address4 = String(companyInfo[4] || "");
+  const email = String(companyInfo[5] || "");
+  const website = String(companyInfo[6] || "");
 
   const nextInvoice = String(sheetGestion.getRange("A2").getValue() || "");
 
@@ -2126,17 +2124,18 @@ function info() {
 
 function submitInfoForm(name, address1, address2, address3, address4, email, website, nextInvoice) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("CONFIG");
-  if (!sheet) throw new Error("Feuille CONFIG introuvable.");
+  const sheetGestion = ss.getSheetByName("GESTION");
+  if (!sheetGestion) throw new Error("Feuille GESTION introuvable.");
 
-  // Mettre à jour les cellules de CONFIG
-  sheet.getRange("B2").setValue(name);
-  sheet.getRange("B3").setValue(address1);
-  sheet.getRange("B4").setValue(address2);
-  sheet.getRange("B5").setValue(address3);
-  sheet.getRange("B6").setValue(address4);
-  sheet.getRange("B7").setValue(email);
-  sheet.getRange("B8").setValue(website);
+  sheetGestion.getRange("F2:F8").setValues([
+    [name],
+    [address1],
+    [address2],
+    [address3],
+    [address4],
+    [email],
+    [website]
+  ]);
 }
 
 // DOSSIER : Ouvre le dossier avec les PDF
