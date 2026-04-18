@@ -1168,20 +1168,8 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   }
 
   const facturerLastRow = facturerConfigSheet.getLastRow();
-  const facturerContactsRange = facturerConfigSheet.getRange("B2:B" + Math.max(2, facturerLastRow)).getValues();
   const facturerActivitiesRange = facturerConfigSheet.getRange("C2:C" + Math.max(2, facturerLastRow)).getValues();
   const shouldPersistNewActivityType = !facturerActivitiesRange.flat().includes(activityType);
-  if (!facturerContactsRange.flat().includes(contact)) {
-    let facturerLastContactRow = 2;
-    for (let i = 0; i < facturerContactsRange.length; i++) {
-      if (!facturerContactsRange[i][0]) {
-        facturerLastContactRow = i + 2;
-        break;
-      }
-      facturerLastContactRow = i + 3;
-    }
-    facturerConfigSheet.getRange(`B${facturerLastContactRow}`).setValue(contact.trim());
-  }
 
   const facturerTrackingLastRow = facturerTrackingSheet.getLastRow();
   const existingInvoiceValues = facturerTrackingLastRow >= 6
