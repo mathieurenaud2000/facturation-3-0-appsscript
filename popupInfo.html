@@ -38,7 +38,10 @@
     .config-grid {
       width: 100%;
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns:
+        calc((100% - (24px * 2)) * 0.5)
+        calc((100% - (24px * 2)) * 0.33)
+        calc((100% - (24px * 2)) * 0.17);
       column-gap: 24px;
     }
 
@@ -88,13 +91,13 @@
     }
 
     .field-label.is-required {
-      font-weight: 600;
+      font-weight: 500;
       color: #000000;
     }
 
     .field-label.is-optional {
       font-weight: 400;
-      color: #666666;
+      color: #b2b2b2;
     }
 
     .field-input {
@@ -144,7 +147,7 @@
       right: 0;
       width: 100%;
       height: 78px;
-      padding: 24px 24px 4px 24px;
+      padding: 24px 0 4px 0;
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       column-gap: 24px;
