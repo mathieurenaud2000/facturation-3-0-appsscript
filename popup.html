@@ -3,7 +3,7 @@
 <head>
   <base target="_top">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
   <style>
     * {
@@ -481,76 +481,118 @@
       line-height: 1.3;
     }
 
-    .message-view {
-      justify-content: flex-start;
-      padding: 40px 0 0 0;
-    }
-
-    .status-view {
-      flex-direction: column;
-      justify-content: flex-start;
-      padding: 60px 0 0 0;
-    }
-
-    #loadingView.status-view {
-      justify-content: center;
-      padding: 0 0 75px 0;
-    }
-
-    #loadingTitle,
-    #loadingMessage {
-      display: none;
-    }
-
+    .message-view,
+    .status-view,
     .error-view {
       justify-content: flex-start;
-      padding: 40px 0 0 0;
+      padding: 0;
     }
 
-    .error-view .invoice-overflow-alert-content {
-      display: none;
-    }
-
-    .invoice-preview-mode .error-view.invoice-overflow-alert {
-      align-items: stretch;
-      justify-content: center;
-      width: 100%;
-      height: calc(100vh - 80px);
+    .alert-screen-mode .popup-view.active {
       max-width: none !important;
+      width: 100%;
+      height: calc(100vh - 68px);
+      align-items: stretch;
+      justify-content: flex-start;
       padding: 0;
       font-family: Roboto, sans-serif;
+      color: #000000;
     }
 
-    .invoice-overflow-alert .invoice-overflow-alert-content {
-      flex: 1 1 auto;
+    .standard-alert-content {
+      width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      padding-top: 30px;
+      padding-top: 80px;
       text-align: center;
     }
 
-    .invoice-overflow-alert-icon {
+    .standard-alert-icon {
       display: block;
       width: 150px;
       height: 150px;
       object-fit: contain;
-      margin-bottom: 9px;
+      margin: 0 0 25px 0;
     }
 
-    .invoice-overflow-alert-title {
-      font-size: 14pt;
+    .standard-alert-title {
+      font-size: 24pt;
       font-weight: 700;
-      line-height: 1.25;
+      line-height: 1.15;
       color: #000000;
+      text-align: center;
+      margin: 0 0 10px 0;
     }
 
-    .invoice-overflow-alert-line {
-      font-size: 14pt;
+    .standard-alert-text {
+      font-size: 18pt;
       font-weight: 400;
       line-height: 1.25;
-      color: #aaaaaa;
+      color: #666666;
+      text-align: center;
+      white-space: pre-line;
+      margin: 0;
+    }
+
+    .invoice-number-screen-mode #invoiceNumberView.popup-view.active {
+      height: calc(100vh - 68px);
+      max-width: none !important;
+      align-items: stretch;
+      padding: 0;
+    }
+
+    .invoice-number-screen-mode .invoice-number-layout {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 75px;
+      gap: 0;
+    }
+
+    .invoice-number-icon {
+      font-size: 100px;
+      font-weight: 700;
+      line-height: 0.8;
+      color: #00983a;
+      margin: 0 0 20px 0;
+    }
+
+    .invoice-number-title {
+      font-size: 24pt;
+      font-weight: 700;
+      line-height: 1.15;
+      color: #000000;
+      margin: 0 0 10px 0;
+    }
+
+    .invoice-number-text {
+      font-size: 18pt;
+      font-weight: 400;
+      line-height: 1.25;
+      color: #666666;
+      margin: 0 0 20px 0;
+    }
+
+    .invoice-number-screen-mode .invoice-number-field {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 60px;
+    }
+
+    .invoice-number-screen-mode #invoiceNumberView #initialNumber {
+      width: 60px;
+      min-width: 60px;
+      padding: 10px;
+      text-align: center;
+      font-family: Roboto, sans-serif;
+      font-weight: 500;
+      font-size: 18pt;
+      color: #000000;
     }
 
     .popup-view.active {
@@ -723,6 +765,65 @@
       font-family: Roboto, sans-serif;
     }
 
+    .alert-screen-mode .footer {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      column-gap: 24px;
+      align-items: stretch;
+      width: 100%;
+      height: 68px;
+      padding: 24px 0 4px 0;
+      background: #ffffff;
+    }
+
+    .alert-screen-mode .footer.footer-empty {
+      display: none;
+    }
+
+    .alert-screen-mode .footer .btn {
+      height: 40px;
+      min-height: 40px;
+      min-width: 0;
+      max-width: 100%;
+      margin: 0;
+      padding: 0 24px;
+      font-family: Roboto, sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1;
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .alert-screen-mode .footer #submit {
+      grid-column: 2;
+      justify-self: stretch;
+      align-self: stretch;
+      width: 100%;
+    }
+
+    .alert-screen-mode .footer #close {
+      grid-column: 1;
+      justify-self: end;
+      align-self: stretch;
+      width: 50%;
+    }
+
+    .alert-screen-mode .footer.footer-single-secondary #close {
+      grid-column: 2;
+      justify-self: stretch;
+      width: 100%;
+    }
+
+    .invoice-number-screen-mode .footer #submit:disabled,
+    .invoice-number-screen-mode .footer #submit[disabled] {
+      background-color: #e6e6e6;
+      border-color: #e6e6e6;
+      color: #ffffff;
+      cursor: not-allowed;
+    }
+
     .btn {
       margin-right: 0;
       margin-left: 20px;
@@ -862,22 +963,21 @@
     <!-- Vue numéro initial -->
     <div id="invoiceNumberView" class="popup-view invoice-number-view">
       <div class="invoice-number-layout">
-        <div class="invoice-number-label">Numéro</div>
+        <div class="invoice-number-icon" aria-hidden="true">!</div>
+        <div class="invoice-number-title">Numérotation</div>
+        <div class="invoice-number-text">Veuillez définir un numéro de facture.</div>
         <div class="invoice-number-field">
           <input type="text" id="initialNumber" inputmode="numeric" autocomplete="off" pattern="[0-9]*" onkeydown="return allowOnlyInitialInvoiceNumberKey(event)" onpaste="handleInitialInvoiceNumberPaste(event)" oninput="sanitizeInitialInvoiceNumber(); validateInitialInvoiceNumber()">
           <div id="invoiceNumberError" class="inline-error" aria-live="polite"></div>
-        </div>
-        <div class="invoice-number-actions">
-          <button type="button" class="btn btn-white" onclick="google.script.host.close()">Fermer</button>
-          <button type="button" class="btn btn-green" disabled onclick="submitInitialInvoiceNumber()">OK</button>
         </div>
       </div>
     </div>
     <!-- Vue confirmation -->
     <div id="confirmView" class="popup-view confirm-view">
-      <div id="technicalConfirmContent" class="technical-confirm-content">
-        <div class="message-title" id="confirmTitle"></div>
-        <div class="message-sub" id="confirmMessage"></div>
+      <div id="technicalConfirmContent" class="technical-confirm-content standard-alert-content">
+        <img id="confirmIcon" class="standard-alert-icon" alt="">
+        <div class="standard-alert-title" id="confirmTitle"></div>
+        <div class="standard-alert-text" id="confirmMessage"></div>
       </div>
       <div id="invoicePreviewContent" class="invoice-preview-content">
         <div id="invoicePreviewScroll" class="invoice-preview-scroll">
@@ -920,8 +1020,11 @@
     </div>
     <!-- Vue message -->
     <div id="messageView" class="popup-view message-view">
-      <div class="message-title" id="messageViewTitle"></div>
-      <div class="message-sub" id="messageViewMessage"></div>
+      <div class="standard-alert-content">
+        <img id="messageViewIcon" class="standard-alert-icon" alt="">
+        <div class="standard-alert-title" id="messageViewTitle"></div>
+        <div class="standard-alert-text" id="messageViewMessage"></div>
+      </div>
     </div>
     <!-- Formulaire initial -->
     <div id="formView" class="popup-view form-view active">
@@ -944,15 +1047,19 @@
     </div>
     <!-- État de chargement -->
     <div id="loadingView" class="popup-view status-view">
-      <img class="loading-spinner" src="https://drive.google.com/thumbnail?id=1lL-31VG7OALHrcuzGB6asjqEoaKJP4K0&amp;sz=w300" alt="">
-      <div class="message-title" id="loadingTitle">Création de la facture</div>
-      <div class="message-sub" id="loadingMessage">Veuillez patienter...</div>
+      <div class="standard-alert-content">
+        <img id="loadingIcon" class="standard-alert-icon loading-spinner" src="https://drive.google.com/thumbnail?id=1lL-31VG7OALHrcuzGB6asjqEoaKJP4K0&amp;sz=w300" alt="">
+        <div class="standard-alert-title" id="loadingTitle">Création de la facture</div>
+        <div class="standard-alert-text" id="loadingMessage">Veuillez patienter...</div>
+      </div>
     </div>
     <!-- État de succès -->
     <div id="successView" class="popup-view status-view">
-      <i class="fas fa-check-circle success-icon"></i>
-      <div class="message-title" id="successTitle">Bravo</div>
-      <div class="message" id="successMessage">La facture a été enregistrée avec succès.</div>
+      <div class="standard-alert-content">
+        <img id="successIcon" class="standard-alert-icon" src="https://drive.google.com/thumbnail?id=1HxEwaK3fIc5xUWUQ3gdhiMB1jlv9mDI3&amp;sz=w300" alt="">
+        <div class="standard-alert-title" id="successTitle">Bravo !</div>
+        <div class="standard-alert-text" id="successMessage">La facture a été créée avec succès.</div>
+      </div>
     </div>
     <!-- État d'envoi -->
     <div id="sendInvoiceView" class="popup-view form-view">
@@ -962,13 +1069,11 @@
     </div>
     <!-- État d'erreur -->
     <div id="errorView" class="popup-view error-view">
-      <div id="invoiceOverflowAlertContent" class="invoice-overflow-alert-content" aria-live="polite">
-        <img class="invoice-overflow-alert-icon" src="https://drive.google.com/thumbnail?id=10xXEtKTwvC_Xw3SdLImqVNAaYsFjVlMM&amp;sz=w300" alt="Attention">
-        <div class="invoice-overflow-alert-title">Trop d’informations pour une seule facture.</div>
-        <div class="invoice-overflow-alert-line">Veuillez simplifier les descriptions ou diminuer</div>
-        <div class="invoice-overflow-alert-line">le nombre d’entrées à facturer.</div>
+      <div class="standard-alert-content" aria-live="polite">
+        <img id="errorIcon" class="standard-alert-icon" alt="">
+        <div id="errorTitle" class="standard-alert-title"></div>
+        <div class="standard-alert-text" id="errorMessage"></div>
       </div>
-      <div class="message" id="errorMessage"></div>
     </div>
     <!-- Pied de page -->
     <div class="footer">
@@ -994,6 +1099,147 @@
     let emailSendCompleted = false;
     let formValidationActivated = false;
     let invoiceNumberValidationActivated = false;
+    const driveImageUrl = (id) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w300`;
+    const alertIconSources = {
+      spinner: driveImageUrl("1lL-31VG7OALHrcuzGB6asjqEoaKJP4K0"),
+      alert: driveImageUrl("10xXEtKTwvC_Xw3SdLImqVNAaYsFjVlMM"),
+      bravo: driveImageUrl("1HxEwaK3fIc5xUWUQ3gdhiMB1jlv9mDI3"),
+      stop: driveImageUrl("1Gm3gf1EEao36NHn3aXd0ljHQcGrWgGDP"),
+      confirmation: driveImageUrl("1Nx-dB_qRyU4HuZ4akZvrr0FVgqX_Di-m")
+    };
+    const approvedAlertScreens = {
+      missing_sheets: {
+        icon: "stop",
+        title: "Feuilles requises introuvables",
+        message: "Vérifiez la structure du fichier"
+      },
+      missing_folder: {
+        icon: "stop",
+        title: "Dossier de sauvegarde introuvable",
+        message: "Veuillez déterminer dans quel dossier seront sauvées les factures."
+      },
+      invalid_folder: {
+        icon: "stop",
+        title: "Dossier de sauvegarde invalide",
+        message: "Vérifiez le ID du dossier de sauvegarde des factures."
+      },
+      no_checked_rows: {
+        icon: "alert",
+        title: "Aucune activité n’est sélectionnée",
+        message: "Veuillez cocher au moins une activité."
+      },
+      same_client: {
+        icon: "alert",
+        title: "Plusieurs clients sont sélectionnés",
+        message: "Veuillez sélectionner des activités n'appartenant qu'à un seul client."
+      },
+      task_running: {
+        icon: "alert",
+        title: "Une tâche est présentement en cours.",
+        message: "Terminez cette tâches avant de facturer."
+      },
+      required_fields: {
+        icon: "alert",
+        title: "Certaines données sont incomplètes",
+        message: "Complétez toutes les données avant de facturer."
+      },
+      invalid_rate: {
+        icon: "alert",
+        title: "Un taux est invalide",
+        message: "Vérifiez tous les taux horaire avant de facturer."
+      },
+      already_invoiced: {
+        icon: "alert",
+        title: "Certaines activités ont déjà été facturées",
+        message: "Retirez les activités facturées."
+      },
+      already_paid: {
+        icon: "alert",
+        title: "Certaines activités ont déjà été payées",
+        message: "Retirez les activités payées."
+      },
+      invalid_time: {
+        icon: "alert",
+        title: "Durée invalide",
+        message: "Vérifiez les durées avant de facturer."
+      },
+      preparing_invoice: {
+        icon: "spinner",
+        title: "Préparation de la facture",
+        message: "Veuillez patienter..."
+      },
+      invalid_invoice_history: {
+        icon: "stop",
+        title: "Historique de facturation invalide",
+        message: "Vérifiez les numéros déjà inscrits."
+      },
+      technical_preview_failure: {
+        icon: "stop",
+        title: "Une erreur technique est survenue",
+        message: "Veuillez recommencer."
+      },
+      replace_pdf: {
+        icon: "confirmation",
+        title: "Cette facture existe déjà",
+        message: "Voulez-vous remplacer le PDF existant?"
+      },
+      overflow: {
+        icon: "alert",
+        title: "Trop d’informations pour une seule facture",
+        message: "Réduisez le contenu avant de continuer."
+      },
+      creating_invoice: {
+        icon: "spinner",
+        title: "Création de la facture",
+        message: "Veuillez patienter..."
+      },
+      invoice_success: {
+        icon: "bravo",
+        title: "Bravo !",
+        message: "La facture a été créée avec succès."
+      }
+    };
+    const approvedAlertMatchers = [
+      {
+        key: "missing_sheets",
+        matches: [
+          "Erreur : Une ou plusieurs feuilles nécessaires sont manquantes.",
+          "Erreur : Feuilles requises manquantes."
+        ]
+      },
+      {
+        key: "missing_folder",
+        matches: [
+          "Erreur : Aucun dossier configuré.",
+          "Aucun dossier configuré."
+        ]
+      },
+      {
+        key: "invalid_folder",
+        matches: [
+          "Erreur : ID de dossier invalide.",
+          "Dossier Drive invalide. Veuillez vérifier la configuration."
+        ]
+      },
+      {
+        key: "no_checked_rows",
+        matches: [
+          "Aucune ligne cochée en colonne A, veuillez sélectionner des activités.",
+          "Aucune ligne sélectionnée. Veuillez recommencer."
+        ]
+      },
+      { key: "same_client", matches: ["Un seul client par facture."] },
+      { key: "task_running", matches: ["Attention, tâche en cours."] },
+      { key: "required_fields", matches: ["Attention. Données incomplètes."] },
+      { key: "invalid_rate", matches: ["Attention, taux invalide. Veuillez recommencer."] },
+      { key: "already_invoiced", matches: ["Attention, certaines entrées ont déjà été facturées."] },
+      { key: "already_paid", matches: ["Attention. Certaines entrées ont déjà été payées."] },
+      { key: "invalid_time", matches: ["Attention, heure invalide."] },
+      {
+        key: "invalid_invoice_history",
+        matches: ["Impossible de générer le prochain numéro : FACTURATION!B contient une valeur invalide."]
+      }
+    ];
     /* Le moteur supporte désormais une notion de type logique.
        Elle est ajoutée en parallèle des vues existantes pour préparer
        les futures migrations UI sans casser les appels actuels. */
@@ -1070,6 +1316,64 @@
       document.getElementById("popupContainer").classList.toggle("invoice-preview-mode", Boolean(enabled));
     }
 
+    function normalizeAlertText(value) {
+      return String(value || "").replace(/\s+/g, " ").trim();
+    }
+
+    function resolveApprovedAlertScreen({ screenKey, title, message, fallbackIcon = "stop" }) {
+      if (screenKey && approvedAlertScreens[screenKey]) {
+        return approvedAlertScreens[screenKey];
+      }
+
+      const normalizedTitle = normalizeAlertText(title);
+      const normalizedMessage = normalizeAlertText(message);
+      const matchedScreen = approvedAlertMatchers.find(entry => {
+        return entry.matches.some(match => {
+          const normalizedMatch = normalizeAlertText(match);
+          return normalizedTitle === normalizedMatch || normalizedMessage === normalizedMatch;
+        });
+      });
+      if (matchedScreen && approvedAlertScreens[matchedScreen.key]) {
+        return approvedAlertScreens[matchedScreen.key];
+      }
+
+      return {
+        icon: fallbackIcon,
+        title: normalizedTitle || "Une erreur technique est survenue",
+        message: normalizedMessage || "Veuillez recommencer."
+      };
+    }
+
+    function renderStandardAlertScreen({ iconElementId, titleElementId, messageElementId, screen }) {
+      const iconElement = document.getElementById(iconElementId);
+      const titleElement = document.getElementById(titleElementId);
+      const messageElement = document.getElementById(messageElementId);
+      const iconSource = alertIconSources[screen.icon] || alertIconSources.stop;
+      if (iconElement) {
+        iconElement.src = iconSource;
+        iconElement.alt = "";
+        iconElement.classList.toggle("loading-spinner", screen.icon === "spinner");
+      }
+      if (titleElement) {
+        titleElement.textContent = screen.title || "";
+      }
+      if (messageElement) {
+        messageElement.textContent = screen.message || "";
+      }
+    }
+
+    function isAlertLayoutView(view) {
+      return ["invoiceNumberView", "messageView", "loadingView", "successView", "errorView"].includes(view)
+        || (view === "confirmView" && !document.getElementById("popupContainer").classList.contains("invoice-preview-mode"));
+    }
+
+    function setAlertScreenMode(view) {
+      const popupContainer = document.getElementById("popupContainer");
+      const enabled = isAlertLayoutView(view);
+      popupContainer.classList.toggle("alert-screen-mode", enabled);
+      popupContainer.classList.toggle("invoice-number-screen-mode", view === "invoiceNumberView");
+    }
+
     function setFooterButtons(footer) {
       const normalizedFooter = Object.assign({
         primary: { label: "", visible: false },
@@ -1081,10 +1385,18 @@
       const secondaryButton = document.getElementById("close");
       const openPdfButton = document.getElementById("openPdf");
       const scrollArrowButton = document.getElementById("invoiceScrollArrow");
+      const footerElement = document.querySelector(".footer");
+      const isAlertScreen = document.getElementById("popupContainer").classList.contains("alert-screen-mode");
+      const hasPrimary = Boolean(normalizedFooter.primary.visible);
+      const hasSecondary = Boolean(normalizedFooter.secondary.visible);
 
-      primaryButton.style.display = normalizedFooter.primary.visible ? "block" : "none";
-      secondaryButton.style.display = normalizedFooter.secondary.visible ? "block" : "none";
-      openPdfButton.style.display = normalizedFooter.openPdf.visible ? "block" : "none";
+      footerElement.classList.toggle("footer-empty", isAlertScreen && !hasPrimary && !hasSecondary && !normalizedFooter.openPdf.visible);
+      footerElement.classList.toggle("footer-single-secondary", isAlertScreen && !hasPrimary && hasSecondary);
+      footerElement.classList.toggle("footer-double", isAlertScreen && hasPrimary && hasSecondary);
+
+      primaryButton.style.display = normalizedFooter.primary.visible ? "inline-flex" : "none";
+      secondaryButton.style.display = normalizedFooter.secondary.visible ? "inline-flex" : "none";
+      openPdfButton.style.display = normalizedFooter.openPdf.visible ? "inline-flex" : "none";
       scrollArrowButton.style.display = normalizedFooter.scrollArrow.visible ? "inline-flex" : "none";
       scrollArrowButton.disabled = !normalizedFooter.scrollArrow.enabled;
       scrollArrowButton.classList.toggle("is-active", Boolean(normalizedFooter.scrollArrow.enabled));
@@ -1185,6 +1497,7 @@
     function setPopupState({
       view,
       type,
+      screenKey,
       title,
       message,
       footer,
@@ -1209,26 +1522,77 @@
         emailSendCompleted = false;
       }
 
-      setErrorOverflowAlertMode(view === "errorView" && Boolean(overflowAlert));
+      setAlertScreenMode(view);
 
       if (view === "confirmView") {
-        document.getElementById("confirmTitle").textContent = title || "";
-        document.getElementById("confirmMessage").textContent = message || "";
+        const confirmScreen = resolveApprovedAlertScreen({
+          screenKey,
+          title,
+          message,
+          fallbackIcon: "confirmation"
+        });
+        renderStandardAlertScreen({
+          iconElementId: "confirmIcon",
+          titleElementId: "confirmTitle",
+          messageElementId: "confirmMessage",
+          screen: confirmScreen
+        });
       } else if (view === "messageView") {
-        const safeTitle = typeof title === "string" && title.trim() !== "" ? title : "Information";
-        const safeMessage = typeof message === "string" && message.trim() !== ""
-          ? message
-          : "Une erreur est survenue.";
-        document.getElementById("messageViewTitle").textContent = safeTitle;
-        document.getElementById("messageViewMessage").textContent = safeMessage;
+        const messageScreen = resolveApprovedAlertScreen({
+          screenKey,
+          title,
+          message,
+          fallbackIcon: "alert"
+        });
+        renderStandardAlertScreen({
+          iconElementId: "messageViewIcon",
+          titleElementId: "messageViewTitle",
+          messageElementId: "messageViewMessage",
+          screen: messageScreen
+        });
+      } else if (view === "loadingView") {
+        const loadingScreen = resolveApprovedAlertScreen({
+          screenKey,
+          title,
+          message,
+          fallbackIcon: "spinner"
+        });
+        renderStandardAlertScreen({
+          iconElementId: "loadingIcon",
+          titleElementId: "loadingTitle",
+          messageElementId: "loadingMessage",
+          screen: loadingScreen
+        });
+      } else if (view === "successView") {
+        const successScreen = resolveApprovedAlertScreen({
+          screenKey,
+          title,
+          message,
+          fallbackIcon: "bravo"
+        });
+        renderStandardAlertScreen({
+          iconElementId: "successIcon",
+          titleElementId: "successTitle",
+          messageElementId: "successMessage",
+          screen: successScreen
+        });
       } else if (view === "errorView") {
-        const safeMessage = typeof message === "string" && message.trim() !== ""
-          ? message
-          : "Une erreur est survenue.";
-        document.getElementById("errorMessage").textContent = safeMessage;
+        const errorScreen = resolveApprovedAlertScreen({
+          screenKey: overflowAlert ? "overflow" : screenKey,
+          title,
+          message,
+          fallbackIcon: "stop"
+        });
+        renderStandardAlertScreen({
+          iconElementId: "errorIcon",
+          titleElementId: "errorTitle",
+          messageElementId: "errorMessage",
+          screen: errorScreen
+        });
       }
 
       if (view !== "errorView") {
+        document.getElementById("errorTitle").textContent = "";
         document.getElementById("errorMessage").textContent = "";
       }
 
@@ -1239,15 +1603,6 @@
       currentPrimaryAction = typeof primaryAction === "function" ? primaryAction : null;
       currentSecondaryAction = typeof secondaryAction === "function" ? secondaryAction : null;
       currentOpenPdfAction = typeof openPdfAction === "function" ? openPdfAction : null;
-    }
-
-    function setErrorOverflowAlertMode(enabled) {
-      const errorView = document.getElementById("errorView");
-      const overflowContent = document.getElementById("invoiceOverflowAlertContent");
-      const errorMessage = document.getElementById("errorMessage");
-      errorView.classList.toggle("invoice-overflow-alert", Boolean(enabled));
-      overflowContent.style.display = enabled ? "flex" : "none";
-      errorMessage.style.display = enabled ? "none" : "";
     }
 
     function handlePrimaryAction() {
@@ -1281,7 +1636,7 @@
     }
 
     function setInvoiceNumberSubmitDisabled(disabled) {
-      const button = document.querySelector("#invoiceNumberView .invoice-number-actions .btn-green");
+      const button = document.getElementById("submit");
       if (button) {
         button.disabled = disabled;
       }
@@ -1298,10 +1653,8 @@
       if (typeof google === "undefined" || !google.script || !google.script.host) {
         return;
       }
-      const invoiceNumberLayout = document.querySelector("#invoiceNumberView .invoice-number-layout");
-      const measuredHeight = Math.ceil((invoiceNumberLayout ? invoiceNumberLayout.scrollHeight : 0) + 10) || 300;
-      google.script.host.setWidth(690);
-      google.script.host.setHeight(measuredHeight);
+      google.script.host.setWidth(900);
+      google.script.host.setHeight(450);
     }
 
     function setFormViewPopupSize() {
@@ -1326,8 +1679,8 @@
       if (typeof google === "undefined" || !google.script || !google.script.host) {
         return;
       }
-      google.script.host.setWidth(400);
-      google.script.host.setHeight(350);
+      google.script.host.setWidth(900);
+      google.script.host.setHeight(450);
     }
 
     function sanitizeInitialInvoiceNumber() {
@@ -1765,6 +2118,7 @@
       setPopupState({
         view: "confirmView",
         type: "confirm",
+        screenKey: action === "replace_pdf" ? "replace_pdf" : "",
         title,
         message,
         footer: {
@@ -1916,12 +2270,12 @@
         view: "invoiceNumberView",
         type: "form-simple",
         footer: {
-          primary: { label: "", visible: false },
-          secondary: { label: "", visible: false },
+          primary: { label: "OK", visible: true },
+          secondary: { label: "Fermer", visible: true },
           openPdf: { visible: false }
         },
-        primaryAction: null,
-        secondaryAction: null,
+        primaryAction: submitInitialInvoiceNumber,
+        secondaryAction: () => google.script.host.close(),
         openPdfAction: null
       });
       setInvoiceNumberViewPopupSize();
@@ -1933,11 +2287,17 @@
       if (useInvoicePreviewSize) {
         setInvoicePreviewPopupSize();
       }
-      document.getElementById("loadingTitle").textContent = title;
-      document.getElementById("loadingMessage").textContent = message;
+      const loadingScreenKey = title === "Préparation de la facture"
+        ? "preparing_invoice"
+        : title === "Création de la facture"
+          ? "creating_invoice"
+          : "";
       setPopupState({
         view: "loadingView",
         type: "action",
+        screenKey: loadingScreenKey,
+        title,
+        message,
         footer: {
           primary: { label: "", visible: false },
           secondary: { label: "", visible: false },
@@ -1950,22 +2310,20 @@
     }
 
     function showSuccessView(options = {}) {
-      const emailSent = Boolean(options.emailSent);
-      document.getElementById("successTitle").textContent = "Bravo";
-      document.getElementById("successMessage").textContent = "La facture a été enregistrée avec succès.";
       setPopupState({
         view: "successView",
         type: "action",
+        screenKey: "invoice_success",
         footer: {
-          primary: { label: "Envoyer", visible: true },
+          primary: { label: "Ouvrir la facture", visible: true },
           secondary: { label: "Fermer", visible: true },
-          openPdf: { visible: true }
+          openPdf: { visible: false }
         },
-        primaryAction: showSendInvoiceFlow,
+        primaryAction: openPdfAndClose,
         secondaryAction: () => google.script.host.close(),
-        openPdfAction: openPdfAndClose
+        openPdfAction: null
       });
-      document.getElementById("submit").disabled = emailSent;
+      document.getElementById("submit").disabled = !pdfUrl;
     }
 
     function showSendInvoiceView(defaultRecipientEmail) {
@@ -2008,14 +2366,15 @@
       setPopupState({
         view: "errorView",
         type: "alert",
+        screenKey: options.screenKey || "",
         message,
         footer: {
           primary: { label: "", visible: false },
-          secondary: { label: options.secondaryLabel || "Retour", visible: true },
+          secondary: { label: options.secondaryLabel || "Fermer", visible: true },
           openPdf: { visible: false }
         },
         primaryAction: null,
-        secondaryAction: typeof options.secondaryAction === "function" ? options.secondaryAction : showFormView,
+        secondaryAction: typeof options.secondaryAction === "function" ? options.secondaryAction : (() => google.script.host.close()),
         openPdfAction: null
       });
     }
@@ -2030,6 +2389,7 @@
       setPopupState({
         view: "errorView",
         type: "confirm",
+        screenKey: "overflow",
         message: "",
         footer: {
           primary: { label: "Modifier", visible: true },
@@ -2150,7 +2510,9 @@
               return;
             }
             pendingInvoiceSubmission = null;
-            showErrorView(resultMessage);
+            showErrorView(resultMessage, {
+              screenKey: resultMessage === "Erreur lors de la génération du PDF." ? "technical_preview_failure" : ""
+            });
           }
         })
         .withFailureHandler(error => {
@@ -2161,7 +2523,7 @@
             return;
           }
           pendingInvoiceSubmission = null;
-          showErrorView(errorMessage);
+          showErrorView(errorMessage, { screenKey: "technical_preview_failure" });
         })
         .submitFacturerForm(submissionData.contact, submissionData.activityType, window.initialInvoiceNumber, overwriteExistingFile, submissionData.invoicePreview || null);
     }
@@ -2224,6 +2586,7 @@
           pendingInvoiceSubmission = null;
           currentInvoicePreview = null;
           showErrorView(error && error.message ? `Erreur inattendue : ${error.message}` : null, {
+            screenKey: "technical_preview_failure",
             secondaryAction: () => google.script.host.close(),
             secondaryLabel: "Fermer"
           });

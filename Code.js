@@ -1,13 +1,13 @@
 // GÉNÉRAL
 
 function openStandaloneMessageView_(message, title = "Erreur", options = {}) {
-  const { width = 400, height = 220 } = options;
+  const { width = 900, height = 450 } = options;
   const html = HtmlService.createHtmlOutputFromFile("popup")
     .setWidth(width)
     .setHeight(height);
   html.addMetaTag('viewport', 'width=device-width, initial-scale=1');
   html.append(`<script>var showStandaloneMessage = true; var messageViewTitle = ${JSON.stringify(title)}; var messageViewMessage = ${JSON.stringify(message)};</script>`);
-  SpreadsheetApp.getUi().showModelessDialog(html, title);
+  SpreadsheetApp.getUi().showModelessDialog(html, "Facturation");
 }
 
 function ouvrirPopup() {
@@ -205,16 +205,12 @@ function showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumbe
     confirmPrimaryLabel: "",
     confirmSecondaryLabel: ""
   }, popupContext || {});
-  const opensOnInvoiceNumberView = !normalizedPopupContext.showStartupConfirm
-    && invoiceNumber === null
-    && requiresInitialInvoiceSetup === true;
-  const opensOnPreviewFlow = !normalizedPopupContext.showStartupConfirm && !opensOnInvoiceNumberView;
   const facturerHtml = HtmlService.createHtmlOutputFromFile("popup")
-    .setWidth(opensOnInvoiceNumberView ? 690 : opensOnPreviewFlow ? 900 : 400)
-    .setHeight(opensOnInvoiceNumberView ? 263 : opensOnPreviewFlow ? 450 : 350);
+    .setWidth(900)
+    .setHeight(450);
   facturerHtml.addMetaTag('viewport', 'width=device-width, initial-scale=1');
   facturerHtml.append(`<script>var contacts = ${JSON.stringify(facturerContacts)}; var activityTypes = ${JSON.stringify(facturerActivityTypes)}; var initialInvoiceNumber = ${JSON.stringify(invoiceNumber)}; var requiresInitialInvoiceSetup = ${JSON.stringify(requiresInitialInvoiceSetup)}; var showStartupConfirm = ${JSON.stringify(normalizedPopupContext.showStartupConfirm)}; var confirmViewTitle = ${JSON.stringify(normalizedPopupContext.confirmViewTitle)}; var confirmViewMessage = ${JSON.stringify(normalizedPopupContext.confirmViewMessage)}; var confirmAction = ${JSON.stringify(normalizedPopupContext.confirmAction)}; var confirmPrimaryLabel = ${JSON.stringify(normalizedPopupContext.confirmPrimaryLabel)}; var confirmSecondaryLabel = ${JSON.stringify(normalizedPopupContext.confirmSecondaryLabel)};</script>`);
-  facturerUi.showModelessDialog(facturerHtml, "Nouvelle facture");
+  facturerUi.showModelessDialog(facturerHtml, "Facturation");
 }
 
 function validateInvoiceGeneration_() {
@@ -240,14 +236,14 @@ function validateInvoiceGeneration_() {
 
   const folderId = String(facturerGestionSheet.getRange("E2").getValue() || "").trim();
   if (!folderId) {
-    return { success: false, message: "Dossier Drive invalide. Veuillez vérifier la configuration." };
+    return { success: false, message: "Erreur : Aucun dossier configuré." };
   }
 
   let facturerDriveFolder;
   try {
     facturerDriveFolder = DriveApp.getFolderById(folderId);
   } catch (e) {
-    return { success: false, message: "Dossier Drive invalide. Veuillez vérifier la configuration." };
+    return { success: false, message: "Erreur : ID de dossier invalide." };
   }
 
   const validationCategories = new Set();
