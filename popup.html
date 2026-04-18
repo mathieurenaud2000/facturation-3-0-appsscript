@@ -1027,7 +1027,7 @@
       </div>
     </div>
     <!-- Formulaire initial -->
-    <div id="formView" class="popup-view form-view active">
+    <div id="formView" class="popup-view form-view">
       <div class="service-title-layout">
         <div class="service-title-label">Titre</div>
         <div class="service-title-field">
@@ -1305,6 +1305,11 @@
     if (typeof window.messageViewMessage === "undefined") {
       window.messageViewMessage = "";
     }
+    if (typeof window.facturationPopupContextReady === "undefined") {
+      window.facturationPopupContextReady = false;
+    }
+    let facturationPopupDomReady = false;
+    let facturationPopupStarted = false;
 
     function setActiveView(viewId) {
       popupViewIds.forEach(id => {
@@ -2594,8 +2599,11 @@
         .prepareInvoicePreview(window.initialInvoiceNumber);
     }
 
-    // Remplir les menus déroulants au chargement
-    document.addEventListener("DOMContentLoaded", () => {
+    function startFacturationPopup() {
+      if (!facturationPopupDomReady || !window.facturationPopupContextReady || facturationPopupStarted) {
+        return;
+      }
+      facturationPopupStarted = true;
       populateDropdowns();
       if (window.showStartupConfirm) {
         showConfirmView({
@@ -2615,6 +2623,14 @@
       } else {
         submit();
       }
+    }
+
+    window.startFacturationPopup = startFacturationPopup;
+
+    // Démarrer seulement quand le DOM et le contexte injecté par Apps Script sont prêts.
+    document.addEventListener("DOMContentLoaded", () => {
+      facturationPopupDomReady = true;
+      startFacturationPopup();
     });
   </script>
 </body>
