@@ -1018,7 +1018,7 @@
         return;
       }
       const errorMessage = error && error.stack ? error.stack : String(error || "Aucune vue active.");
-      panel.textContent = `${errorMessage}\n\n${JSON.stringify(window.facturationStartupTrace, null, 2)}`;
+      panel.textContent = errorMessage + "\n\n" + JSON.stringify(window.facturationStartupTrace, null, 2);
       panel.classList.add("active");
     };
     window.addEventListener("error", function(event) {
@@ -1183,7 +1183,7 @@
     let emailSendCompleted = false;
     let formValidationActivated = false;
     let invoiceNumberValidationActivated = false;
-    const driveImageUrl = (id) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w300`;
+    const driveImageUrl = (id) => "https://drive.google.com/thumbnail?id=" + encodeURIComponent(id) + "&sz=w300";
     const alertIconSources = {
       spinner: driveImageUrl("1lL-31VG7OALHrcuzGB6asjqEoaKJP4K0"),
       alert: driveImageUrl("10xXEtKTwvC_Xw3SdLImqVNAaYsFjVlMM"),
@@ -1927,12 +1927,12 @@
 
     function formatPreviewMoney(value) {
       const numericValue = Number(value);
-      return Number.isFinite(numericValue) ? `${numericValue.toFixed(2)} $` : "";
+      return Number.isFinite(numericValue) ? numericValue.toFixed(2) + " $" : "";
     }
 
     function formatPreviewTime(value) {
       const numericValue = Number(value);
-      return Number.isFinite(numericValue) ? `${numericValue.toFixed(2)} h` : "";
+      return Number.isFinite(numericValue) ? numericValue.toFixed(2) + " h" : "";
     }
 
     function getPreviewBlockTitle(block) {
@@ -1951,7 +1951,7 @@
       if (displayValues.length <= 2) {
         return displayValues.join(" et ");
       }
-      return `${displayValues.slice(0, -1).join(", ")} et ${displayValues[displayValues.length - 1]}`;
+      return displayValues.slice(0, -1).join(", ") + " et " + displayValues[displayValues.length - 1];
     }
 
     function setInvoiceScrollArrowEnabled(enabled) {
@@ -2010,7 +2010,7 @@
       document.getElementById("previewProjectsLabel").textContent = campaigns.length > 1 ? "Projets" : "Projet";
       document.getElementById("previewProjectsValue").textContent = formatFrenchList(campaigns);
       document.getElementById("previewServiceTitleValue").textContent = preview.serviceTitle || "";
-      document.getElementById("previewInvoiceNumberValue").textContent = preview.invoiceNumber ? `#${preview.invoiceNumber}` : "";
+      document.getElementById("previewInvoiceNumberValue").textContent = preview.invoiceNumber ? "#" + preview.invoiceNumber : "";
       document.getElementById("previewInvoiceDateValue").textContent = preview.invoiceDate || "";
       document.getElementById("previewTotalValue").textContent = formatPreviewMoney(preview.totalAmount);
 
@@ -2611,7 +2611,7 @@
           }
         })
         .withFailureHandler(error => {
-          const errorMessage = error && error.message ? `Erreur inattendue : ${error.message}` : null;
+          const errorMessage = error && error.message ? "Erreur inattendue : " + error.message : null;
           if (isInvoiceOverflowErrorMessage(errorMessage)) {
             pendingInvoiceSubmission = submissionData;
             showInvoiceOverflowAlertView();
@@ -2632,20 +2632,20 @@
         const blockTitle = [block.campaign, block.project].filter(Boolean).join(" — ");
         const description = String(block.description || "").trim();
         const activitySummary = Array.isArray(block.activities)
-          ? block.activities.map(activity => `${activity.name} (${activity.time}h)`).join(", ")
+          ? block.activities.map(activity => activity.name + " (" + activity.time + "h)").join(", ")
           : "";
         return [
-          `${block.blockNumber}. ${blockTitle}`,
-          description ? `Description : ${description}` : "",
-          activitySummary ? `Activités : ${activitySummary}` : ""
+          block.blockNumber + ". " + blockTitle,
+          description ? "Description : " + description : "",
+          activitySummary ? "Activités : " + activitySummary : ""
         ].filter(Boolean).join("\n");
       }).join("\n\n");
 
       return [
-        `Facture ${preview.invoiceNumber}`,
-        `Client : ${preview.client}`,
-        `Titre : ${preview.serviceTitle}`,
-        `Total : ${preview.totalAmount}`,
+        "Facture " + preview.invoiceNumber,
+        "Client : " + preview.client,
+        "Titre : " + preview.serviceTitle,
+        "Total : " + preview.totalAmount,
         blockSummary
       ].filter(Boolean).join("\n\n");
     }
@@ -2684,7 +2684,7 @@
           window.traceFacturationStartup("prepareInvoicePreview.failure", { message: error && error.message ? error.message : "" });
           pendingInvoiceSubmission = null;
           currentInvoicePreview = null;
-          showErrorView(error && error.message ? `Erreur inattendue : ${error.message}` : null, {
+          showErrorView(error && error.message ? "Erreur inattendue : " + error.message : null, {
             screenKey: "technical_preview_failure",
             secondaryAction: () => google.script.host.close(),
             secondaryLabel: "Fermer"
