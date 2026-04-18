@@ -700,11 +700,15 @@
       right: 0;
       height: 80px;
       width: 100%;
-      display: flex;
+      display: none;
       align-items: flex-end;
       justify-content: flex-end;
       padding-bottom: 0;
       padding-right: 0;
+    }
+
+    .container.popup-started .footer {
+      display: flex;
     }
 
     .invoice-preview-mode .footer {
@@ -956,6 +960,27 @@
     .inline-error.active {
       display: block !important;
     }
+
+    .startup-debug-panel {
+      display: none;
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      z-index: 9999;
+      max-height: 180px;
+      overflow: auto;
+      padding: 10px;
+      border: 1px solid #b00020;
+      background: #fff5f5;
+      color: #b00020;
+      font: 11px/1.35 monospace;
+      white-space: pre-wrap;
+    }
+
+    .startup-debug-panel.active {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -974,8 +999,51 @@
     window.messageViewTitle = <?!= JSON.stringify(typeof messageViewTitle === "undefined" ? "" : messageViewTitle) ?>;
     window.messageViewMessage = <?!= JSON.stringify(typeof messageViewMessage === "undefined" ? "" : messageViewMessage) ?>;
     window.facturationPopupContextReady = <?!= JSON.stringify(typeof facturationPopupContextReady === "undefined" ? false : facturationPopupContextReady) ?>;
+    window.facturationStartupTrace = [];
+    window.traceFacturationStartup = function(step, details) {
+      const entry = {
+        step,
+        details: details || {},
+        readyState: document.readyState,
+        time: new Date().toISOString()
+      };
+      window.facturationStartupTrace.push(entry);
+      if (window.console && typeof window.console.log === "function") {
+        window.console.log("[Facturation startup]", entry);
+      }
+    };
+    window.showFacturationStartupDebug = function(error) {
+      const panel = document.getElementById("startupDebugPanel");
+      if (!panel) {
+        return;
+      }
+      const errorMessage = error && error.stack ? error.stack : String(error || "Aucune vue active.");
+      panel.textContent = `${errorMessage}\n\n${JSON.stringify(window.facturationStartupTrace, null, 2)}`;
+      panel.classList.add("active");
+    };
+    window.addEventListener("error", function(event) {
+      window.traceFacturationStartup("window.error", {
+        message: event.message,
+        source: event.filename,
+        line: event.lineno,
+        column: event.colno
+      });
+      window.showFacturationStartupDebug(event.error || event.message);
+    });
+    window.addEventListener("unhandledrejection", function(event) {
+      window.traceFacturationStartup("window.unhandledrejection", { reason: String(event.reason || "") });
+      window.showFacturationStartupDebug(event.reason || "Promesse rejetée.");
+    });
+    window.traceFacturationStartup("context-loaded", {
+      contextReady: window.facturationPopupContextReady,
+      showStandaloneMessage: window.showStandaloneMessage,
+      showStartupConfirm: window.showStartupConfirm,
+      requiresInitialInvoiceSetup: window.requiresInitialInvoiceSetup,
+      initialInvoiceNumber: window.initialInvoiceNumber
+    });
   </script>
   <div id="popupContainer" class="container">
+    <pre id="startupDebugPanel" class="startup-debug-panel" aria-live="polite"></pre>
     <!-- Vue numéro initial -->
     <div id="invoiceNumberView" class="popup-view invoice-number-view">
       <div class="invoice-number-layout">
@@ -1324,6 +1392,7 @@
     if (typeof window.facturationPopupContextReady === "undefined") {
       window.facturationPopupContextReady = false;
     }
+    window.traceFacturationStartup("main-script-loaded", { contextReady: window.facturationPopupContextReady });
     let facturationPopupDomReady = false;
     let facturationPopupStarted = false;
 
@@ -1528,6 +1597,9 @@
       invoicePreviewMode,
       overflowAlert
     }) {
+      const popupContainer = document.getElementById("popupContainer");
+      popupContainer.classList.add("popup-started");
+      window.traceFacturationStartup("setPopupState", { view, type, screenKey });
       if (invoicePreviewMode) {
         setInvoicePreviewMode(true);
       } else if (!["confirmView", "editTitleView", "editDescriptionView"].includes(view)) {
@@ -2037,6 +2109,7 @@
     }
 
     function showInvoicePreviewConfirmView() {
+      window.traceFacturationStartup("showInvoicePreviewConfirmView");
       setInvoicePreviewMode(true);
       setInvoicePreviewPopupSize();
       document.getElementById("technicalConfirmContent").style.display = "none";
@@ -2305,6 +2378,7 @@
     }
 
     function showLoadingView(title = "Création de la facture", message = "Veuillez patienter...", useInvoicePreviewSize = false) {
+      window.traceFacturationStartup("showLoadingView", { title, message, useInvoicePreviewSize });
       if (useInvoicePreviewSize) {
         setInvoicePreviewPopupSize();
       }
@@ -2577,10 +2651,13 @@
     }
 
     function submit() {
+      window.traceFacturationStartup("submit", { initialInvoiceNumber: window.initialInvoiceNumber });
       pendingInvoiceSubmission = null;
       showLoadingView("Préparation de la facture", "Veuillez patienter...", true);
+      window.traceFacturationStartup("prepareInvoicePreview.call", { initialInvoiceNumber: window.initialInvoiceNumber });
       google.script.run
         .withSuccessHandler(result => {
+          window.traceFacturationStartup("prepareInvoicePreview.success", { success: Boolean(result && result.success) });
           if (result && result.success) {
             currentInvoicePreview = result.preview || {};
             pendingInvoiceSubmission = {
@@ -2604,6 +2681,7 @@
           }
         })
         .withFailureHandler(error => {
+          window.traceFacturationStartup("prepareInvoicePreview.failure", { message: error && error.message ? error.message : "" });
           pendingInvoiceSubmission = null;
           currentInvoicePreview = null;
           showErrorView(error && error.message ? `Erreur inattendue : ${error.message}` : null, {
@@ -2616,38 +2694,76 @@
     }
 
     function startFacturationPopup() {
+      window.traceFacturationStartup("startFacturationPopup.called", {
+        domReady: facturationPopupDomReady,
+        contextReady: window.facturationPopupContextReady,
+        started: facturationPopupStarted
+      });
       if (!facturationPopupDomReady || !window.facturationPopupContextReady || facturationPopupStarted) {
+        window.traceFacturationStartup("startFacturationPopup.deferred");
         return;
       }
-      facturationPopupStarted = true;
-      populateDropdowns();
-      if (window.showStartupConfirm) {
-        showConfirmView({
-          title: window.confirmViewTitle,
-          message: window.confirmViewMessage,
-          action: window.confirmAction,
-          confirmLabel: window.confirmPrimaryLabel,
-          cancelLabel: window.confirmSecondaryLabel
+      try {
+        facturationPopupStarted = true;
+        window.traceFacturationStartup("populateDropdowns.before");
+        populateDropdowns();
+        window.traceFacturationStartup("populateDropdowns.after");
+        if (window.showStartupConfirm) {
+          window.traceFacturationStartup("startup.branch.confirm");
+          showConfirmView({
+            title: window.confirmViewTitle,
+            message: window.confirmViewMessage,
+            action: window.confirmAction,
+            confirmLabel: window.confirmPrimaryLabel,
+            cancelLabel: window.confirmSecondaryLabel
+          });
+        } else if (window.showStandaloneMessage) {
+          window.traceFacturationStartup("startup.branch.message");
+          showMessageView({
+            title: window.messageViewTitle,
+            message: window.messageViewMessage
+          });
+        } else if (window.initialInvoiceNumber === null && window.requiresInitialInvoiceSetup) {
+          window.traceFacturationStartup("startup.branch.numbering");
+          showInvoiceNumberView();
+        } else {
+          window.traceFacturationStartup("startup.branch.preview");
+          submit();
+        }
+      } catch (error) {
+        window.traceFacturationStartup("startFacturationPopup.exception", {
+          message: error && error.message ? error.message : String(error)
         });
-      } else if (window.showStandaloneMessage) {
-        showMessageView({
-          title: window.messageViewTitle,
-          message: window.messageViewMessage
-        });
-      } else if (window.initialInvoiceNumber === null && window.requiresInitialInvoiceSetup) {
-        showInvoiceNumberView();
-      } else {
-        submit();
+        window.showFacturationStartupDebug(error);
+        throw error;
       }
     }
 
     window.startFacturationPopup = startFacturationPopup;
 
-    // Démarrer seulement quand le DOM et le contexte injecté par Apps Script sont prêts.
-    document.addEventListener("DOMContentLoaded", () => {
+    function handleFacturationPopupDomReady() {
+      window.traceFacturationStartup("dom-ready-handler");
       facturationPopupDomReady = true;
       startFacturationPopup();
-    });
+      window.setTimeout(() => {
+        const activeView = document.querySelector(".popup-view.active");
+        window.traceFacturationStartup("startup.post-check", {
+          activeView: activeView ? activeView.id : "",
+          submitDisplay: document.getElementById("submit").style.display,
+          submitDisabled: document.getElementById("submit").disabled
+        });
+        if (!activeView) {
+          window.showFacturationStartupDebug("Aucune vue active après le démarrage du popup.");
+        }
+      }, 800);
+    }
+
+    // Démarrer même si DOMContentLoaded a déjà été déclenché par l'environnement Apps Script.
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", handleFacturationPopupDomReady);
+    } else {
+      handleFacturationPopupDomReady();
+    }
   </script>
 </body>
 </html>
