@@ -3,7 +3,8 @@
 <head>
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
   <style>
     * {
       margin: 0;
@@ -18,122 +19,181 @@
     }
 
     .container {
-      margin: 0;
-      padding: 0px;
       width: 100%;
       height: 100%;
       display: flex;
       flex-direction: column;
+      background: #ffffff;
+      position: relative;
     }
 
-    .form-container {
+    .config-content {
+      flex: 1;
+      width: 100%;
+      padding: 0 24px;
+      padding-bottom: 90px;
+      overflow: auto;
+    }
+
+    .config-grid {
+      width: 100%;
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      justify-content: flex-start;
-      align-items: flex-start;
-      padding: 0;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      column-gap: 24px;
     }
 
-    .url-field {
-      grid-column: 1 / -1;
-      padding-top: 10px;
+    .config-column {
+      padding-top: 25px;
     }
 
-    .label {
-      margin: 0;
-      padding: 5px 0;
-      font-size: 10pt;
-      color: #888;
+    .column-header {
       width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 24px;
     }
 
-    input {
+    .column-icon.material-symbols-outlined {
+      width: 25px;
+      height: 25px;
+      font-size: 25px;
+      line-height: 1;
+      color: #000000;
+    }
+
+    .column-title {
+      font-size: 24pt;
+      font-weight: 700;
+      line-height: 1.15;
+      color: #000000;
+    }
+
+    .column-fields {
+      padding-top: 25px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .field-group {
       width: 100%;
-      margin: 0;
-      padding: 8px;
-      border: 1px solid #ccc;
-      border-radius: 0;
-      font-size: 13pt;
-      color: #000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
-    input.invalid {
+    .field-label {
+      font-size: 16pt;
+      line-height: 1.2;
+    }
+
+    .field-label.is-required {
+      font-weight: 700;
+      color: #000000;
+    }
+
+    .field-label.is-optional {
+      font-weight: 400;
+      color: #666666;
+    }
+
+    .field-input {
+      width: 100%;
+      height: 35px;
+      padding: 0 12px 0 24px;
+      border-radius: 10px;
+      font-family: Roboto, sans-serif;
+      font-size: 16pt;
+      font-weight: 400;
+      color: #000000;
+      line-height: 35px;
+      background: #ffffff;
+      outline: none;
+    }
+
+    .field-input.is-required {
+      border: 1px solid #000000;
+    }
+
+    .field-input.is-optional {
+      border: 1px solid #b3b3b3;
+    }
+
+    .field-input.invalid {
       border: 1px solid #ff0000;
     }
 
     .error-message {
       display: none;
-      margin-top: 12px;
+      margin-top: 15px;
       padding: 10px 12px;
       border: 1px solid #ff0000;
       color: #b00020;
       background-color: #fff4f4;
       font-size: 11pt;
-      grid-column: 1 / -1;
+      width: 100%;
     }
 
     .error-message.active {
       display: block;
     }
 
-    .footer {
+    .config-footer {
       position: fixed;
       bottom: 0;
       right: 0;
-      height: 60px;
       width: 100%;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-left: 0px;
-      padding-right: 0px;
-    }
-
-    .footer-left {
-      display: flex;
-      flex-direction: column;
-      padding-left: 0px;
-    }
-
-    .footer-left .label {
-      font-size: 10pt;
-      color: #888;
-    }
-
-    .footer-left input {
-      width: 80px;
-      padding: 5px;
-      font-size: 13pt;
-    }
-
-    .btn-container {
-      display: flex;
-      //justify-content: flex-end;
-      align-items: flex-end; /* Alignement bas */
-      height: 100%;          /* Prend toute la hauteur du footer */
-      padding-right: 0px;
+      height: 78px;
+      padding: 24px 24px 4px 24px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      column-gap: 24px;
+      align-items: stretch;
+      align-content: start;
+      background: #ffffff;
+      border-top: none;
     }
 
     .btn {
-      margin-left: 20px;
-      padding: 10px 80px;
-      border-radius: 10px;
+      height: 50px;
+      min-height: 50px;
+      width: 100%;
+      border-radius: 7px;
       cursor: pointer;
-      border: none;
-      font-size: 18px;
+      border: 1px solid transparent;
+      font-family: Roboto, sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1;
       text-align: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 24px;
+      margin: 0;
+      background: #ffffff;
+    }
+
+    .btn-white {
+      background-color: #ffffff;
+      color: #000000;
+      border: 1px solid #d4d4d4;
+    }
+
+    .btn-white:hover {
+      background-color: #ffffff;
+      border: 1px solid #000000;
     }
 
     .btn-green {
-      background-color: #4CAF50;
-      color: white;
-      border: 1px solid #4CAF50;
+      background-color: #00983a;
+      color: #ffffff;
+      border: 1px solid #00983a;
     }
 
     .btn-green:hover {
-      background-color: #45a049;
-      border: 1px solid #45a049;
+      background-color: #1ecc00;
+      border: 1px solid #1ecc00;
     }
 
     .btn-green:disabled,
@@ -148,34 +208,72 @@
       cursor: not-allowed;
     }
 
-    .btn-cancel {
-      background-color: #ffffff;
-      color: #000;
-      border: 1px solid #d4d4d4;
-      padding: 10px 40px;
+    #cancel {
+      grid-column: 1;
+      justify-self: end;
+      align-self: stretch;
+      width: 50%;
     }
 
-    .btn-cancel:hover {
-      background-color: #ffffff;
-      border: 1px solid #000000;
+    #submit {
+      grid-column: 2;
+      justify-self: stretch;
+      align-self: stretch;
+      width: 100%;
     }
 
-    .loader {
+    .loading-screen {
       display: none;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: center;
-      flex: 1;
-      margin-top: 75px;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      inset: 0;
+      background: #ffffff;
     }
 
-    .spinner {
-      border: 16px solid #f3f3f3;
-      border-top: 16px solid #4CAF50;
-      border-radius: 50%;
-      width: 120px;
-      height: 120px;
-      animation: spin 1s linear infinite;
+    .loading-screen.active {
+      display: block;
+    }
+
+    .standard-alert-content {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 50px;
+      text-align: center;
+    }
+
+    .standard-alert-icon {
+      display: block;
+      width: 150px;
+      height: 150px;
+      object-fit: contain;
+      margin: 0 0 25px 0;
+    }
+
+    .standard-alert-title {
+      font-size: 24pt;
+      font-weight: 700;
+      line-height: 1.15;
+      color: #000000;
+      text-align: center;
+      margin: 0 0 10px 0;
+    }
+
+    .standard-alert-text {
+      font-size: 18pt;
+      font-weight: 400;
+      line-height: 1.25;
+      color: #666666;
+      text-align: center;
+      white-space: pre-line;
+      margin: 0;
+    }
+
+    .loading-spinner {
+      animation: spin 2.5s ease-in-out infinite;
     }
 
     @keyframes spin {
@@ -186,41 +284,81 @@
 </head>
 <body>
   <div class="container">
-    <div id="formContainer" class="form-container">
-      <div>
-        <div class="label">Nom :</div>
-        <input type="text" id="name" value="<?!= name || '' ?>">
-        <div class="label">Courriel :</div>
-        <input type="text" id="email" value="<?!= email || '' ?>">
-        <div class="label">Site Web :</div>
-        <input type="text" id="website" value="<?!= website || '' ?>">
+    <div id="loadingScreen" class="loading-screen" aria-live="polite">
+      <div class="standard-alert-content">
+        <img class="standard-alert-icon loading-spinner" src="https://drive.google.com/thumbnail?id=1lL-31VG7OALHrcuzGB6asjqEoaKJP4K0&amp;sz=w300" alt="">
+        <div class="standard-alert-title">Enregistrement</div>
+        <div class="standard-alert-text">Veuillez patienter...</div>
       </div>
-      <div>
-        <div class="label">Adresse Ligne 1 :</div>
-        <input type="text" id="address1" value="<?!= address1 || '' ?>">
-        <div class="label">Adresse Ligne 2 :</div>
-        <input type="text" id="address2" value="<?!= address2 || '' ?>">
-        <div class="label">Adresse Ligne 3 :</div>
-        <input type="text" id="address3" value="<?!= address3 || '' ?>">
-        <div class="label">Adresse Ligne 4 :</div>
-        <input type="text" id="address4" value="<?!= address4 || '' ?>">
+    </div>
+
+    <div id="formContainer" class="config-content">
+      <div class="config-grid">
+        <section class="config-column" aria-label="Identification">
+          <div class="column-header">
+            <span class="material-symbols-outlined column-icon" aria-hidden="true">account_circle</span>
+            <div class="column-title">Identification</div>
+          </div>
+          <div class="column-fields">
+            <div class="field-group">
+              <div class="field-label is-required">Nom</div>
+              <input type="text" id="name" class="field-input is-required" value="<?!= name || '' ?>">
+            </div>
+            <div class="field-group">
+              <div class="field-label is-required">Courriel</div>
+              <input type="text" id="email" class="field-input is-required" value="<?!= email || '' ?>">
+            </div>
+            <div class="field-group">
+              <div class="field-label is-optional">Site web</div>
+              <input type="text" id="website" class="field-input is-optional" value="<?!= website || '' ?>">
+            </div>
+          </div>
+        </section>
+
+        <section class="config-column" aria-label="Coordonnés">
+          <div class="column-header">
+            <span class="material-symbols-outlined column-icon" aria-hidden="true">house</span>
+            <div class="column-title">Coordonnés</div>
+          </div>
+          <div class="column-fields">
+            <div class="field-group">
+              <div class="field-label is-required">Adresse (ligne 1)</div>
+              <input type="text" id="address1" class="field-input is-required" value="<?!= address1 || '' ?>">
+            </div>
+            <div class="field-group">
+              <div class="field-label is-required">Adresse (ligne 2)</div>
+              <input type="text" id="address2" class="field-input is-required" value="<?!= address2 || '' ?>">
+            </div>
+            <div class="field-group">
+              <div class="field-label is-optional">Adresse (ligne 3)</div>
+              <input type="text" id="address3" class="field-input is-optional" value="<?!= address3 || '' ?>">
+            </div>
+            <div class="field-group">
+              <div class="field-label is-optional">Adresse (ligne 4)</div>
+              <input type="text" id="address4" class="field-input is-optional" value="<?!= address4 || '' ?>">
+            </div>
+          </div>
+        </section>
+
+        <section class="config-column" aria-label="Facture">
+          <div class="column-header">
+            <span class="material-symbols-outlined column-icon" aria-hidden="true">format_list_bulleted</span>
+            <div class="column-title">Facture</div>
+          </div>
+          <div class="column-fields">
+            <div class="field-group">
+              <div class="field-label is-required">No. de facture</div>
+              <input type="text" inputmode="numeric" id="nextInvoice" class="field-input is-required" value="<?!= nextInvoice || '' ?>">
+            </div>
+          </div>
+        </section>
       </div>
       <div id="errorMessage" class="error-message" aria-live="polite"></div>
     </div>
 
-    <div id="loader" class="loader">
-      <div class="spinner"></div>
-    </div>
-
-    <div class="footer" id="footer">
-      <div class="footer-left">
-        <div class="label">Prochain # de facture :</div>
-        <input type="text" inputmode="numeric" id="nextInvoice" value="<?!= nextInvoice || '' ?>">
-      </div>
-      <div class="btn-container">
-        <button id="cancel" class="btn btn-cancel" onclick="google.script.host.close()">Annuler</button>
-        <button id="submit" class="btn btn-green" onclick="submitForm()">Enregistrer</button>
-      </div>
+    <div class="config-footer" id="footer">
+      <button id="cancel" class="btn btn-white" type="button" onclick="google.script.host.close()">Annuler</button>
+      <button id="submit" class="btn btn-green" type="button" onclick="submitForm()">Enregistrer</button>
     </div>
   </div>
 
@@ -330,16 +468,16 @@
     }
 
     function showForm() {
-      document.getElementById('formContainer').style.display = 'grid';
-      document.getElementById('footer').style.display = 'flex';
-      document.getElementById('loader').style.display = 'none';
+      document.getElementById('loadingScreen').classList.remove('active');
+      document.getElementById('formContainer').style.display = 'block';
+      document.getElementById('footer').style.display = 'grid';
     }
 
     function showLoader() {
       clearError();
       document.getElementById('formContainer').style.display = 'none';
       document.getElementById('footer').style.display = 'none';
-      document.getElementById('loader').style.display = 'flex';
+      document.getElementById('loadingScreen').classList.add('active');
     }
 
     function handleServerValidationError(result) {

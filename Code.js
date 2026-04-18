@@ -332,7 +332,7 @@ function showInvoiceConfigurationDialog_(options = {}) {
   html.existingInvoiceNumbers = getExistingInvoiceNumberList_(facturerTrackingSheet);
   html.continueFacturerAfterSave = Boolean(options.continueFacturerAfterSave);
 
-  const htmlOutput = html.evaluate().setWidth(600).setHeight(450);
+  const htmlOutput = html.evaluate().setWidth(900).setHeight(450);
   SpreadsheetApp.getUi().showModelessDialog(
     htmlOutput,
     "Configuration de la facture"
