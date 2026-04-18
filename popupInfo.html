@@ -38,11 +38,16 @@
     .config-grid {
       width: 100%;
       display: grid;
-      grid-template-columns:
-        calc((100% - (24px * 2)) * 0.5)
-        minmax(0, 1fr)
-        calc((100% - (24px * 2)) * 0.17);
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       column-gap: 24px;
+    }
+
+    .config-grid-right {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      column-gap: 24px;
+      align-items: start;
     }
 
     .config-column {
@@ -295,69 +300,71 @@
       </div>
     </div>
 
-    <div id="formContainer" class="config-content">
-      <div class="config-grid">
-        <section class="config-column" aria-label="Identification">
-          <div class="column-header">
-            <span class="material-symbols-outlined column-icon" aria-hidden="true">account_circle</span>
-            <div class="column-title">Identification</div>
-          </div>
-          <div class="column-fields">
-            <div class="field-group">
-              <div class="field-label is-required">Nom</div>
-              <input type="text" id="name" class="field-input is-required" value="<?!= name || '' ?>">
-            </div>
-            <div class="field-group">
-              <div class="field-label is-required">Courriel</div>
-              <input type="text" id="email" class="field-input is-required" value="<?!= email || '' ?>">
-            </div>
-            <div class="field-group">
-              <div class="field-label is-optional">Site web</div>
-              <input type="text" id="website" class="field-input is-optional" value="<?!= website || '' ?>">
-            </div>
-          </div>
-        </section>
+	    <div id="formContainer" class="config-content">
+	      <div class="config-grid">
+	        <section class="config-column" aria-label="Identification">
+	          <div class="column-header">
+	            <span class="material-symbols-outlined column-icon" aria-hidden="true">account_circle</span>
+	            <div class="column-title">Identification</div>
+	          </div>
+	          <div class="column-fields">
+	            <div class="field-group">
+	              <div class="field-label is-required">Nom</div>
+	              <input type="text" id="name" class="field-input is-required" value="<?!= name || '' ?>">
+	            </div>
+	            <div class="field-group">
+	              <div class="field-label is-required">Courriel</div>
+	              <input type="text" id="email" class="field-input is-required" value="<?!= email || '' ?>">
+	            </div>
+	            <div class="field-group">
+	              <div class="field-label is-optional">Site web</div>
+	              <input type="text" id="website" class="field-input is-optional" value="<?!= website || '' ?>">
+	            </div>
+	          </div>
+	        </section>
 
-        <section class="config-column" aria-label="Coordonnés">
-          <div class="column-header">
-            <span class="material-symbols-outlined column-icon" aria-hidden="true">house</span>
-            <div class="column-title">Coordonnés</div>
-          </div>
-          <div class="column-fields">
-            <div class="field-group">
-              <div class="field-label is-required">Adresse (ligne 1)</div>
-              <input type="text" id="address1" class="field-input is-required" value="<?!= address1 || '' ?>">
-            </div>
-            <div class="field-group">
-              <div class="field-label is-required">Adresse (ligne 2)</div>
-              <input type="text" id="address2" class="field-input is-required" value="<?!= address2 || '' ?>">
-            </div>
-            <div class="field-group">
-              <div class="field-label is-optional">Adresse (ligne 3)</div>
-              <input type="text" id="address3" class="field-input is-optional" value="<?!= address3 || '' ?>">
-            </div>
-            <div class="field-group">
-              <div class="field-label is-optional">Adresse (ligne 4)</div>
-              <input type="text" id="address4" class="field-input is-optional" value="<?!= address4 || '' ?>">
-            </div>
-          </div>
-        </section>
+	        <div class="config-grid-right" aria-label="Coordonnés et Facture">
+	          <section class="config-column" aria-label="Coordonnés">
+	            <div class="column-header">
+	              <span class="material-symbols-outlined column-icon" aria-hidden="true">house</span>
+	              <div class="column-title">Coordonnés</div>
+	            </div>
+	            <div class="column-fields">
+	              <div class="field-group">
+	                <div class="field-label is-required">Adresse (ligne 1)</div>
+	                <input type="text" id="address1" class="field-input is-required" value="<?!= address1 || '' ?>">
+	              </div>
+	              <div class="field-group">
+	                <div class="field-label is-required">Adresse (ligne 2)</div>
+	                <input type="text" id="address2" class="field-input is-required" value="<?!= address2 || '' ?>">
+	              </div>
+	              <div class="field-group">
+	                <div class="field-label is-optional">Adresse (ligne 3)</div>
+	                <input type="text" id="address3" class="field-input is-optional" value="<?!= address3 || '' ?>">
+	              </div>
+	              <div class="field-group">
+	                <div class="field-label is-optional">Adresse (ligne 4)</div>
+	                <input type="text" id="address4" class="field-input is-optional" value="<?!= address4 || '' ?>">
+	              </div>
+	            </div>
+	          </section>
 
-        <section class="config-column" aria-label="Facture">
-          <div class="column-header">
-            <span class="material-symbols-outlined column-icon" aria-hidden="true">format_list_bulleted</span>
-            <div class="column-title">Facture</div>
-          </div>
-          <div class="column-fields">
-            <div class="field-group">
-              <div class="field-label is-required">No. de facture</div>
-              <input type="text" inputmode="numeric" id="nextInvoice" class="field-input is-required" value="<?!= nextInvoice || '' ?>">
-            </div>
-          </div>
-        </section>
-      </div>
-      <div id="errorMessage" class="error-message" aria-live="polite"></div>
-    </div>
+	          <section class="config-column" aria-label="Facture">
+	            <div class="column-header">
+	              <span class="material-symbols-outlined column-icon" aria-hidden="true">format_list_bulleted</span>
+	              <div class="column-title">Facture</div>
+	            </div>
+	            <div class="column-fields">
+	              <div class="field-group">
+	                <div class="field-label is-required">No. de facture</div>
+	                <input type="text" inputmode="numeric" id="nextInvoice" class="field-input is-required" value="<?!= nextInvoice || '' ?>">
+	              </div>
+	            </div>
+	          </section>
+	        </div>
+	      </div>
+	      <div id="errorMessage" class="error-message" aria-live="polite"></div>
+	    </div>
 
     <div class="config-footer" id="footer">
       <button id="cancel" class="btn btn-white" type="button" onclick="google.script.host.close()">Annuler</button>
