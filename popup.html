@@ -264,6 +264,7 @@
     .invoice-preview-scroll {
       flex: 1 1 auto;
       overflow-y: auto;
+      overflow-anchor: none;
       padding: 10px 0 0 0;
     }
 
@@ -414,8 +415,8 @@
     }
 
     .invoice-block-delete {
-      width: 15px;
-      height: 15px;
+      width: 20px;
+      height: 20px;
       margin: 1px 0 0 15px;
       padding: 0;
       border: none;
@@ -433,8 +434,8 @@
     }
 
     .invoice-block-delete .material-symbols-outlined {
-      font-size: 15px;
-      line-height: 15px;
+      font-size: 20px;
+      line-height: 20px;
       color: currentColor;
     }
 
@@ -2076,9 +2077,14 @@
       window.setTimeout(updateInvoiceScrollArrowState, 350);
     }
 
-    function renderInvoicePreviewConfirmView() {
+    function renderInvoicePreviewConfirmView(options = {}) {
       const preview = currentInvoicePreview || {};
       const blocks = Array.isArray(preview.blocks) ? preview.blocks : [];
+      const scrollElement = document.getElementById("invoicePreviewScroll");
+      const preserveScrollPosition = Boolean(options.preserveScrollPosition);
+      const preservedScrollTop = typeof options.scrollTop === "number"
+        ? options.scrollTop
+        : (scrollElement ? scrollElement.scrollTop : 0);
       const campaigns = [...new Set(blocks.map(block => String(block.campaign || "").trim()).filter(Boolean))];
       document.getElementById("previewClientValue").textContent = preview.client || "";
       document.getElementById("previewProjectsLabel").textContent = campaigns.length > 1 ? "Projets" : "Projet";
@@ -2180,9 +2186,8 @@
         blocksContainer.appendChild(blockElement);
       });
 
-      const scrollElement = document.getElementById("invoicePreviewScroll");
       scrollElement.onscroll = updateInvoiceScrollArrowState;
-      scrollElement.scrollTop = 0;
+      scrollElement.scrollTop = preserveScrollPosition ? preservedScrollTop : 0;
       window.requestAnimationFrame(updateInvoiceScrollArrowState);
     }
 
@@ -2227,6 +2232,8 @@
       if (!currentInvoicePreview || !Array.isArray(currentInvoicePreview.blocks) || currentInvoicePreview.blocks.length <= 1) {
         return;
       }
+      const scrollElement = document.getElementById("invoicePreviewScroll");
+      const preservedScrollTop = scrollElement ? scrollElement.scrollTop : 0;
       const blockElement = document.querySelector('.invoice-preview-block[data-block-index="' + String(blockIndex) + '"]');
       currentInvoicePreview.blocks.splice(blockIndex, 1);
       renumberInvoicePreviewBlocks();
@@ -2234,7 +2241,7 @@
       syncPendingInvoicePreview();
 
       if (!blockElement) {
-        renderInvoicePreviewConfirmView();
+        renderInvoicePreviewConfirmView({ preserveScrollPosition: true, scrollTop: preservedScrollTop });
         return;
       }
 
@@ -2242,7 +2249,7 @@
       blockElement.classList.add("is-removing");
       updateRenderedInvoiceBlockNumbers();
       window.setTimeout(() => {
-        renderInvoicePreviewConfirmView();
+        renderInvoicePreviewConfirmView({ preserveScrollPosition: true, scrollTop: preservedScrollTop });
       }, 230);
     }
 
