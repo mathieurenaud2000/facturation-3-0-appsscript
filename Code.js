@@ -1481,7 +1481,7 @@ function prepareInvoicePreview(invoiceNumber) {
     return blockContext ? `Travaux réalisés pour ${blockContext}.` : "Travaux réalisés.";
   };
   const previewBlocks = [];
-  facturerCheckedRows.forEach(({ row }) => {
+  facturerCheckedRows.forEach(({ row, index }) => {
     const campaign = String(row[2] || "").trim();
     const project = String(row[3] || "").trim();
     const blockKey = `${campaign}|||${project}`;
