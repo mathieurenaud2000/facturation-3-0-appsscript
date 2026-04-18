@@ -612,7 +612,7 @@ function buildFixedInvoiceBlocks_(facturerCheckedRows) {
   const cleanText = (value) => String(value || "").replace(/\s+/g, " ").trim();
   const blocks = [];
 
-  facturerCheckedRows.forEach(({ row }) => {
+  facturerCheckedRows.forEach(({ row, index }) => {
     const campaign = cleanText(row[2]);
     const project = cleanText(row[3]);
     const blockKey = `${normalizeString_(campaign)}|||${normalizeString_(project)}`;
@@ -624,11 +624,13 @@ function buildFixedInvoiceBlocks_(facturerCheckedRows) {
         project,
         notes: [],
         activities: [],
+        rowIndexes: [],
         totalTime: 0,
         totalPrice: 0
       };
       blocks.push(block);
     }
+    block.rowIndexes.push(index);
 
     const activityName = cleanText(row[4]);
     const time = toDecimalHours(row[8]);
@@ -655,9 +657,44 @@ function buildFixedInvoiceBlocks_(facturerCheckedRows) {
     title: [block.campaign, block.project].filter(Boolean).join(" — "),
     description: buildFixedInvoiceBlockDescription_(block),
     activities: block.activities,
+    rowIndexes: block.rowIndexes.slice(),
     totalTime: block.totalTime,
     totalPrice: block.totalPrice
   }));
+}
+
+function filterFacturerCheckedRowsByInvoicePreview_(facturerCheckedRows, invoicePreview) {
+  const previewBlocks = invoicePreview && Array.isArray(invoicePreview.blocks) ? invoicePreview.blocks : [];
+  if (!previewBlocks.length) {
+    return facturerCheckedRows;
+  }
+
+  const previewRowIndexes = new Set();
+  previewBlocks.forEach(block => {
+    if (!Array.isArray(block.rowIndexes)) return;
+    block.rowIndexes.forEach(rowIndex => {
+      const numericRowIndex = Number(rowIndex);
+      if (Number.isInteger(numericRowIndex)) {
+        previewRowIndexes.add(numericRowIndex);
+      }
+    });
+  });
+  if (previewRowIndexes.size) {
+    return facturerCheckedRows.filter(entry => previewRowIndexes.has(entry.index));
+  }
+
+  const previewBlockKeys = new Set(previewBlocks.map(block => {
+    const campaign = String(block.campaign || "").trim();
+    const project = String(block.project || "").trim();
+    return `${normalizeString_(campaign)}|||${normalizeString_(project)}`;
+  }));
+  return previewBlockKeys.size
+    ? facturerCheckedRows.filter(({ row }) => {
+      const campaign = String(row[2] || "").trim();
+      const project = String(row[3] || "").trim();
+      return previewBlockKeys.has(`${normalizeString_(campaign)}|||${normalizeString_(project)}`);
+    })
+    : facturerCheckedRows;
 }
 
 function applyValidatedInvoicePreviewToBlocks_(blocks, invoicePreview) {
@@ -1217,6 +1254,11 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
     }
   }
 
+  const facturerRowsToInvoice = filterFacturerCheckedRowsByInvoicePreview_(facturerCheckedRows, invoicePreview);
+  if (!facturerRowsToInvoice.length) {
+    return { success: false, message: "Aucune activité n’est sélectionnée" };
+  }
+
   const wasModelSheetHidden = facturerModelSheet.isSheetHidden();
   if (wasModelSheetHidden) {
     facturerModelSheet.showSheet();
@@ -1231,15 +1273,15 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   }
   Logger.log(`Temp invoice sheet created: name="${facturerTempSheet.getName()}", sheetId=${facturerTempSheet.getSheetId()}, index=${facturerTempSheet.getIndex()}`);
 
-  const facturerInvoiceBlocks = applyValidatedInvoicePreviewToBlocks_(buildFixedInvoiceBlocks_(facturerCheckedRows), invoicePreview);
+  const facturerInvoiceBlocks = applyValidatedInvoicePreviewToBlocks_(buildFixedInvoiceBlocks_(facturerRowsToInvoice), invoicePreview);
   const validatedServiceTitle = cleanGeneratedInvoiceText_(invoicePreview && invoicePreview.serviceTitle);
   const facturerServiceTitle = validatedServiceTitle || activityType;
   const facturerTotalAmount = facturerInvoiceBlocks.reduce((sum, block) => sum + block.totalPrice, 0).toFixed(2);
-  const facturerClientName = String(facturerCheckedRows[0].row[1] || "");
+  const facturerClientName = String(facturerRowsToInvoice[0].row[1] || "");
   const facturerToday = new Date();
   const facturerCampaignSummary = [];
   const facturerSeenCampaignKeys = new Set();
-  facturerCheckedRows.forEach(row => {
+  facturerRowsToInvoice.forEach(row => {
     const facturerCampaignName = String(row.row[2] || "").trim();
     const facturerCampaignKey = normalizeString_(facturerCampaignName);
     if (!facturerCampaignName || facturerSeenCampaignKeys.has(facturerCampaignKey)) {
@@ -1280,7 +1322,7 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
     }
     const facturerPdfUrl = facturerPdfFile.getUrl();
 
-    facturerCheckedRows.forEach(row => {
+    facturerRowsToInvoice.forEach(row => {
       const facturerRowIndex = row.index;
       facturerTimeSheet.getRange(`A${facturerRowIndex}`).setValue(false);
       facturerTimeSheet.getRange(`O${facturerRowIndex}`).setValue(true);
@@ -1450,11 +1492,13 @@ function prepareInvoicePreview(invoiceNumber) {
         project,
         notes: [],
         activities: [],
+        rowIndexes: [],
         totalTime: 0,
         totalPrice: 0
       });
     }
     const previewBlock = previewBlocks.find(block => block.key === blockKey);
+    previewBlock.rowIndexes.push(index);
     const activityName = String(row[4] || "").trim();
     const time = toPreviewTime(row[8]);
     const price = Number(row[10]);
@@ -1490,6 +1534,7 @@ function prepareInvoicePreview(invoiceNumber) {
         name: activity.name,
         time: Number(activity.time.toFixed(2))
       })),
+      rowIndexes: block.rowIndexes.slice(),
       totalTime: Number(block.totalTime.toFixed(2)),
       totalPrice: Number(block.totalPrice.toFixed(2))
     };

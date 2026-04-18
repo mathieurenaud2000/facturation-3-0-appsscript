@@ -380,11 +380,30 @@
       margin: 0;
       border-top: 1px solid #000000;
       background: #ffffff;
+      overflow: hidden;
+      transition:
+        opacity 220ms ease-out,
+        transform 220ms ease-out,
+        max-height 220ms ease-out,
+        padding-top 220ms ease-out,
+        padding-bottom 220ms ease-out,
+        border-color 220ms ease-out;
+    }
+
+    .invoice-preview-block.is-removing {
+      opacity: 0;
+      transform: translateY(-8px);
+      max-height: 0 !important;
+      padding-top: 0;
+      padding-bottom: 0;
+      border-color: transparent;
     }
 
     .invoice-block-number {
       grid-column: 1;
       grid-row: 1 / span 3;
+      display: flex;
+      align-items: flex-start;
       color: #aaaaaa;
       font-weight: 400;
       font-size: 18px;
@@ -392,6 +411,31 @@
       text-align: left;
       align-self: start;
       padding-top: 0;
+    }
+
+    .invoice-block-delete {
+      width: 15px;
+      height: 15px;
+      margin: 1px 0 0 15px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: #e6e6e6;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    .invoice-block-delete:hover {
+      color: #ff0000;
+    }
+
+    .invoice-block-delete .material-symbols-outlined {
+      font-size: 15px;
+      line-height: 15px;
+      color: currentColor;
     }
 
     .invoice-block-content {
@@ -2053,7 +2097,19 @@
 
         const numberElement = document.createElement("div");
         numberElement.className = "invoice-block-number";
-        numberElement.textContent = String(block.blockNumber || index + 1);
+        const numberText = document.createElement("span");
+        numberText.className = "invoice-block-number-text";
+        numberText.textContent = String(block.blockNumber || index + 1);
+        numberElement.appendChild(numberText);
+        if (blocks.length > 1) {
+          const deleteButton = document.createElement("button");
+          deleteButton.type = "button";
+          deleteButton.className = "invoice-block-delete";
+          deleteButton.setAttribute("aria-label", "Supprimer le bloc " + String(index + 1));
+          deleteButton.innerHTML = '<span class="material-symbols-outlined">delete</span>';
+          deleteButton.addEventListener("click", () => deleteInvoicePreviewBlock(index));
+          numberElement.appendChild(deleteButton);
+        }
 
         const contentElement = document.createElement("div");
         contentElement.className = "invoice-block-content";
@@ -2128,6 +2184,66 @@
       scrollElement.onscroll = updateInvoiceScrollArrowState;
       scrollElement.scrollTop = 0;
       window.requestAnimationFrame(updateInvoiceScrollArrowState);
+    }
+
+    function syncPendingInvoicePreview() {
+      if (pendingInvoiceSubmission) {
+        pendingInvoiceSubmission.invoicePreview = currentInvoicePreview;
+        pendingInvoiceSubmission.activityType = currentInvoicePreview && currentInvoicePreview.serviceTitle
+          ? currentInvoicePreview.serviceTitle
+          : pendingInvoiceSubmission.activityType;
+      }
+    }
+
+    function renumberInvoicePreviewBlocks() {
+      if (!currentInvoicePreview || !Array.isArray(currentInvoicePreview.blocks)) return;
+      currentInvoicePreview.blocks.forEach((block, index) => {
+        block.blockNumber = index + 1;
+      });
+    }
+
+    function refreshInvoicePreviewTotals() {
+      if (!currentInvoicePreview || !Array.isArray(currentInvoicePreview.blocks)) return;
+      currentInvoicePreview.totalAmount = Number(currentInvoicePreview.blocks
+        .reduce((sum, block) => sum + (Number(block.totalPrice) || 0), 0)
+        .toFixed(2));
+      currentInvoicePreview.projects = [...new Set(currentInvoicePreview.blocks
+        .map(block => String(block.project || "").trim())
+        .filter(Boolean))];
+    }
+
+    function updateRenderedInvoiceBlockNumbers() {
+      const blockElements = Array.from(document.querySelectorAll(".invoice-preview-block:not(.is-removing)"));
+      blockElements.forEach((blockElement, index) => {
+        blockElement.dataset.blockIndex = String(index);
+        const numberText = blockElement.querySelector(".invoice-block-number-text");
+        if (numberText) {
+          numberText.textContent = String(index + 1);
+        }
+      });
+    }
+
+    function deleteInvoicePreviewBlock(blockIndex) {
+      if (!currentInvoicePreview || !Array.isArray(currentInvoicePreview.blocks) || currentInvoicePreview.blocks.length <= 1) {
+        return;
+      }
+      const blockElement = document.querySelector('.invoice-preview-block[data-block-index="' + String(blockIndex) + '"]');
+      currentInvoicePreview.blocks.splice(blockIndex, 1);
+      renumberInvoicePreviewBlocks();
+      refreshInvoicePreviewTotals();
+      syncPendingInvoicePreview();
+
+      if (!blockElement) {
+        renderInvoicePreviewConfirmView();
+        return;
+      }
+
+      blockElement.style.maxHeight = blockElement.scrollHeight + "px";
+      blockElement.classList.add("is-removing");
+      updateRenderedInvoiceBlockNumbers();
+      window.setTimeout(() => {
+        renderInvoicePreviewConfirmView();
+      }, 230);
     }
 
     function confirmInvoicePreview() {
