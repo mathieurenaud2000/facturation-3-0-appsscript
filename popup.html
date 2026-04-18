@@ -848,7 +848,9 @@
     }
 
     .invoice-number-screen-mode .footer.footer-double #close,
-    .invoice-number-screen-mode .footer.footer-double #submit {
+    .invoice-number-screen-mode .footer.footer-double #submit,
+    .success-screen-mode .footer.footer-double #close,
+    .success-screen-mode .footer.footer-double #submit {
       grid-row: 1;
       display: inline-flex !important;
       height: var(--alert-footer-button-height);
@@ -1489,6 +1491,7 @@
       const enabled = isAlertLayoutView(view);
       popupContainer.classList.toggle("alert-screen-mode", enabled);
       popupContainer.classList.toggle("invoice-number-screen-mode", view === "invoiceNumberView");
+      popupContainer.classList.toggle("success-screen-mode", view === "successView");
     }
 
     function setFooterButtons(footer) {
