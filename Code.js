@@ -179,32 +179,6 @@ function Facturer() {
     return;
   }
 
-  const facturerItems = [];
-  facturerCheckedRows.forEach(row => {
-    const facturerClient = row.row[1];
-    const facturerCampaign = row.row[2];
-    const facturerKey = `${facturerClient}:${facturerCampaign}`;
-    if (!facturerItems.some(item => item.key === facturerKey)) {
-      facturerItems.push({ key: facturerKey, client: facturerClient, campaign: facturerCampaign, projects: [], activities: [], totalTime: 0, totalPrice: 0 });
-    }
-    const facturerItem = facturerItems.find(item => item.key === facturerKey);
-    if (!facturerItem.projects.includes(row.row[3])) facturerItem.projects.push(row.row[3]);
-    const existingActivity = facturerItem.activities.find(a => a.activity === row.row[4]);
-    const time = row.row[8] instanceof Date ? (row.row[8].getHours() + row.row[8].getMinutes() / 60) : Number(row.row[8]);
-    if (existingActivity) {
-      existingActivity.time += time;
-    } else {
-      facturerItem.activities.push({ activity: row.row[4], time: time });
-    }
-    facturerItem.totalTime += time;
-    facturerItem.totalPrice += Number(row.row[10]);
-  });
-
-  if (facturerItems.length > 7) {
-    openStandaloneMessageView_("Erreur : Plus de 7 items client/campagne sélectionnés. Maximum autorisé : 7.");
-    return;
-  }
-
   const invoiceNumberingSetup = checkInvoiceNumberingSetup();
   showFacturerPopup([], [], null, invoiceNumberingSetup.requiresInitialInvoiceSetup);
 }
