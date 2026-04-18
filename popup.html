@@ -853,7 +853,7 @@
     }
 
     .inline-error.active {
-      display: block;
+      display: block !important;
     }
   </style>
 </head>
@@ -1270,8 +1270,8 @@
 
     function showInvoiceNumberInlineError(message) {
       const errorElement = document.getElementById("invoiceNumberError");
-      errorElement.textContent = "";
-      errorElement.classList.remove("active");
+      errorElement.textContent = message || "";
+      errorElement.classList.toggle("active", Boolean(message));
     }
 
     function clearInvoiceNumberInlineError() {
@@ -1384,7 +1384,8 @@
         invoiceNumberValidationActivated = true;
       }
       const initialNumberInput = document.getElementById("initialNumber");
-      const isValid = /^\d+$/.test(initialNumberInput.value.trim());
+      const initialNumberValue = initialNumberInput.value.trim();
+      const isValid = /^\d+$/.test(initialNumberValue) && Number(initialNumberValue) > 0;
       setInvoiceNumberSubmitDisabled(!isValid);
       if (!invoiceNumberValidationActivated) {
         initialNumberInput.classList.remove("invalid");
@@ -1398,6 +1399,18 @@
         clearInvoiceNumberInlineError();
       }
       return isValid;
+    }
+
+    function isPreviewInvoiceNumberErrorMessage(message) {
+      return message === "Le numéro de facture doit être un entier positif."
+        || message === "Le numéro de départ doit être un entier positif.";
+    }
+
+    function showInvoiceNumberValidationError() {
+      currentInvoicePreview = null;
+      pendingInvoiceSubmission = null;
+      showInvoiceNumberView();
+      validateInitialInvoiceNumber(true);
     }
 
     function submitInitialInvoiceNumber() {
@@ -2127,6 +2140,10 @@
             });
           } else {
             const resultMessage = result && result.message ? result.message : null;
+            if (isPreviewInvoiceNumberErrorMessage(resultMessage)) {
+              showInvoiceNumberValidationError();
+              return;
+            }
             if (isInvoiceOverflowErrorMessage(resultMessage)) {
               pendingInvoiceSubmission = submissionData;
               showInvoiceOverflowAlertView();
@@ -2190,9 +2207,14 @@
             };
             showInvoicePreviewConfirmView();
           } else {
+            const resultMessage = result && result.message ? result.message : null;
+            if (isPreviewInvoiceNumberErrorMessage(resultMessage)) {
+              showInvoiceNumberValidationError();
+              return;
+            }
             pendingInvoiceSubmission = null;
             currentInvoicePreview = null;
-            showErrorView(result && result.message ? result.message : null, {
+            showErrorView(resultMessage, {
               secondaryAction: () => google.script.host.close(),
               secondaryLabel: "Fermer"
             });
