@@ -10,14 +10,6 @@ function openStandaloneMessageView_(message, title = "Erreur", options = {}) {
   SpreadsheetApp.getUi().showModelessDialog(html, title);
 }
 
-function openBlankBlueModelessTest() {
-  const html = HtmlService.createHtmlOutputFromFile("fondDesChoses")
-    .setWidth(900)
-    .setHeight(450);
-  html.addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  SpreadsheetApp.getUi().showModelessDialog(html, "FOND DES CHOSES");
-}
-
 function ouvrirPopup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getActiveSheet();
