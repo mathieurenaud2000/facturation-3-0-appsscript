@@ -215,16 +215,27 @@
     <div class="footer" id="footer">
       <div class="footer-left">
         <div class="label">Prochain # de facture :</div>
-        <input type="number" id="nextInvoice" value="<?!= nextInvoice || '' ?>">
+        <input type="text" inputmode="numeric" id="nextInvoice" value="<?!= nextInvoice || '' ?>">
       </div>
       <div class="btn-container">
-        <button id="cancel" class="btn btn-cancel" onclick="google.script.host.close()">Fermer</button>
-        <button id="submit" class="btn btn-green" onclick="submitForm()">OK</button>
+        <button id="cancel" class="btn btn-cancel" onclick="google.script.host.close()">Annuler</button>
+        <button id="submit" class="btn btn-green" onclick="submitForm()">Enregistrer</button>
       </div>
     </div>
   </div>
 
   <script>
+    window.continueFacturerAfterSave = <?!= JSON.stringify(typeof continueFacturerAfterSave === "undefined" ? false : continueFacturerAfterSave) ?>;
+    window.existingInvoiceNumbers = <?!= JSON.stringify(typeof existingInvoiceNumbers === "undefined" ? [] : existingInvoiceNumbers) ?>;
+
+    const requiredFieldLabels = {
+      name: "Nom",
+      email: "Courriel",
+      address1: "Adresse Ligne 1",
+      address2: "Adresse Ligne 2",
+      nextInvoice: "Prochain # de facture"
+    };
+
     function showError(message) {
       const errorMessage = document.getElementById('errorMessage');
       errorMessage.textContent = message;
@@ -237,30 +248,128 @@
       errorMessage.classList.remove('active');
     }
 
-    function updateSubmitState() {
-      const address1 = document.getElementById('address1');
-      const submit = document.getElementById('submit');
-      const isAddress1Valid = address1.value.trim() !== "";
-      submit.disabled = !isAddress1Valid;
-      return isAddress1Valid;
+    function getField(id) {
+      return document.getElementById(id);
     }
 
-    function validateForm() {
-      const address1 = document.getElementById('address1');
-      const isAddress1Valid = updateSubmitState();
-      address1.classList.toggle("invalid", !isAddress1Valid);
+    function getRequiredFields() {
+      return Object.keys(requiredFieldLabels).map(id => getField(id));
+    }
 
-      if (!isAddress1Valid) {
-        showError("Veuillez remplir Adresse Ligne 1.");
+    function getExistingInvoiceNumbers() {
+      return Array.isArray(window.existingInvoiceNumbers)
+        ? window.existingInvoiceNumbers.map(value => Number(value)).filter(value => Number.isInteger(value) && value > 0)
+        : [];
+    }
+
+    function sanitizeNextInvoice() {
+      const nextInvoice = getField('nextInvoice');
+      const sanitizedValue = nextInvoice.value.replace(/\D/g, '');
+      if (nextInvoice.value !== sanitizedValue) {
+        nextInvoice.value = sanitizedValue;
+      }
+    }
+
+    function getNextInvoiceNumber() {
+      const nextInvoiceValue = getField('nextInvoice').value.trim();
+      if (!/^\d+$/.test(nextInvoiceValue)) {
+        return NaN;
+      }
+      return Number(nextInvoiceValue);
+    }
+
+    function isNextInvoiceDuplicate() {
+      const nextInvoiceNumber = getNextInvoiceNumber();
+      return Number.isInteger(nextInvoiceNumber) && getExistingInvoiceNumbers().includes(nextInvoiceNumber);
+    }
+
+    function setSubmitDisabled(isDisabled) {
+      const submit = document.getElementById('submit');
+      submit.disabled = isDisabled;
+    }
+
+    function validateForm(showMessages = false) {
+      sanitizeNextInvoice();
+      const emptyRequiredFields = getRequiredFields().filter(field => field.value.trim() === "");
+      getRequiredFields().forEach(field => {
+        field.classList.toggle("invalid", field.value.trim() === "");
+      });
+
+      const nextInvoice = getField('nextInvoice');
+      const nextInvoiceNumber = getNextInvoiceNumber();
+      const isNextInvoiceValid = Number.isInteger(nextInvoiceNumber) && nextInvoiceNumber > 0;
+      const hasDuplicateInvoiceNumber = isNextInvoiceDuplicate();
+      nextInvoice.classList.toggle("invalid", nextInvoice.value.trim() === "" || !isNextInvoiceValid || hasDuplicateInvoiceNumber);
+
+      const isValid = emptyRequiredFields.length === 0 && isNextInvoiceValid && !hasDuplicateInvoiceNumber;
+      setSubmitDisabled(!isValid);
+
+      if (!showMessages) {
+        if (isValid) {
+          clearError();
+        }
+        return isValid;
+      }
+
+      if (emptyRequiredFields.length) {
+        const labels = emptyRequiredFields.map(field => requiredFieldLabels[field.id]).join(", ");
+        showError("Veuillez remplir les champs obligatoires : " + labels + ".");
+      } else if (!isNextInvoiceValid) {
+        showError("Veuillez saisir un numéro de facture valide.");
+      } else if (hasDuplicateInvoiceNumber) {
+        showError("Ce numéro de facture existe déjà.");
       } else {
         clearError();
       }
 
-      return isAddress1Valid;
+      return isValid;
+    }
+
+    function updateSubmitState() {
+      return validateForm(false);
+    }
+
+    function showForm() {
+      document.getElementById('formContainer').style.display = 'grid';
+      document.getElementById('footer').style.display = 'flex';
+      document.getElementById('loader').style.display = 'none';
+    }
+
+    function showLoader() {
+      clearError();
+      document.getElementById('formContainer').style.display = 'none';
+      document.getElementById('footer').style.display = 'none';
+      document.getElementById('loader').style.display = 'flex';
+    }
+
+    function handleServerValidationError(result) {
+      showForm();
+      const message = result && result.message ? result.message : "Erreur lors de la soumission.";
+      if (result && result.message === "Ce numéro de facture existe déjà.") {
+        getField('nextInvoice').classList.add("invalid");
+        setSubmitDisabled(true);
+      }
+      showError(message);
+    }
+
+    function continueFacturerFlow(nextInvoice) {
+      google.script.run
+        .withSuccessHandler((result) => {
+          if (result && result.success === false) {
+            handleServerValidationError(result);
+            return;
+          }
+          google.script.host.close();
+        })
+        .withFailureHandler((error) => {
+          showForm();
+          showError('Erreur lors de la reprise de la facturation : ' + error.message);
+        })
+        .continueFacturerAfterConfiguration(nextInvoice);
     }
 
     function submitForm() {
-      if (!validateForm()) return;
+      if (!validateForm(true)) return;
 
       const name = document.getElementById('name').value.trim();
       const address1 = document.getElementById('address1').value.trim();
@@ -271,26 +380,32 @@
       const website = document.getElementById('website').value.trim();
       const nextInvoice = document.getElementById('nextInvoice').value.trim();
 
-      clearError();
-      document.getElementById('formContainer').style.display = 'none';
-      document.getElementById('footer').style.display = 'none';
-      document.getElementById('loader').style.display = 'flex';
+      showLoader();
 
       google.script.run
-        .withSuccessHandler(() => google.script.host.close())
+        .withSuccessHandler((result) => {
+          if (result && result.success === false) {
+            handleServerValidationError(result);
+            return;
+          }
+          if (window.continueFacturerAfterSave) {
+            continueFacturerFlow(Number(nextInvoice));
+            return;
+          }
+          google.script.host.close();
+        })
         .withFailureHandler((error) => {
-          document.getElementById('formContainer').style.display = 'block';
-          document.getElementById('footer').style.display = 'flex';
-          document.getElementById('loader').style.display = 'none';
+          showForm();
           showError('Erreur lors de la soumission : ' + error.message);
         })
         .submitInfoForm(name, address1, address2, address3, address4, email, website, nextInvoice);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      const address1 = document.getElementById('address1');
       updateSubmitState();
-      address1.addEventListener('input', updateSubmitState);
+      getRequiredFields().forEach(field => {
+        field.addEventListener('input', updateSubmitState);
+      });
     });
   </script>
 </body>
