@@ -136,13 +136,12 @@ function nouveauProjet() {
 function Facturer() {
   const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const facturerTimeSheet = facturerSpreadsheet.getSheetByName("FEUILLE DE TEMPS");
-  const facturerConfigSheet = facturerSpreadsheet.getSheetByName("CONFIG");
   const facturerModelSheet = facturerSpreadsheet.getSheetByName("MODÈLE");
   const facturerTrackingSheet = facturerSpreadsheet.getSheetByName("FACTURATION");
   const facturerGestionSheet = facturerSpreadsheet.getSheetByName("GESTION");
   const facturerUi = SpreadsheetApp.getUi();
 
-  if (!facturerTimeSheet || !facturerConfigSheet || !facturerModelSheet || !facturerTrackingSheet || !facturerGestionSheet) {
+  if (!facturerTimeSheet || !facturerModelSheet || !facturerTrackingSheet || !facturerGestionSheet) {
     openStandaloneMessageView_("Erreur : Une ou plusieurs feuilles nécessaires sont manquantes.");
     return;
   }
@@ -221,13 +220,12 @@ function showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumbe
 function validateInvoiceGeneration_() {
   const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const facturerTimeSheet = facturerSpreadsheet.getSheetByName("FEUILLE DE TEMPS");
-  const facturerConfigSheet = facturerSpreadsheet.getSheetByName("CONFIG");
   const facturerGestionSheet = facturerSpreadsheet.getSheetByName("GESTION");
   const facturerModelSheet = facturerSpreadsheet.getSheetByName("MODÈLE");
   const facturerTrackingSheet = facturerSpreadsheet.getSheetByName("FACTURATION");
   const isMissingValue = (value) => value === null || value === undefined || (typeof value === "string" ? value.trim() === "" : value === "");
 
-  if (!facturerTimeSheet || !facturerConfigSheet || !facturerGestionSheet || !facturerModelSheet || !facturerTrackingSheet) {
+  if (!facturerTimeSheet || !facturerGestionSheet || !facturerModelSheet || !facturerTrackingSheet) {
     return { success: false, message: "Erreur : Feuilles requises manquantes." };
   }
 
@@ -333,7 +331,7 @@ function validateInvoiceGeneration_() {
     success: true,
     facturerSpreadsheet,
     facturerTimeSheet,
-    facturerConfigSheet,
+    facturerGestionSheet,
     facturerModelSheet,
     facturerTrackingSheet,
     facturerDriveFolder,
@@ -1153,7 +1151,6 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   const {
     facturerSpreadsheet,
     facturerTimeSheet,
-    facturerConfigSheet,
     facturerModelSheet,
     facturerTrackingSheet,
     facturerDriveFolder,
@@ -1166,10 +1163,6 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   if (invoiceNumber !== null && (!Number.isInteger(invoiceNumber) || invoiceNumber <= 0)) {
     return { success: false, message: "Le numéro de facture doit être un entier positif." };
   }
-
-  const facturerLastRow = facturerConfigSheet.getLastRow();
-  const facturerActivitiesRange = facturerConfigSheet.getRange("C2:C" + Math.max(2, facturerLastRow)).getValues();
-  const shouldPersistNewActivityType = !facturerActivitiesRange.flat().includes(activityType);
 
   const facturerTrackingLastRow = facturerTrackingSheet.getLastRow();
   const existingInvoiceValues = facturerTrackingLastRow >= 6
@@ -1298,22 +1291,6 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
     ]]);
     facturerTrackingSheet.getRange(`B${facturerTrackingRow}`).setNumberFormat("@");
     facturerTrackingSheet.getRange(`C${facturerTrackingRow}`).setNumberFormat("d mmmm yyyy");
-
-    if (shouldPersistNewActivityType) {
-      const latestConfigLastRow = facturerConfigSheet.getLastRow();
-      const latestActivitiesRange = facturerConfigSheet.getRange("C2:C" + Math.max(2, latestConfigLastRow)).getValues();
-      if (!latestActivitiesRange.flat().includes(activityType)) {
-        let facturerLastActivityRow = 2;
-        for (let i = 0; i < latestActivitiesRange.length; i++) {
-          if (!latestActivitiesRange[i][0]) {
-            facturerLastActivityRow = i + 2;
-            break;
-          }
-          facturerLastActivityRow = i + 3;
-        }
-        facturerConfigSheet.getRange(`C${facturerLastActivityRow}`).setValue(activityType.trim());
-      }
-    }
 
     facturerSpreadsheet.deleteSheet(facturerTempSheet);
     return { success: true, pdfUrl: facturerPdfUrl, invoiceNumber: facturerFullInvoiceNumber };
