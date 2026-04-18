@@ -545,7 +545,7 @@
     }
 
     .invoice-number-screen-mode #invoiceNumberView.popup-view.active {
-      height: calc(100vh - 68px);
+      height: calc(100vh - var(--alert-footer-height));
       max-width: none !important;
       align-items: stretch;
       padding: 0;
@@ -562,10 +562,10 @@
     }
 
     .invoice-number-icon {
-      font-size: 100px;
-      font-weight: 700;
-      line-height: 0.8;
-      color: #00983a;
+      display: block;
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
       margin: 0 0 20px 0;
     }
 
@@ -589,12 +589,12 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      width: 60px;
+      width: 90px;
     }
 
     .invoice-number-screen-mode #invoiceNumberView #initialNumber {
-      width: 60px;
-      min-width: 60px;
+      width: 90px;
+      min-width: 90px;
       padding: 10px;
       text-align: center;
       font-family: Roboto, sans-serif;
@@ -847,6 +847,17 @@
       cursor: not-allowed;
     }
 
+    .invoice-number-screen-mode .footer.footer-double #close,
+    .invoice-number-screen-mode .footer.footer-double #submit {
+      height: var(--alert-footer-button-height);
+      min-height: var(--alert-footer-button-height);
+      margin-top: 0;
+      margin-bottom: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      align-self: stretch;
+    }
+
     .btn {
       margin-right: 0;
       margin-left: 20px;
@@ -1061,7 +1072,7 @@
     <!-- Vue numéro initial -->
     <div id="invoiceNumberView" class="popup-view invoice-number-view">
       <div class="invoice-number-layout">
-        <div class="invoice-number-icon" aria-hidden="true">!</div>
+        <img class="invoice-number-icon" src="https://drive.google.com/thumbnail?id=10xXEtKTwvC_Xw3SdLImqVNAaYsFjVlMM&amp;sz=w300" alt="" aria-hidden="true">
         <div class="invoice-number-title">Numérotation</div>
         <div class="invoice-number-text">Veuillez définir un numéro de facture.</div>
         <div class="invoice-number-field">
