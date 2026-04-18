@@ -959,6 +959,22 @@
   </style>
 </head>
 <body>
+  <script>
+    window.contacts = <?!= JSON.stringify(typeof contacts === "undefined" ? [] : contacts) ?>;
+    window.activityTypes = <?!= JSON.stringify(typeof activityTypes === "undefined" ? [] : activityTypes) ?>;
+    window.initialInvoiceNumber = <?!= JSON.stringify(typeof initialInvoiceNumber === "undefined" ? null : initialInvoiceNumber) ?>;
+    window.requiresInitialInvoiceSetup = <?!= JSON.stringify(typeof requiresInitialInvoiceSetup === "undefined" ? false : requiresInitialInvoiceSetup) ?>;
+    window.showStartupConfirm = <?!= JSON.stringify(typeof showStartupConfirm === "undefined" ? false : showStartupConfirm) ?>;
+    window.confirmViewTitle = <?!= JSON.stringify(typeof confirmViewTitle === "undefined" ? "" : confirmViewTitle) ?>;
+    window.confirmViewMessage = <?!= JSON.stringify(typeof confirmViewMessage === "undefined" ? "" : confirmViewMessage) ?>;
+    window.confirmAction = <?!= JSON.stringify(typeof confirmAction === "undefined" ? "" : confirmAction) ?>;
+    window.confirmPrimaryLabel = <?!= JSON.stringify(typeof confirmPrimaryLabel === "undefined" ? "" : confirmPrimaryLabel) ?>;
+    window.confirmSecondaryLabel = <?!= JSON.stringify(typeof confirmSecondaryLabel === "undefined" ? "" : confirmSecondaryLabel) ?>;
+    window.showStandaloneMessage = <?!= JSON.stringify(typeof showStandaloneMessage === "undefined" ? false : showStandaloneMessage) ?>;
+    window.messageViewTitle = <?!= JSON.stringify(typeof messageViewTitle === "undefined" ? "" : messageViewTitle) ?>;
+    window.messageViewMessage = <?!= JSON.stringify(typeof messageViewMessage === "undefined" ? "" : messageViewMessage) ?>;
+    window.facturationPopupContextReady = <?!= JSON.stringify(typeof facturationPopupContextReady === "undefined" ? false : facturationPopupContextReady) ?>;
+  </script>
   <div id="popupContainer" class="container">
     <!-- Vue numéro initial -->
     <div id="invoiceNumberView" class="popup-view invoice-number-view">

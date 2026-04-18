@@ -2,11 +2,15 @@
 
 function openStandaloneMessageView_(message, title = "Erreur", options = {}) {
   const { width = 900, height = 450 } = options;
-  const html = HtmlService.createHtmlOutputFromFile("popup")
+  const template = HtmlService.createTemplateFromFile("popup");
+  template.showStandaloneMessage = true;
+  template.messageViewTitle = title;
+  template.messageViewMessage = message;
+  template.facturationPopupContextReady = true;
+  const html = template.evaluate()
     .setWidth(width)
     .setHeight(height);
   html.addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  html.append(`<script>var showStandaloneMessage = true; var messageViewTitle = ${JSON.stringify(title)}; var messageViewMessage = ${JSON.stringify(message)}; window.facturationPopupContextReady = true; if (window.startFacturationPopup) window.startFacturationPopup();</script>`);
   SpreadsheetApp.getUi().showModelessDialog(html, "Facturation");
 }
 
@@ -205,11 +209,22 @@ function showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumbe
     confirmPrimaryLabel: "",
     confirmSecondaryLabel: ""
   }, popupContext || {});
-  const facturerHtml = HtmlService.createHtmlOutputFromFile("popup")
+  const template = HtmlService.createTemplateFromFile("popup");
+  template.contacts = facturerContacts;
+  template.activityTypes = facturerActivityTypes;
+  template.initialInvoiceNumber = invoiceNumber;
+  template.requiresInitialInvoiceSetup = requiresInitialInvoiceSetup;
+  template.showStartupConfirm = normalizedPopupContext.showStartupConfirm;
+  template.confirmViewTitle = normalizedPopupContext.confirmViewTitle;
+  template.confirmViewMessage = normalizedPopupContext.confirmViewMessage;
+  template.confirmAction = normalizedPopupContext.confirmAction;
+  template.confirmPrimaryLabel = normalizedPopupContext.confirmPrimaryLabel;
+  template.confirmSecondaryLabel = normalizedPopupContext.confirmSecondaryLabel;
+  template.facturationPopupContextReady = true;
+  const facturerHtml = template.evaluate()
     .setWidth(900)
     .setHeight(450);
   facturerHtml.addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  facturerHtml.append(`<script>var contacts = ${JSON.stringify(facturerContacts)}; var activityTypes = ${JSON.stringify(facturerActivityTypes)}; var initialInvoiceNumber = ${JSON.stringify(invoiceNumber)}; var requiresInitialInvoiceSetup = ${JSON.stringify(requiresInitialInvoiceSetup)}; var showStartupConfirm = ${JSON.stringify(normalizedPopupContext.showStartupConfirm)}; var confirmViewTitle = ${JSON.stringify(normalizedPopupContext.confirmViewTitle)}; var confirmViewMessage = ${JSON.stringify(normalizedPopupContext.confirmViewMessage)}; var confirmAction = ${JSON.stringify(normalizedPopupContext.confirmAction)}; var confirmPrimaryLabel = ${JSON.stringify(normalizedPopupContext.confirmPrimaryLabel)}; var confirmSecondaryLabel = ${JSON.stringify(normalizedPopupContext.confirmSecondaryLabel)}; window.facturationPopupContextReady = true; if (window.startFacturationPopup) window.startFacturationPopup();</script>`);
   facturerUi.showModelessDialog(facturerHtml, "Facturation");
 }
 
@@ -1895,11 +1910,22 @@ function trash() {
       ? "Voulez-vous vraiment supprimer cette entrée ?"
       : `Voulez-vous vraiment supprimer ces ${ligneCocheeCount} entrées ?`;
   const confirmSecondaryLabel = hasInvoicedOrPaidRow ? "Fermer" : "Annuler";
-  const output = HtmlService.createHtmlOutputFromFile("popup")
+  const template = HtmlService.createTemplateFromFile("popup");
+  template.contacts = [];
+  template.activityTypes = [];
+  template.initialInvoiceNumber = null;
+  template.requiresInitialInvoiceSetup = false;
+  template.showStartupConfirm = true;
+  template.confirmViewTitle = confirmTitle;
+  template.confirmViewMessage = confirmMessage;
+  template.confirmAction = "delete_rows";
+  template.confirmPrimaryLabel = "Supprimer";
+  template.confirmSecondaryLabel = confirmSecondaryLabel;
+  template.facturationPopupContextReady = true;
+  const output = template.evaluate()
     .setWidth(400)
     .setHeight(220);
   output.addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  output.append(`<script>var contacts = []; var activityTypes = []; var initialInvoiceNumber = null; var requiresInitialInvoiceSetup = false; var showStartupConfirm = true; var confirmViewTitle = ${JSON.stringify(confirmTitle)}; var confirmViewMessage = ${JSON.stringify(confirmMessage)}; var confirmAction = "delete_rows"; var confirmPrimaryLabel = "Supprimer"; var confirmSecondaryLabel = ${JSON.stringify(confirmSecondaryLabel)}; window.facturationPopupContextReady = true; if (window.startFacturationPopup) window.startFacturationPopup();</script>`);
 
   SpreadsheetApp.getUi().showModalDialog(output, confirmTitle);
 }
