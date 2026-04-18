@@ -20,6 +20,14 @@
       font-family: Roboto, sans-serif;
     }
 
+    :root {
+      --alert-footer-height: 68px;
+      --alert-footer-padding-top: 24px;
+      --alert-footer-padding-bottom: 4px;
+      --alert-footer-button-height: 40px;
+      --alert-footer-column-gap: 24px;
+    }
+
     .container {
       margin: 0;
       padding: 10px 0 0 0;
@@ -772,11 +780,13 @@
     .alert-screen-mode .footer {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      column-gap: 24px;
+      grid-template-rows: var(--alert-footer-button-height);
+      column-gap: var(--alert-footer-column-gap);
       align-items: stretch;
+      align-content: start;
       width: 100%;
-      height: 68px;
-      padding: 24px 0 4px 0;
+      height: var(--alert-footer-height);
+      padding: var(--alert-footer-padding-top) 0 var(--alert-footer-padding-bottom) 0;
       background: #ffffff;
     }
 
@@ -785,8 +795,8 @@
     }
 
     .alert-screen-mode .footer .btn {
-      height: 40px;
-      min-height: 40px;
+      height: var(--alert-footer-button-height);
+      min-height: var(--alert-footer-button-height);
       min-width: 0;
       max-width: 100%;
       margin: 0;
@@ -795,7 +805,6 @@
       font-size: 22px;
       font-weight: 700;
       line-height: 1;
-      display: inline-flex !important;
       align-items: center;
       justify-content: center;
     }
@@ -807,7 +816,15 @@
       width: 100%;
     }
 
-    .alert-screen-mode .footer #close {
+    .alert-screen-mode .footer.footer-single-primary #submit,
+    .alert-screen-mode .footer.footer-double #submit {
+      grid-column: 2;
+      justify-self: stretch;
+      align-self: stretch;
+      width: 100%;
+    }
+
+    .alert-screen-mode .footer.footer-double #close {
       grid-column: 1;
       justify-self: end;
       align-self: stretch;
@@ -1474,8 +1491,10 @@
       const isAlertScreen = document.getElementById("popupContainer").classList.contains("alert-screen-mode");
       const hasPrimary = Boolean(normalizedFooter.primary.visible);
       const hasSecondary = Boolean(normalizedFooter.secondary.visible);
+      const hasOpenPdf = Boolean(normalizedFooter.openPdf.visible);
 
-      footerElement.classList.toggle("footer-empty", isAlertScreen && !hasPrimary && !hasSecondary && !normalizedFooter.openPdf.visible);
+      footerElement.classList.toggle("footer-empty", isAlertScreen && !hasPrimary && !hasSecondary && !hasOpenPdf);
+      footerElement.classList.toggle("footer-single-primary", isAlertScreen && hasPrimary && !hasSecondary);
       footerElement.classList.toggle("footer-single-secondary", isAlertScreen && !hasPrimary && hasSecondary);
       footerElement.classList.toggle("footer-double", isAlertScreen && hasPrimary && hasSecondary);
 
