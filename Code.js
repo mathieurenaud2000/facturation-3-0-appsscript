@@ -2213,26 +2213,3 @@ function onFacturerError(error) {
 
 
 
-/////// TEST OUVERTURE GRANDE FENËTRE
-
-
-
-function ouvrirPleinEcranModeless() {
-  var html = HtmlService.createHtmlOutputFromFile('pleinEcran')
-    .setTitle('Plein écran')
-    .setWidth(1600)   // Largeur max affichable
-    .setHeight(1600);  // Hauteur max affichable
-  SpreadsheetApp.getUi().showModelessDialog(html, 'Plein écran');
-}
-
-function traiterMessageDepuisHTML(message) {
-  Logger.log("Message reçu : " + message);
-}
-
-function ouvrirCigaleEtFourmi() {
-  var html = HtmlService.createHtmlOutputFromFile('pleinEcran')
-    .setTitle('La Cigale et la Fourmi')
-    .setWidth(1200)
-    .setHeight(800);
-  SpreadsheetApp.getUi().showModelessDialog(html, 'La Cigale et la Fourmi');
-}
