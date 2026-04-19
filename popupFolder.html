@@ -52,8 +52,8 @@
       }
 
       .standard-alert-icon {
-        width: 80px;
-        height: 80px;
+        width: 160px;
+        height: 160px;
         object-fit: contain;
       }
 
@@ -188,12 +188,13 @@
         display: none;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 5px;
       }
 
       #submitDots .dot {
         display: inline-block;
         font-weight: 700;
+        font-size: 24px;
         transform: translateY(-1px);
         animation: dotPulse 1s ease-in-out infinite;
       }
@@ -229,7 +230,7 @@
 	            src="https://drive.google.com/thumbnail?id=1lL-31VG7OALHrcuzGB6asjqEoaKJP4K0&sz=w300"
 	            alt=""
 	          />
-	        </div>
+	        </div>  
 
 	        <div id="normalScreen" class="standard-alert-content">
 	          <span class="material-symbols-outlined standard-alert-icon-symbol" aria-hidden="true">folder_open</span>
@@ -258,7 +259,7 @@
 	        <button id="submit" class="btn btn-green state-idle" type="button" onclick="onSubmit()" disabled>
             <span id="submitLabel">Enregistrer</span>
             <span id="submitDots" aria-hidden="true">
-              <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+              <span class="dot">•</span><span class="dot">•</span><span class="dot">•</span>
             </span>
           </button>
 	      </footer>
