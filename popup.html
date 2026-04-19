@@ -609,13 +609,27 @@
 	    }
 
 	    .container[data-confirm-action="delete_rows"].alert-screen-mode .footer {
+	      display: grid !important;
+	      position: fixed !important;
+	      inset: 0 !important;
 	      grid-template-columns: 1fr !important;
-	      column-gap: 0;
+	      grid-template-rows: var(--alert-footer-button-height) !important;
+	      column-gap: 0 !important;
+	      row-gap: 0 !important;
+	      align-items: end !important;
+	      align-content: end !important;
+	      height: auto !important;
+	      padding: 0 0 var(--alert-footer-padding-bottom) 0 !important;
+	      background: #ffffff !important;
+	      z-index: 9999;
 	    }
 
 	    .container[data-confirm-action="delete_rows"].alert-screen-mode .footer #submit {
 	      grid-column: 1;
 	      width: 100%;
+	      display: inline-flex !important;
+	      justify-self: stretch;
+	      align-self: end;
 	      background-color: #d60000 !important;
 	      border: 1px solid #d60000 !important;
 	      color: #ffffff !important;
@@ -631,6 +645,10 @@
 	      border: 1px solid #e6e6e6 !important;
 	      color: #ffffff !important;
 	      cursor: not-allowed !important;
+	    }
+
+	    .container[data-confirm-action="delete_rows"].alert-screen-mode .footer.footer-empty {
+	      display: grid !important;
 	    }
 
     .invoice-number-screen-mode #invoiceNumberView.popup-view.active {
