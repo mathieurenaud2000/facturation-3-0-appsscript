@@ -1990,7 +1990,7 @@ function trash() {
   template.facturationPopupContextReady = true;
   const output = template.evaluate()
     .setWidth(400)
-    .setHeight(220);
+    .setHeight(78);
   output.addMetaTag('viewport', 'width=device-width, initial-scale=1');
 
   SpreadsheetApp.getUi().showModalDialog(output, confirmTitle);
@@ -2017,10 +2017,10 @@ function supprimerLignesCochées() {
     throw new Error("Aucune ligne cochée à supprimer.");
   }
 
-  // 🟥 Effet visuel rouge temporaire
+  // ⬜️ Effet visuel gris temporaire
   lignesASupprimer.forEach(row => {
     const range = sheet.getRange(row, 1, 1, sheet.getLastColumn());
-    range.setBackground("#ff0000").setFontColor("#ffffff");
+    range.setBackground("#cccccc").setFontColor("#000000");
   });
 
   SpreadsheetApp.flush();

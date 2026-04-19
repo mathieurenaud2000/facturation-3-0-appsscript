@@ -601,6 +601,7 @@
 
 	    .container[data-confirm-action="delete_rows"] #technicalConfirmContent.standard-alert-content {
 	      padding-top: 0;
+	      display: none !important;
 	    }
 
 	    .container[data-confirm-action="delete_rows"] #confirmIcon {
@@ -608,21 +609,28 @@
 	    }
 
 	    .container[data-confirm-action="delete_rows"].alert-screen-mode .footer {
-	      grid-template-columns: 1fr;
+	      grid-template-columns: 1fr !important;
 	      column-gap: 0;
 	    }
 
 	    .container[data-confirm-action="delete_rows"].alert-screen-mode .footer #submit {
 	      grid-column: 1;
 	      width: 100%;
-	      background-color: #ff0000 !important;
-	      border: 1px solid #ff0000 !important;
+	      background-color: #d60000 !important;
+	      border: 1px solid #d60000 !important;
 	      color: #ffffff !important;
 	    }
 
 	    .container[data-confirm-action="delete_rows"].alert-screen-mode .footer #submit:hover:enabled {
 	      background-color: #ff0000 !important;
 	      border: 1px solid #ff0000 !important;
+	    }
+
+	    .container[data-confirm-action="delete_rows"].alert-screen-mode .footer #submit:disabled {
+	      background-color: #e6e6e6 !important;
+	      border: 1px solid #e6e6e6 !important;
+	      color: #ffffff !important;
+	      cursor: not-allowed !important;
 	    }
 
     .invoice-number-screen-mode #invoiceNumberView.popup-view.active {
@@ -1982,20 +1990,24 @@
       submit();
     }
 
-    function handleConfirmAction(action, confirmed) {
-      if (action === "delete_rows") {
-        if (!confirmed) {
-          google.script.host.close();
-          return;
-        }
-        google.script.run
-          .withSuccessHandler(() => google.script.host.close())
-          .withFailureHandler(error => {
-            showErrorView(error && error.message ? error.message : null);
-          })
-          .supprimerLignesCochées();
-        return;
-      }
+	    function handleConfirmAction(action, confirmed) {
+	      if (action === "delete_rows") {
+	        if (!confirmed) {
+	          google.script.host.close();
+	          return;
+	        }
+	        const submitButton = document.getElementById("submit");
+	        if (submitButton) {
+	          submitButton.disabled = true;
+	        }
+	        google.script.run
+	          .withSuccessHandler(() => google.script.host.close())
+	          .withFailureHandler(error => {
+	            showErrorView(error && error.message ? error.message : null);
+	          })
+	          .supprimerLignesCochées();
+	        return;
+	      }
 
       if (action === "facturer_continue") {
         if (!confirmed) {
