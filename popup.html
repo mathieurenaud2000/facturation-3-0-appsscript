@@ -1188,12 +1188,12 @@
   <div id="popupContainer" class="container">
     <pre id="startupDebugPanel" class="startup-debug-panel" aria-live="polite"></pre>
     <!-- Vue numéro initial -->
-    <div id="invoiceNumberView" class="popup-view invoice-number-view">
-      <div class="invoice-number-layout">
-        <img class="invoice-number-icon" src="https://drive.google.com/thumbnail?id=10xXEtKTwvC_Xw3SdLImqVNAaYsFjVlMM&amp;sz=w300" alt="" aria-hidden="true">
-        <div class="invoice-number-title">Numérotation</div>
-        <div class="invoice-number-text">Veuillez définir un numéro de facture.</div>
-        <div class="invoice-number-field">
+	    <div id="invoiceNumberView" class="popup-view invoice-number-view">
+	      <div class="invoice-number-layout">
+	        <img id="invoiceNumberIcon" class="invoice-number-icon" alt="" aria-hidden="true">
+	        <div class="invoice-number-title">Numérotation</div>
+	        <div class="invoice-number-text">Veuillez définir un numéro de facture.</div>
+	        <div class="invoice-number-field">
           <input type="text" id="initialNumber" inputmode="numeric" autocomplete="off" pattern="[0-9]*" onkeydown="return allowOnlyInitialInvoiceNumberKey(event)" onpaste="handleInitialInvoiceNumberPaste(event)" oninput="sanitizeInitialInvoiceNumber(); validateInitialInvoiceNumber()">
           <div id="invoiceNumberError" class="inline-error" aria-live="polite"></div>
         </div>
@@ -1276,21 +1276,21 @@
       </div>
     </div>
     <!-- État de chargement -->
-    <div id="loadingView" class="popup-view status-view">
-      <div class="standard-alert-content">
-        <img id="loadingIcon" class="standard-alert-icon loading-spinner" src="https://drive.google.com/thumbnail?id=1lL-31VG7OALHrcuzGB6asjqEoaKJP4K0&amp;sz=w300" alt="">
-        <div class="standard-alert-title" id="loadingTitle">Création de la facture</div>
-        <div class="standard-alert-text" id="loadingMessage">Veuillez patienter...</div>
-      </div>
-    </div>
+	    <div id="loadingView" class="popup-view status-view">
+	      <div class="standard-alert-content">
+	        <img id="loadingIcon" class="standard-alert-icon loading-spinner" alt="">
+	        <div class="standard-alert-title" id="loadingTitle">Création de la facture</div>
+	        <div class="standard-alert-text" id="loadingMessage">Veuillez patienter...</div>
+	      </div>
+	    </div>
     <!-- État de succès -->
-    <div id="successView" class="popup-view status-view">
-      <div class="standard-alert-content">
-        <img id="successIcon" class="standard-alert-icon" src="https://drive.google.com/thumbnail?id=1HxEwaK3fIc5xUWUQ3gdhiMB1jlv9mDI3&amp;sz=w300" alt="">
-        <div class="standard-alert-title" id="successTitle">Bravo !</div>
-        <div class="standard-alert-text" id="successMessage">La facture a été créée avec succès.</div>
-      </div>
-    </div>
+	    <div id="successView" class="popup-view status-view">
+	      <div class="standard-alert-content">
+	        <img id="successIcon" class="standard-alert-icon" alt="">
+	        <div class="standard-alert-title" id="successTitle">Bravo !</div>
+	        <div class="standard-alert-text" id="successMessage">La facture a été créée avec succès.</div>
+	      </div>
+	    </div>
     <!-- État d'envoi -->
     <div id="sendInvoiceView" class="popup-view form-view">
       <div class="message-title">Envoyer la facture à</div>
@@ -1324,19 +1324,51 @@
     let currentPrimaryAction = null;
     let currentSecondaryAction = null;
     let currentOpenPdfAction = null;
-    let pendingInvoiceSubmission = null;
-    let currentEditingDescriptionIndex = null;
-    let emailSendCompleted = false;
-    let formValidationActivated = false;
-    let invoiceNumberValidationActivated = false;
-    const driveImageUrl = (id) => "https://drive.google.com/thumbnail?id=" + encodeURIComponent(id) + "&sz=w300";
-    const alertIconSources = {
-      spinner: driveImageUrl("1lL-31VG7OALHrcuzGB6asjqEoaKJP4K0"),
-      alert: driveImageUrl("10xXEtKTwvC_Xw3SdLImqVNAaYsFjVlMM"),
-      bravo: driveImageUrl("1HxEwaK3fIc5xUWUQ3gdhiMB1jlv9mDI3"),
-      stop: driveImageUrl("1Gm3gf1EEao36NHn3aXd0ljHQcGrWgGDP"),
-      confirmation: driveImageUrl("1Nx-dB_qRyU4HuZ4akZvrr0FVgqX_Di-m")
-    };
+	    let pendingInvoiceSubmission = null;
+	    let currentEditingDescriptionIndex = null;
+	    let emailSendCompleted = false;
+	    let formValidationActivated = false;
+	    let invoiceNumberValidationActivated = false;
+	    const driveImageUrl = (id) => "https://drive.google.com/thumbnail?id=" + encodeURIComponent(id) + "&sz=w300";
+	    const systemImages = <?!= JSON.stringify(typeof systemImages === "undefined" ? {} : systemImages) ?>;
+	    const imageUrlForName = (name) => {
+	      const id = systemImages && systemImages[name];
+	      return id ? driveImageUrl(id) : "";
+	    };
+	    const alertIconSources = {
+	      spinner: imageUrlForName("spiner.png"),
+	      alert: imageUrlForName("attention.png"),
+	      bravo: imageUrlForName("check.png"),
+	      stop: imageUrlForName("erreur.png"),
+	      confirmation: imageUrlForName("choix.png")
+	    };
+
+	    function applyStaticIconSources() {
+	      const invoiceNumberIcon = document.getElementById("invoiceNumberIcon");
+	      if (invoiceNumberIcon) {
+	        if (alertIconSources.alert) {
+	          invoiceNumberIcon.src = alertIconSources.alert;
+	        } else {
+	          invoiceNumberIcon.style.display = "none";
+	        }
+	      }
+	      const loadingIcon = document.getElementById("loadingIcon");
+	      if (loadingIcon) {
+	        if (alertIconSources.spinner) {
+	          loadingIcon.src = alertIconSources.spinner;
+	        } else {
+	          loadingIcon.style.display = "none";
+	        }
+	      }
+	      const successIcon = document.getElementById("successIcon");
+	      if (successIcon) {
+	        if (alertIconSources.bravo) {
+	          successIcon.src = alertIconSources.bravo;
+	        } else {
+	          successIcon.style.display = "none";
+	        }
+	      }
+	    }
     const approvedAlertScreens = {
       missing_sheets: {
         icon: "stop",
@@ -1580,20 +1612,26 @@
       };
     }
 
-    function renderStandardAlertScreen({ iconElementId, titleElementId, messageElementId, screen }) {
-      const iconElement = document.getElementById(iconElementId);
-      const titleElement = document.getElementById(titleElementId);
-      const messageElement = document.getElementById(messageElementId);
-      const iconSource = alertIconSources[screen.icon] || alertIconSources.stop;
-      if (iconElement) {
-        iconElement.src = iconSource;
-        iconElement.alt = "";
-        iconElement.classList.toggle("loading-spinner", screen.icon === "spinner");
-      }
-      if (titleElement) {
-        titleElement.textContent = screen.title || "";
-      }
-      if (messageElement) {
+	    function renderStandardAlertScreen({ iconElementId, titleElementId, messageElementId, screen }) {
+	      const iconElement = document.getElementById(iconElementId);
+	      const titleElement = document.getElementById(titleElementId);
+	      const messageElement = document.getElementById(messageElementId);
+	      const iconSource = alertIconSources[screen.icon] || alertIconSources.stop;
+	      if (iconElement) {
+	        if (iconSource) {
+	          iconElement.src = iconSource;
+	          iconElement.style.display = "";
+	        } else {
+	          iconElement.removeAttribute("src");
+	          iconElement.style.display = "none";
+	        }
+	        iconElement.alt = "";
+	        iconElement.classList.toggle("loading-spinner", screen.icon === "spinner");
+	      }
+	      if (titleElement) {
+	        titleElement.textContent = screen.title || "";
+	      }
+	      if (messageElement) {
         messageElement.textContent = screen.message || "";
       }
     }
@@ -2974,14 +3012,15 @@
 
     window.startFacturationPopup = startFacturationPopup;
 
-    function handleFacturationPopupDomReady() {
-      window.traceFacturationStartup("dom-ready-handler");
-      facturationPopupDomReady = true;
-      startFacturationPopup();
-      window.setTimeout(() => {
-        const activeView = document.querySelector(".popup-view.active");
-        window.traceFacturationStartup("startup.post-check", {
-          activeView: activeView ? activeView.id : "",
+	    function handleFacturationPopupDomReady() {
+	      window.traceFacturationStartup("dom-ready-handler");
+	      facturationPopupDomReady = true;
+	      applyStaticIconSources();
+	      startFacturationPopup();
+	      window.setTimeout(() => {
+	        const activeView = document.querySelector(".popup-view.active");
+	        window.traceFacturationStartup("startup.post-check", {
+	          activeView: activeView ? activeView.id : "",
           submitDisplay: document.getElementById("submit").style.display,
           submitDisabled: document.getElementById("submit").disabled
         });

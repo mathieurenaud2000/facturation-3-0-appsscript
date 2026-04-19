@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dossier pour factures</title>
+    <title>Dossier du système</title>
     <style>
       :root {
         --text-black: #000000;
@@ -51,10 +51,10 @@
         text-align: center;
       }
 
-      .standard-alert-icon {
-        width: 80px;
-        height: 80px;
-        object-fit: contain;
+      .standard-alert-icon-symbol {
+        font-size: 80px;
+        line-height: 1;
+        color: #00983a;
       }
 
       .standard-alert-title {
@@ -70,6 +70,11 @@
         font-weight: 400;
         color: var(--text-gray);
         max-width: 680px;
+      }
+
+      .standard-alert-text.is-error {
+        color: var(--border-red);
+        font-weight: 700;
       }
 
       .field-row {
@@ -143,14 +148,10 @@
     <div class="dialog">
       <main class="content">
         <div class="standard-alert-content">
-          <img
-            class="standard-alert-icon"
-            alt=""
-            src="https://drive.google.com/thumbnail?id=10AJYlemE64c5MbMRbXWaz1vU3RtTrvpf&sz=w300"
-          />
-          <div class="standard-alert-title">Dossier pour factures</div>
-          <div class="standard-alert-text">
-            Lien du dossier dans lequel seront enregistrées les factures.
+          <span class="material-symbols-outlined standard-alert-icon-symbol" aria-hidden="true">folder_open</span>
+          <div class="standard-alert-title">Dossier du système</div>
+          <div id="folderDescription" class="standard-alert-text">
+            Coller le lien du dossier FACTURATION™ 3.0
           </div>
 
           <div class="field-row">
@@ -177,7 +178,8 @@
     </div>
 
     <script>
-      const initialInvoiceNumber = <?!= JSON.stringify(typeof initialInvoiceNumber === "undefined" ? null : initialInvoiceNumber) ?>;
+      const resumeAction = <?!= JSON.stringify(typeof resumeAction === "undefined" ? "" : resumeAction) ?>;
+      const resumePayload = <?!= JSON.stringify(typeof resumePayload === "undefined" ? null : resumePayload) ?>;
 
       let lastValidationToken = 0;
       let lastValidFolderId = "";
@@ -197,6 +199,14 @@
         getInputEl().classList.toggle("invalid", Boolean(isInvalid));
       }
 
+      function setDescriptionError(isError) {
+        document.getElementById("folderDescription").classList.toggle("is-error", Boolean(isError));
+      }
+
+      function setDescriptionText(text) {
+        document.getElementById("folderDescription").textContent = text;
+      }
+
       function setSubmittingState(submitting) {
         isSubmitting = submitting;
         document.getElementById("cancel").disabled = submitting;
@@ -211,6 +221,8 @@
 
         if (!trimmed) {
           setInputInvalid(false);
+          setDescriptionError(false);
+          setDescriptionText("Coller le lien du dossier FACTURATION™ 3.0");
           return;
         }
 
@@ -222,6 +234,13 @@
             const folderId = String(result && result.folderId || "");
             lastValidFolderId = isValid ? folderId : "";
             setInputInvalid(!isValid);
+            if (!isValid) {
+              setDescriptionText("Fichiers manquants");
+              setDescriptionError(true);
+            } else {
+              setDescriptionError(false);
+              setDescriptionText("Coller le lien du dossier FACTURATION™ 3.0");
+            }
             if (!isSubmitting) {
               setSubmitDisabled(!isValid);
             }
@@ -230,11 +249,13 @@
             if (token !== lastValidationToken) return;
             lastValidFolderId = "";
             setInputInvalid(true);
+            setDescriptionText("Fichiers manquants");
+            setDescriptionError(true);
             if (!isSubmitting) {
               setSubmitDisabled(true);
             }
           })
-          .validateDriveFolderInput(trimmed);
+          .validateSystemRootFolderInput(trimmed);
       }
 
       function scheduleValidation() {
@@ -262,10 +283,11 @@
         google.script.run
           .withSuccessHandler((result) => {
             if (result && result.success === false) {
-              // Validation serveur échouée (ex: ID devenu invalide).
               setSubmittingState(false);
               lastValidFolderId = "";
               setInputInvalid(true);
+              setDescriptionText("Fichiers manquants");
+              setDescriptionError(true);
               return;
             }
             google.script.host.close();
@@ -273,8 +295,10 @@
           .withFailureHandler(() => {
             setSubmittingState(false);
             setInputInvalid(true);
+            setDescriptionText("Fichiers manquants");
+            setDescriptionError(true);
           })
-          .submitDriveFolderForm(String(raw || ""), initialInvoiceNumber);
+          .submitSystemRootFolderForm(String(raw || ""), resumeAction, resumePayload);
       }
 
       document.addEventListener("DOMContentLoaded", () => {

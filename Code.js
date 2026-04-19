@@ -3,6 +3,15 @@
 function openStandaloneMessageView_(message, title = "Erreur", options = {}) {
   const { width = 900, height = 450 } = options;
   const template = HtmlService.createTemplateFromFile("popup");
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetGestion = ss.getSheetByName("GESTION");
+    template.systemImages = sheetGestion
+      ? pickSystemImageIdsByName_(sheetGestion, ["spiner.png", "attention.png", "check.png", "erreur.png", "choix.png"])
+      : {};
+  } catch (e) {
+    template.systemImages = {};
+  }
   template.showStandaloneMessage = true;
   template.messageViewTitle = title;
   template.messageViewMessage = message;
@@ -48,6 +57,9 @@ function Facturer() {
     return;
   }
 
+  const initGuard = ensureSystemRootInitializedOrShowDialog_("Facturer", null);
+  if (!initGuard.success) return;
+
   if (!isInvoiceCompanyConfigured_(facturerGestionSheet)) {
     showInvoiceConfigurationDialog_({ continueFacturerAfterSave: true });
     return;
@@ -70,14 +82,8 @@ function openValidatedFacturerFlow_(initialInvoiceNumber) {
 
   const driveFolderValidation = validateDriveFolderId_(facturerGestionSheet);
   if (!driveFolderValidation.success) {
-    // Étape dédiée: demander le dossier Drive et reprendre automatiquement après Enregistrer.
-    showDriveFolderConfigurationDialog_({
-      continueFacturerAfterSave: true,
-      initialInvoiceNumber: initialInvoiceNumber
-    });
-    // Important: ne pas remonter "success:false" sinon la fenêtre de configuration entreprise
-    // resterait ouverte et afficherait une erreur, alors qu'on veut enchaîner sur l'étape dossier.
-    return { success: true, deferred: true };
+    openStandaloneMessageView_(driveFolderValidation.message);
+    return driveFolderValidation;
   }
 
   const facturerTimeData = facturerTimeSheet.getRange("A7:Q" + facturerTimeSheet.getLastRow()).getValues();
@@ -127,58 +133,190 @@ function validateDriveFolderId_(sheetGestion) {
   return { success: true, folderId };
 }
 
-function showDriveFolderConfigurationDialog_(options = {}) {
+function getSystemImageIdMap_(sheetGestion) {
+  try {
+    const names = sheetGestion.getRange("H2:H8").getValues().flat().map(value => String(value || "").trim());
+    const ids = sheetGestion.getRange("I2:I8").getValues().flat().map(value => String(value || "").trim());
+    const map = {};
+    names.forEach((name, index) => {
+      const id = ids[index];
+      if (name && id) {
+        map[name] = id;
+      }
+    });
+    return map;
+  } catch (e) {
+    return {};
+  }
+}
+
+function pickSystemImageIdsByName_(sheetGestion, names) {
+  const map = getSystemImageIdMap_(sheetGestion);
+  const picked = {};
+  (Array.isArray(names) ? names : []).forEach(name => {
+    if (map[name]) {
+      picked[name] = map[name];
+    }
+  });
+  return picked;
+}
+
+function isSystemRootInitialized_(sheetGestion) {
+  const value = sheetGestion.getRange("J2").getValue();
+  return value === true || String(value || "").trim().toUpperCase() === "TRUE";
+}
+
+function ensureSystemRootInitializedOrShowDialog_(resumeAction, resumePayload) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetGestion = ss.getSheetByName("GESTION");
   if (!sheetGestion) {
     openStandaloneMessageView_("Erreur : La feuille 'GESTION' est manquante.");
-    return;
+    return { success: false, message: "Erreur : La feuille 'GESTION' est manquante." };
+  }
+
+  if (isSystemRootInitialized_(sheetGestion)) {
+    return { success: true };
   }
 
   const html = HtmlService.createTemplateFromFile("popupFolder");
-  html.initialInvoiceNumber = typeof options.initialInvoiceNumber === "undefined" ? null : options.initialInvoiceNumber;
-  html.continueFacturerAfterSave = Boolean(options.continueFacturerAfterSave);
+  html.resumeAction = String(resumeAction || "");
+  html.resumePayload = typeof resumePayload === "undefined" ? null : resumePayload;
 
   const htmlOutput = html.evaluate().setWidth(900).setHeight(450);
   SpreadsheetApp.getUi().showModelessDialog(
     htmlOutput,
-    "Dossier pour factures"
+    "Dossier du système"
   );
+  return { success: false, deferred: true };
 }
 
-function validateDriveFolderInput(rawValue) {
-  const folderId = extractDriveFolderIdFromInput_(rawValue);
-  if (!folderId) {
+function findChildFolderByNormalizedName_(rootFolder, targetNormalizedName) {
+  const folders = rootFolder.getFolders();
+  while (folders.hasNext()) {
+    const folder = folders.next();
+    if (normalizeString_(folder.getName()) === targetNormalizedName) {
+      return folder;
+    }
+  }
+  return null;
+}
+
+function validateSystemRootFolderInput(rawValue) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetGestion = ss.getSheetByName("GESTION");
+  if (!sheetGestion) {
     return { success: false, folderId: "" };
   }
 
+  const rootFolderId = extractDriveFolderIdFromInput_(rawValue);
+  if (!rootFolderId) return { success: false, folderId: "" };
+
   try {
-    DriveApp.getFolderById(folderId);
+    const rootFolder = DriveApp.getFolderById(rootFolderId);
+    const facturesFolder = findChildFolderByNormalizedName_(rootFolder, normalizeString_("Factures"));
+    const imagesFolder = findChildFolderByNormalizedName_(rootFolder, normalizeString_("Images"));
+    if (!facturesFolder || !imagesFolder) {
+      return { success: false, folderId: "" };
+    }
+
+    const imageNames = sheetGestion.getRange("H2:H8").getValues().flat().map(value => String(value || "").trim());
+    if (imageNames.length !== 7 || imageNames.some(name => !name)) {
+      return { success: false, folderId: "" };
+    }
+    for (const imageName of imageNames) {
+      const files = imagesFolder.getFilesByName(imageName);
+      if (!files.hasNext()) {
+        return { success: false, folderId: "" };
+      }
+    }
   } catch (e) {
     return { success: false, folderId: "" };
   }
 
-  return { success: true, folderId };
+  return { success: true, folderId: rootFolderId };
 }
 
-function submitDriveFolderForm(rawValue, initialInvoiceNumber) {
+function resumeAfterSystemRootInitialization_(resumeAction, resumePayload) {
+  const action = String(resumeAction || "");
+  if (action === "Facturer") {
+    Facturer();
+    return { success: true };
+  }
+  if (action === "openValidatedFacturerFlow_") {
+    const invoiceNumber = resumePayload && typeof resumePayload.initialInvoiceNumber !== "undefined"
+      ? resumePayload.initialInvoiceNumber
+      : null;
+    return openValidatedFacturerFlow_(invoiceNumber);
+  }
+  if (action === "newTimeEntry") {
+    newTimeEntry();
+    return { success: true };
+  }
+  if (action === "paye") {
+    paye();
+    return { success: true };
+  }
+  if (action === "dossier") {
+    dossier();
+    return { success: true };
+  }
+  if (action === "info") {
+    info();
+    return { success: true };
+  }
+  if (action === "trash") {
+    trash();
+    return { success: true };
+  }
+  return { success: true };
+}
+
+function submitSystemRootFolderForm(rawValue, resumeAction, resumePayload) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetGestion = ss.getSheetByName("GESTION");
   if (!sheetGestion) {
     return { success: false, message: "Erreur : La feuille GESTION est manquante." };
   }
 
-  const validation = validateDriveFolderInput(rawValue);
-  if (!validation.success) {
-    return { success: false, message: "Erreur : ID de dossier invalide." };
+  // Valider sans rien écrire tant que tout n'est pas résolu.
+  const rootFolderId = extractDriveFolderIdFromInput_(rawValue);
+  if (!rootFolderId) {
+    return { success: false, message: "Fichiers manquants" };
   }
 
-  // Stockage: uniquement l'ID, même si l'utilisateur colle une URL.
-  sheetGestion.getRange("E2").setValue(validation.folderId);
+  let facturesFolderId = "";
+  let imageIds = [];
+  try {
+    const rootFolder = DriveApp.getFolderById(rootFolderId);
+    const facturesFolder = findChildFolderByNormalizedName_(rootFolder, normalizeString_("Factures"));
+    const imagesFolder = findChildFolderByNormalizedName_(rootFolder, normalizeString_("Images"));
+    if (!facturesFolder || !imagesFolder) {
+      return { success: false, message: "Fichiers manquants" };
+    }
+    facturesFolderId = facturesFolder.getId();
 
-  // Reprendre automatiquement le flux de facturation là où il s'était arrêté.
-  // initialInvoiceNumber peut être null (cas classique) ou un numéro issu de la configuration entreprise.
-  return openValidatedFacturerFlow_(typeof initialInvoiceNumber === "undefined" ? null : initialInvoiceNumber);
+    const imageNames = sheetGestion.getRange("H2:H8").getValues().flat().map(value => String(value || "").trim());
+    if (imageNames.length !== 7 || imageNames.some(name => !name)) {
+      return { success: false, message: "Fichiers manquants" };
+    }
+    imageIds = imageNames.map(imageName => {
+      const files = imagesFolder.getFilesByName(imageName);
+      if (!files.hasNext()) return "";
+      return files.next().getId();
+    });
+    if (imageIds.some(id => !id)) {
+      return { success: false, message: "Fichiers manquants" };
+    }
+  } catch (e) {
+    return { success: false, message: "Fichiers manquants" };
+  }
+
+  // Écriture atomique (après validation complète).
+  sheetGestion.getRange("E2").setValue(facturesFolderId);
+  sheetGestion.getRange("I2:I8").setValues(imageIds.map(id => [id]));
+  sheetGestion.getRange("J2").setValue(true);
+
+  return resumeAfterSystemRootInitialization_(resumeAction, resumePayload);
 }
 
 function checkInvoiceNumberingSetup() {
@@ -333,6 +471,7 @@ function showInvoiceConfigurationDialog_(options = {}) {
 
   const companyInfo = getCompanyInfoFromGestion_(sheetGestion);
   const html = HtmlService.createTemplateFromFile("popupInfo");
+  html.systemImages = pickSystemImageIdsByName_(sheetGestion, ["spiner.png"]);
   html.name = companyInfo.name;
   html.address1 = companyInfo.address1;
   html.address2 = companyInfo.address2;
@@ -363,6 +502,14 @@ function continueFacturerAfterConfiguration(nextInvoice) {
     return invoiceNumberResolution;
   }
 
+  const initGuard = ensureSystemRootInitializedOrShowDialog_("openValidatedFacturerFlow_", {
+    initialInvoiceNumber: invoiceNumberResolution.invoiceNumber
+  });
+  if (!initGuard.success) {
+    // On veut fermer la config entreprise et enchaîner sur l'initialisation système.
+    return { success: true, deferred: true };
+  }
+
   return openValidatedFacturerFlow_(invoiceNumberResolution.invoiceNumber);
 }
 
@@ -377,6 +524,15 @@ function showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumbe
     confirmSecondaryLabel: ""
   }, popupContext || {});
   const template = HtmlService.createTemplateFromFile("popup");
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetGestion = ss.getSheetByName("GESTION");
+    template.systemImages = sheetGestion
+      ? pickSystemImageIdsByName_(sheetGestion, ["spiner.png", "attention.png", "check.png", "erreur.png", "choix.png"])
+      : {};
+  } catch (e) {
+    template.systemImages = {};
+  }
   template.contacts = facturerContacts;
   template.activityTypes = facturerActivityTypes;
   template.initialInvoiceNumber = invoiceNumber;
@@ -1262,6 +1418,9 @@ function sendInvoiceEmail_(invoiceNumber, pdfUrl, recipient, ccRecipient) {
 }
 
 function paye() {
+  const initGuard = ensureSystemRootInitializedOrShowDialog_("paye", null);
+  if (!initGuard.success) return;
+
   const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const facturerTrackingSheet = facturerSpreadsheet.getSheetByName("FACTURATION");
 
@@ -1708,6 +1867,9 @@ function prepareInvoicePreview(invoiceNumber) {
 // NOUVELLE ENTRÉ DE TEMPS
 
 function newTimeEntry() {
+  const initGuard = ensureSystemRootInitializedOrShowDialog_("newTimeEntry", null);
+  if (!initGuard.success) return;
+
   const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const facturerTimeSheet = facturerSpreadsheet.getSheetByName("FEUILLE DE TEMPS");
   const facturerGestionSheet = facturerSpreadsheet.getSheetByName("GESTION");
@@ -2050,6 +2212,9 @@ function FeuilleDeTemps() {
 // SUPPRIMER : Supression des lignes cochées
 
 function trash() {
+  const initGuard = ensureSystemRootInitializedOrShowDialog_("trash", null);
+  if (!initGuard.success) return;
+
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   const lastRow = sheet.getLastRow();
   const data = lastRow >= 7 ? sheet.getRange(`A7:S${lastRow}`).getValues() : [];
@@ -2072,6 +2237,15 @@ function trash() {
       : `Voulez-vous vraiment supprimer ces ${ligneCocheeCount} entrées ?`;
   const confirmSecondaryLabel = hasInvoicedOrPaidRow ? "Fermer" : "Annuler";
   const template = HtmlService.createTemplateFromFile("popup");
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetGestion = ss.getSheetByName("GESTION");
+    template.systemImages = sheetGestion
+      ? pickSystemImageIdsByName_(sheetGestion, ["spiner.png", "attention.png", "check.png", "erreur.png", "choix.png"])
+      : {};
+  } catch (e) {
+    template.systemImages = {};
+  }
   template.contacts = [];
   template.activityTypes = [];
   template.initialInvoiceNumber = null;
@@ -2246,6 +2420,9 @@ function checkAndSetTime() {
 // INFO : Change les coordonnées de l'entreprise
 
 function info() {
+  const initGuard = ensureSystemRootInitializedOrShowDialog_("info", null);
+  if (!initGuard.success) return;
+
   showInvoiceConfigurationDialog_({ continueFacturerAfterSave: false });
 }
 
@@ -2274,6 +2451,9 @@ function submitInfoForm(name, address1, address2, address3, address4, email, web
 // DOSSIER : Ouvre le dossier avec les PDF
 
 function dossier() {
+  const initGuard = ensureSystemRootInitializedOrShowDialog_("dossier", null);
+  if (!initGuard.success) return;
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetGestion = ss.getSheetByName("GESTION");
 

@@ -292,13 +292,13 @@
 </head>
 <body>
   <div class="container">
-    <div id="loadingScreen" class="loading-screen" aria-live="polite">
-      <div class="standard-alert-content">
-        <img class="standard-alert-icon loading-spinner" src="https://drive.google.com/thumbnail?id=1lL-31VG7OALHrcuzGB6asjqEoaKJP4K0&amp;sz=w300" alt="">
-        <div class="standard-alert-title">Enregistrement</div>
-        <div class="standard-alert-text">Veuillez patienter...</div>
-      </div>
-    </div>
+	    <div id="loadingScreen" class="loading-screen" aria-live="polite">
+	      <div class="standard-alert-content">
+	        <img id="configLoadingIcon" class="standard-alert-icon loading-spinner" alt="">
+	        <div class="standard-alert-title">Enregistrement</div>
+	        <div class="standard-alert-text">Veuillez patienter...</div>
+	      </div>
+	    </div>
 
 	    <div id="formContainer" class="config-content">
 	      <div class="config-grid">
@@ -372,9 +372,12 @@
     </div>
   </div>
 
-  <script>
-    window.continueFacturerAfterSave = <?!= JSON.stringify(typeof continueFacturerAfterSave === "undefined" ? false : continueFacturerAfterSave) ?>;
-    window.existingInvoiceNumbers = <?!= JSON.stringify(typeof existingInvoiceNumbers === "undefined" ? [] : existingInvoiceNumbers) ?>;
+	  <script>
+	    window.continueFacturerAfterSave = <?!= JSON.stringify(typeof continueFacturerAfterSave === "undefined" ? false : continueFacturerAfterSave) ?>;
+	    window.existingInvoiceNumbers = <?!= JSON.stringify(typeof existingInvoiceNumbers === "undefined" ? [] : existingInvoiceNumbers) ?>;
+	    window.systemImages = <?!= JSON.stringify(typeof systemImages === "undefined" ? {} : systemImages) ?>;
+
+	    const driveImageUrl = (id) => "https://drive.google.com/thumbnail?id=" + encodeURIComponent(id) + "&sz=w300";
 
     const requiredFieldLabels = {
       name: "Nom",
@@ -549,12 +552,22 @@
         .submitInfoForm(name, address1, address2, address3, address4, email, website, nextInvoice);
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      updateSubmitState();
-      getRequiredFields().forEach(field => {
-        field.addEventListener('input', updateSubmitState);
-      });
-    });
+	    document.addEventListener('DOMContentLoaded', () => {
+	      const loadingIcon = document.getElementById("configLoadingIcon");
+	      if (loadingIcon) {
+	        const spinnerId = window.systemImages && window.systemImages["spiner.png"];
+	        if (spinnerId) {
+	          loadingIcon.src = driveImageUrl(spinnerId);
+	        } else {
+	          loadingIcon.style.display = "none";
+	        }
+	      }
+
+	      updateSubmitState();
+	      getRequiredFields().forEach(field => {
+	        field.addEventListener('input', updateSubmitState);
+	      });
+	    });
   </script>
 </body>
 </html>
