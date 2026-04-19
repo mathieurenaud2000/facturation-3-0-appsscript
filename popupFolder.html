@@ -151,7 +151,7 @@
 
       .btn:disabled {
         cursor: not-allowed;
-        opacity: 0.6;
+        opacity: 1;
       }
 
       .btn-white {
@@ -163,6 +163,52 @@
         background: #00983a;
         border-color: #00983a;
         color: #ffffff;
+      }
+
+      /* Button validation states (visual only). */
+      #submit.state-idle,
+      #submit.state-invalid {
+        background: #e6e6e6;
+        border-color: #e6e6e6;
+        color: #ffffff;
+      }
+
+      #submit.state-validating,
+      #submit.state-ready {
+        background: #00983a;
+        border-color: #00983a;
+        color: #ffffff;
+      }
+
+      #submitLabel {
+        display: inline;
+      }
+
+      #submitDots {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      #submitDots .dot {
+        display: inline-block;
+        font-weight: 700;
+        transform: translateY(-1px);
+        animation: dotPulse 1s ease-in-out infinite;
+      }
+
+      #submitDots .dot:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+
+      #submitDots .dot:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+
+      @keyframes dotPulse {
+        0%, 100% { opacity: 0.25; }
+        50% { opacity: 1; }
       }
     </style>
     <link
@@ -209,11 +255,14 @@
 	        <button id="cancel" class="btn btn-white" type="button" onclick="onCancel()">
 	          Annuler
 	        </button>
-	        <button id="submit" class="btn btn-green" type="button" onclick="onSubmit()" disabled>
-          Enregistrer
-        </button>
-      </footer>
-    </div>
+	        <button id="submit" class="btn btn-green state-idle" type="button" onclick="onSubmit()" disabled>
+            <span id="submitLabel">Enregistrer</span>
+            <span id="submitDots" aria-hidden="true">
+              <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+            </span>
+          </button>
+	      </footer>
+	    </div>
 
     <script>
       const resumeAction = <?!= JSON.stringify(typeof resumeAction === "undefined" ? "" : resumeAction) ?>;
@@ -228,14 +277,31 @@
         return document.getElementById("driveFolderInput");
       }
 
-      function setSubmitDisabled(disabled) {
-        const submit = document.getElementById("submit");
-        submit.disabled = disabled;
-      }
+	      function setSubmitDisabled(disabled) {
+	        const submit = document.getElementById("submit");
+	        submit.disabled = disabled;
+	      }
 
-      function setInputInvalid(isInvalid) {
-        getInputEl().classList.toggle("invalid", Boolean(isInvalid));
-      }
+        function setSubmitVisualState(state) {
+          const submit = document.getElementById("submit");
+          submit.classList.remove("state-idle", "state-validating", "state-ready", "state-invalid");
+          submit.classList.add("state-" + state);
+
+          const label = document.getElementById("submitLabel");
+          const dots = document.getElementById("submitDots");
+          const showDots = state === "validating";
+          label.style.display = showDots ? "none" : "inline";
+          dots.style.display = showDots ? "inline-flex" : "none";
+
+          // Only "ready" is actually clickable (unless we are submitting and hiding the UI anyway).
+          if (!isSubmitting) {
+            setSubmitDisabled(state !== "ready");
+          }
+        }
+
+	      function setInputInvalid(isInvalid) {
+	        getInputEl().classList.toggle("invalid", Boolean(isInvalid));
+	      }
 
       function setDescriptionError(isError) {
         document.getElementById("folderDescription").classList.toggle("is-error", Boolean(isError));
@@ -267,53 +333,58 @@
 	        const raw = getInputEl().value;
 	        const trimmed = String(raw || "").trim();
 	        lastValidFolderId = "";
-	        setSubmitDisabled(true);
+	        setSubmitVisualState("validating");
 
-        if (!trimmed) {
-          setInputInvalid(false);
-          setDescriptionError(false);
-          setDescriptionText("Veuillez coller le lien Google Drive du dossier FACTURATION™ 3.0");
-          return;
-        }
+	        if (!trimmed) {
+	          setInputInvalid(false);
+	          setDescriptionError(false);
+	          setDescriptionText("Veuillez coller le lien Google Drive du dossier FACTURATION™ 3.0");
+	          setSubmitVisualState("idle");
+	          return;
+	        }
 
-        const token = ++lastValidationToken;
-        google.script.run
+	        const token = ++lastValidationToken;
+	        google.script.run
           .withSuccessHandler((result) => {
             if (token !== lastValidationToken) return;
             const isValid = Boolean(result && result.success);
             const folderId = String(result && result.folderId || "");
-            lastValidFolderId = isValid ? folderId : "";
-            setInputInvalid(!isValid);
-            if (!isValid) {
-              setDescriptionText("Lien non valide");
-              setDescriptionError(true);
-            } else {
-              setDescriptionError(false);
-              setDescriptionText("Veuillez coller le lien Google Drive du dossier FACTURATION™ 3.0");
-            }
-            if (!isSubmitting) {
-              setSubmitDisabled(!isValid);
-            }
-          })
-          .withFailureHandler(() => {
-            if (token !== lastValidationToken) return;
-            lastValidFolderId = "";
-            setInputInvalid(true);
-            setDescriptionText("Lien non valide");
-            setDescriptionError(true);
-            if (!isSubmitting) {
-              setSubmitDisabled(true);
-            }
-          })
-          .validateSystemRootFolderInput(trimmed);
-      }
+	            lastValidFolderId = isValid ? folderId : "";
+	            setInputInvalid(!isValid);
+	            if (!isValid) {
+	              setDescriptionText("Lien non valide");
+	              setDescriptionError(true);
+	              setSubmitVisualState("invalid");
+	            } else {
+	              setDescriptionError(false);
+	              setDescriptionText("Veuillez coller le lien Google Drive du dossier FACTURATION™ 3.0");
+	              setSubmitVisualState("ready");
+	            }
+	          })
+	          .withFailureHandler(() => {
+	            if (token !== lastValidationToken) return;
+	            lastValidFolderId = "";
+	            setInputInvalid(true);
+	            setDescriptionText("Lien non valide");
+	            setDescriptionError(true);
+	            setSubmitVisualState("invalid");
+	          })
+	          .validateSystemRootFolderInput(trimmed);
+	      }
 
-      function scheduleValidation() {
-        if (validateTimer) {
-          window.clearTimeout(validateTimer);
-        }
-        validateTimer = window.setTimeout(() => {
-          validateTimer = null;
+	      function scheduleValidation() {
+	        const trimmed = String(getInputEl().value || "").trim();
+	        if (!trimmed) {
+	          setSubmitVisualState("idle");
+	        } else {
+	          // Feedback immédiat: bouton visuellement vert + ". . ." pendant la validation.
+	          setSubmitVisualState("validating");
+	        }
+	        if (validateTimer) {
+	          window.clearTimeout(validateTimer);
+	        }
+	        validateTimer = window.setTimeout(() => {
+	          validateTimer = null;
           validateNow();
         }, 200);
       }
