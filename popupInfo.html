@@ -540,7 +540,8 @@
             return;
           }
           if (window.continueFacturerAfterSave) {
-            continueFacturerFlow(Number(nextInvoice));
+            // IMPORTANT: garder le texte saisi (zéros à gauche) pour que le serveur puisse appliquer le bon format.
+            continueFacturerFlow(nextInvoice);
             return;
           }
           google.script.host.close();

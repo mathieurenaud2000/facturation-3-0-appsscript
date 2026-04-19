@@ -333,17 +333,22 @@ function checkInvoiceNumberingSetup() {
 }
 
 function normalizeInvoiceNumberInput_(invoiceNumber) {
+  // Retourne un objet pour conserver le texte saisi (zéros à gauche) quand disponible.
   if (invoiceNumber === null || invoiceNumber === undefined || invoiceNumber === "") {
-    return null;
+    return { number: null, text: "" };
   }
+
   if (typeof invoiceNumber === "number") {
-    return Number.isInteger(invoiceNumber) ? invoiceNumber : NaN;
+    return Number.isInteger(invoiceNumber)
+      ? { number: invoiceNumber, text: String(invoiceNumber) }
+      : { number: NaN, text: String(invoiceNumber) };
   }
+
   const invoiceNumberString = String(invoiceNumber || "").trim();
   if (!/^\d+$/.test(invoiceNumberString)) {
-    return NaN;
+    return { number: NaN, text: invoiceNumberString };
   }
-  return Number(invoiceNumberString);
+  return { number: Number(invoiceNumberString), text: invoiceNumberString };
 }
 
 function extractInvoiceNumberParts_(value) {
@@ -355,8 +360,22 @@ function extractInvoiceNumberParts_(value) {
   };
 }
 
-function formatInvoiceNumber_(number, padLength) {
-  return String(number).padStart(padLength, "0");
+function getInvoiceNumberFormatReference_(parsedInvoices, fallbackText) {
+  const referenceText = parsedInvoices && parsedInvoices.length
+    ? String(parsedInvoices[0].numberText || "").trim()
+    : String(fallbackText || "").trim();
+  const hasLeadingZeros = referenceText.length > 1 && referenceText.startsWith("0");
+  return {
+    referenceText,
+    hasLeadingZeros,
+    minWidth: hasLeadingZeros ? referenceText.length : 0
+  };
+}
+
+function formatInvoiceNumber_(number, minWidth) {
+  const numberText = String(number);
+  const width = Number(minWidth) || 0;
+  return width > 0 ? numberText.padStart(width, "0") : numberText;
 }
 
 function normalizeInvoiceNumberForComparison_(value) {
@@ -376,7 +395,9 @@ function getExistingInvoiceValues_(facturerTrackingSheet) {
 }
 
 function resolveInvoiceNumberForFacturation_(facturerTrackingSheet, invoiceNumber) {
-  const normalizedInvoiceNumber = normalizeInvoiceNumberInput_(invoiceNumber);
+  const normalizedInvoiceInput = normalizeInvoiceNumberInput_(invoiceNumber);
+  const normalizedInvoiceNumber = normalizedInvoiceInput.number;
+  const normalizedInvoiceText = normalizedInvoiceInput.text;
   if (Number.isNaN(normalizedInvoiceNumber) || (normalizedInvoiceNumber !== null && normalizedInvoiceNumber <= 0)) {
     return { success: false, message: "Le numéro de facture doit être un entier positif." };
   }
@@ -387,12 +408,13 @@ function resolveInvoiceNumberForFacturation_(facturerTrackingSheet, invoiceNumbe
     return { success: false, message: "Impossible de générer le prochain numéro : FACTURATION!B contient une valeur invalide." };
   }
 
+  const formatReference = getInvoiceNumberFormatReference_(parsedInvoices, normalizedInvoiceText);
+
   if (normalizedInvoiceNumber !== null) {
     if (parsedInvoices.some(parts => parts.number === normalizedInvoiceNumber)) {
       return { success: false, message: "Ce numéro de facture existe déjà." };
     }
-    const existingPadLength = parsedInvoices.reduce((maxLength, parts) => Math.max(maxLength, parts.numberText.length), 3);
-    const padLength = Math.max(existingPadLength, String(normalizedInvoiceNumber).length);
+    const padLength = formatReference.minWidth;
     return {
       success: true,
       invoiceNumber: normalizedInvoiceNumber,
@@ -408,7 +430,7 @@ function resolveInvoiceNumberForFacturation_(facturerTrackingSheet, invoiceNumbe
     return currentInvoice.number > currentMax.number ? currentInvoice : currentMax;
   });
   const facturerNextInvoiceNumber = highestInvoiceParts.number + 1;
-  const padLength = Math.max(3, highestInvoiceParts.numberText.length, String(facturerNextInvoiceNumber).length);
+  const padLength = formatReference.minWidth;
   return {
     success: true,
     invoiceNumber: facturerNextInvoiceNumber,
@@ -429,8 +451,8 @@ function getSuggestedNextInvoiceNumber_(facturerTrackingSheet) {
     return currentInvoice.number > currentMax.number ? currentInvoice : currentMax;
   });
   const nextInvoiceNumber = highestInvoiceParts.number + 1;
-  const padLength = Math.max(3, highestInvoiceParts.numberText.length, String(nextInvoiceNumber).length);
-  return formatInvoiceNumber_(nextInvoiceNumber, padLength);
+  const formatReference = getInvoiceNumberFormatReference_(parsedInvoices, "");
+  return formatInvoiceNumber_(nextInvoiceNumber, formatReference.minWidth);
 }
 
 function getExistingInvoiceNumberList_(facturerTrackingSheet) {
@@ -502,15 +524,18 @@ function continueFacturerAfterConfiguration(nextInvoice) {
     return invoiceNumberResolution;
   }
 
+  // IMPORTANT: garder le format texte (zéros à gauche) lors de la reprise du flux.
+  const fullInvoiceNumber = invoiceNumberResolution.fullInvoiceNumber;
+
   const initGuard = ensureSystemRootInitializedOrShowDialog_("openValidatedFacturerFlow_", {
-    initialInvoiceNumber: invoiceNumberResolution.invoiceNumber
+    initialInvoiceNumber: fullInvoiceNumber
   });
   if (!initGuard.success) {
     // On veut fermer la config entreprise et enchaîner sur l'initialisation système.
     return { success: true, deferred: true };
   }
 
-  return openValidatedFacturerFlow_(invoiceNumberResolution.invoiceNumber);
+  return openValidatedFacturerFlow_(fullInvoiceNumber);
 }
 
 function showFacturerPopup(facturerContacts, facturerActivityTypes, invoiceNumber, requiresInitialInvoiceSetup, popupContext = {}) {

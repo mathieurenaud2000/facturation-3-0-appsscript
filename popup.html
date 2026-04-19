@@ -2051,7 +2051,8 @@
 
     function submitInitialInvoiceNumber() {
       if (!validateInitialInvoiceNumber(true)) return;
-      window.initialInvoiceNumber = Number(document.getElementById("initialNumber").value.trim());
+      // IMPORTANT: conserver le texte (zéros à gauche) pour définir la largeur de référence.
+      window.initialInvoiceNumber = document.getElementById("initialNumber").value.trim();
       clearInvoiceNumberInlineError();
       submit();
     }
