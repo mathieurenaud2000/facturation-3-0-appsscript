@@ -68,17 +68,16 @@ function openValidatedFacturerFlow_(initialInvoiceNumber) {
     return { success: false, message: "Erreur : Une ou plusieurs feuilles nécessaires sont manquantes." };
   }
 
-  const folderId = String(facturerGestionSheet.getRange("E2").getValue() || "");
-  if (!folderId) {
-    openStandaloneMessageView_("Erreur : Aucun dossier configuré.");
-    return { success: false, message: "Erreur : Aucun dossier configuré." };
-  }
-
-  try {
-    DriveApp.getFolderById(folderId);
-  } catch (e) {
-    openStandaloneMessageView_("Erreur : ID de dossier invalide.");
-    return { success: false, message: "Erreur : ID de dossier invalide." };
+  const driveFolderValidation = validateDriveFolderId_(facturerGestionSheet);
+  if (!driveFolderValidation.success) {
+    // Étape dédiée: demander le dossier Drive et reprendre automatiquement après Enregistrer.
+    showDriveFolderConfigurationDialog_({
+      continueFacturerAfterSave: true,
+      initialInvoiceNumber: initialInvoiceNumber
+    });
+    // Important: ne pas remonter "success:false" sinon la fenêtre de configuration entreprise
+    // resterait ouverte et afficherait une erreur, alors qu'on veut enchaîner sur l'étape dossier.
+    return { success: true, deferred: true };
   }
 
   const facturerTimeData = facturerTimeSheet.getRange("A7:Q" + facturerTimeSheet.getLastRow()).getValues();
@@ -103,6 +102,83 @@ function openValidatedFacturerFlow_(initialInvoiceNumber) {
   const requiresInitialInvoiceSetup = initialInvoiceNumber === null && invoiceNumberingSetup.requiresInitialInvoiceSetup;
   showFacturerPopup([], [], initialInvoiceNumber, requiresInitialInvoiceSetup);
   return { success: true };
+}
+
+function extractDriveFolderIdFromInput_(value) {
+  // Accepte un ID collé directement ou une URL Drive contenant un ID.
+  // On utilise la même règle simple que pour les liens Drive ailleurs dans le projet.
+  const urlString = String(value || "").trim();
+  const match = urlString.match(/[-\w]{25,}/);
+  return match ? match[0] : "";
+}
+
+function validateDriveFolderId_(sheetGestion) {
+  const folderId = String(sheetGestion.getRange("E2").getValue() || "").trim();
+  if (!folderId) {
+    return { success: false, message: "Erreur : Aucun dossier configuré." };
+  }
+
+  try {
+    DriveApp.getFolderById(folderId);
+  } catch (e) {
+    return { success: false, message: "Erreur : ID de dossier invalide." };
+  }
+
+  return { success: true, folderId };
+}
+
+function showDriveFolderConfigurationDialog_(options = {}) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetGestion = ss.getSheetByName("GESTION");
+  if (!sheetGestion) {
+    openStandaloneMessageView_("Erreur : La feuille 'GESTION' est manquante.");
+    return;
+  }
+
+  const html = HtmlService.createTemplateFromFile("popupFolder");
+  html.initialInvoiceNumber = typeof options.initialInvoiceNumber === "undefined" ? null : options.initialInvoiceNumber;
+  html.continueFacturerAfterSave = Boolean(options.continueFacturerAfterSave);
+
+  const htmlOutput = html.evaluate().setWidth(900).setHeight(450);
+  SpreadsheetApp.getUi().showModelessDialog(
+    htmlOutput,
+    "Dossier pour factures"
+  );
+}
+
+function validateDriveFolderInput(rawValue) {
+  const folderId = extractDriveFolderIdFromInput_(rawValue);
+  if (!folderId) {
+    return { success: false, folderId: "" };
+  }
+
+  try {
+    DriveApp.getFolderById(folderId);
+  } catch (e) {
+    return { success: false, folderId: "" };
+  }
+
+  return { success: true, folderId };
+}
+
+function submitDriveFolderForm(rawValue, initialInvoiceNumber) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetGestion = ss.getSheetByName("GESTION");
+  if (!sheetGestion) {
+    return { success: false, message: "Erreur : La feuille GESTION est manquante." };
+  }
+
+  const validation = validateDriveFolderInput(rawValue);
+  if (!validation.success) {
+    return { success: false, message: "Erreur : ID de dossier invalide." };
+  }
+
+  // Stockage: uniquement l'ID, même si l'utilisateur colle une URL.
+  sheetGestion.getRange("E2").setValue(validation.folderId);
+
+  // Reprendre automatiquement le flux de facturation là où il s'était arrêté.
+  // initialInvoiceNumber peut être null (cas classique) ou un numéro issu de la configuration entreprise.
+  return openValidatedFacturerFlow_(typeof initialInvoiceNumber === "undefined" ? null : initialInvoiceNumber);
 }
 
 function checkInvoiceNumberingSetup() {
@@ -2210,4 +2286,3 @@ function dossier() {
 function onFacturerError(error) {
   return { success: false, message: `Erreur inattendue : ${error.message}` };
 }
-
