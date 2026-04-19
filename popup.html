@@ -570,24 +570,60 @@
       margin: 0 0 25px 0;
     }
 
-    .standard-alert-title {
-      font-size: 24pt;
-      font-weight: 700;
-      line-height: 1.15;
-      color: #000000;
-      text-align: center;
-      margin: 0 0 10px 0;
-    }
+	    .standard-alert-title {
+	      font-size: 24pt;
+	      font-weight: 700;
+	      line-height: 1.15;
+	      color: #000000;
+	      text-align: center;
+	      margin: 0 0 10px 0;
+	    }
 
-    .standard-alert-text {
-      font-size: 18pt;
-      font-weight: 400;
-      line-height: 1.25;
-      color: #666666;
-      text-align: center;
-      white-space: pre-line;
-      margin: 0;
-    }
+	    .standard-alert-text {
+	      font-size: 18pt;
+	      font-weight: 400;
+	      line-height: 1.25;
+	      color: #666666;
+	      text-align: center;
+	      white-space: pre-line;
+	      margin: 0;
+	    }
+
+	    /* Suppression de lignes cochées (FEUILLE DE TEMPS) : confirmation compacte
+	       sans picto et avec un seul bouton rouge pleine largeur. */
+	    .container[data-confirm-action="delete_rows"] {
+	      padding-top: 0;
+	    }
+
+	    .container[data-confirm-action="delete_rows"] .confirm-view {
+	      padding-top: 0;
+	    }
+
+	    .container[data-confirm-action="delete_rows"] #technicalConfirmContent.standard-alert-content {
+	      padding-top: 0;
+	    }
+
+	    .container[data-confirm-action="delete_rows"] #confirmIcon {
+	      display: none;
+	    }
+
+	    .container[data-confirm-action="delete_rows"].alert-screen-mode .footer {
+	      grid-template-columns: 1fr;
+	      column-gap: 0;
+	    }
+
+	    .container[data-confirm-action="delete_rows"].alert-screen-mode .footer #submit {
+	      grid-column: 1;
+	      width: 100%;
+	      background-color: #ff0000 !important;
+	      border: 1px solid #ff0000 !important;
+	      color: #ffffff !important;
+	    }
+
+	    .container[data-confirm-action="delete_rows"].alert-screen-mode .footer #submit:hover:enabled {
+	      background-color: #ff0000 !important;
+	      border: 1px solid #ff0000 !important;
+	    }
 
     .invoice-number-screen-mode #invoiceNumberView.popup-view.active {
       height: calc(100vh - var(--alert-footer-height));
@@ -1661,29 +1697,32 @@
       };
     }
 
-    function setPopupState({
-      view,
-      type,
-      screenKey,
-      title,
-      message,
-      footer,
-      primaryAction,
-      secondaryAction,
-      openPdfAction,
-      invoicePreviewMode,
-      overflowAlert
-    }) {
-      const popupContainer = document.getElementById("popupContainer");
-      popupContainer.classList.add("popup-started");
-      window.traceFacturationStartup("setPopupState", { view, type, screenKey });
-      if (invoicePreviewMode) {
-        setInvoicePreviewMode(true);
-      } else if (!["confirmView", "editTitleView", "editDescriptionView"].includes(view)) {
-        setInvoicePreviewMode(false);
-      }
+	    function setPopupState({
+	      view,
+	      type,
+	      screenKey,
+	      title,
+	      message,
+	      footer,
+	      primaryAction,
+	      secondaryAction,
+	      openPdfAction,
+	      invoicePreviewMode,
+	      overflowAlert
+	    }) {
+	      const popupContainer = document.getElementById("popupContainer");
+	      popupContainer.classList.add("popup-started");
+	      popupContainer.dataset.confirmAction = view === "confirmView"
+	        ? (popupContainer.dataset.confirmAction || "")
+	        : "";
+	      window.traceFacturationStartup("setPopupState", { view, type, screenKey });
+	      if (invoicePreviewMode) {
+	        setInvoicePreviewMode(true);
+	      } else if (!["confirmView", "editTitleView", "editDescriptionView"].includes(view)) {
+	        setInvoicePreviewMode(false);
+	      }
 
-      if (view === "formView") {
+	      if (view === "formView") {
         pdfUrl = "";
         currentInvoiceNumber = "";
         currentInvoiceRecipientOptions = [];
@@ -2358,25 +2397,26 @@
       showInvoicePreviewConfirmView();
     }
 
-    function showConfirmView({ title, message, action, confirmLabel, cancelLabel }) {
-      setInvoicePreviewMode(false);
-      document.getElementById("technicalConfirmContent").style.display = "flex";
-      document.getElementById("invoicePreviewContent").style.display = "none";
-      setPopupState({
-        view: "confirmView",
-        type: "confirm",
-        screenKey: action === "replace_pdf" ? "replace_pdf" : "",
-        title,
-        message,
-        footer: {
-          primary: { label: confirmLabel || "Confirmer", visible: true },
-          secondary: { label: cancelLabel || "Annuler", visible: true },
-          openPdf: { visible: false }
-        },
-        primaryAction: () => handleConfirmAction(action, true),
-        secondaryAction: () => handleConfirmAction(action, false)
-      });
-    }
+	    function showConfirmView({ title, message, action, confirmLabel, cancelLabel }) {
+	      setInvoicePreviewMode(false);
+	      document.getElementById("popupContainer").dataset.confirmAction = String(action || "");
+	      document.getElementById("technicalConfirmContent").style.display = "flex";
+	      document.getElementById("invoicePreviewContent").style.display = "none";
+	      setPopupState({
+	        view: "confirmView",
+	        type: "confirm",
+	        screenKey: action === "replace_pdf" ? "replace_pdf" : "",
+	        title,
+	        message,
+	        footer: {
+	          primary: { label: confirmLabel || "Confirmer", visible: true },
+	          secondary: { label: cancelLabel || "Annuler", visible: action !== "delete_rows" },
+	          openPdf: { visible: false }
+	        },
+	        primaryAction: () => handleConfirmAction(action, true),
+	        secondaryAction: () => handleConfirmAction(action, false)
+	      });
+	    }
 
     function showMessageView({ title, message }) {
       setPopupState({

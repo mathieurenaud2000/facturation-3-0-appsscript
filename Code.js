@@ -2017,10 +2017,10 @@ function supprimerLignesCochées() {
     throw new Error("Aucune ligne cochée à supprimer.");
   }
 
-  // 🟫 Effet visuel gris temporaire
+  // 🟥 Effet visuel rouge temporaire
   lignesASupprimer.forEach(row => {
     const range = sheet.getRange(row, 1, 1, sheet.getLastColumn());
-    range.setBackground("#dddddd");
+    range.setBackground("#ff0000").setFontColor("#ffffff");
   });
 
   SpreadsheetApp.flush();
@@ -2210,6 +2210,4 @@ function dossier() {
 function onFacturerError(error) {
   return { success: false, message: `Erreur inattendue : ${error.message}` };
 }
-
-
 
