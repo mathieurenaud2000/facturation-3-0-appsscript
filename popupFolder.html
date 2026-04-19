@@ -52,13 +52,13 @@
       }
 
       .standard-alert-icon-symbol {
-        font-size: 100px;
+        font-size: 100px !important;
         line-height: 1;
         color: #00983a;
       }
 
       .standard-alert-title {
-        margin-top: 25px;
+        margin-top: 5px;
         font-size: 24pt;
         font-weight: 700;
         color: var(--text-black);
@@ -66,7 +66,7 @@
 
       .standard-alert-text {
         margin-top: 12px;
-        font-size: 18pt;
+        font-size: 16pt;
         font-weight: 400;
         color: var(--text-gray);
         max-width: 680px;
@@ -79,7 +79,7 @@
 
       .field-row {
         margin-top: 25px;
-        width: 50%;
+        width: 80%;
         min-width: 360px;
         display: grid;
       }
@@ -90,10 +90,11 @@
         padding-left: 10px;
         padding-right: 10px;
         border-radius: 3px;
-        border: 1px solid #000000;
-        font-size: 13pt;
+        border: 1px solid #c6c6c6;
+        font-size: 9pt;
         font-weight: 400;
         outline: none;
+        text-align: center;
       }
 
       .field-input.invalid {
@@ -149,7 +150,7 @@
       <main class="content">
         <div class="standard-alert-content">
           <span class="material-symbols-outlined standard-alert-icon-symbol" aria-hidden="true">folder_open</span>
-          <div class="standard-alert-title">Dossier du système</div>
+          <div class="standard-alert-title">Dossier système</div>
           <div id="folderDescription" class="standard-alert-text">
             Coller le lien du dossier FACTURATION™ 3.0
           </div>
@@ -222,7 +223,7 @@
         if (!trimmed) {
           setInputInvalid(false);
           setDescriptionError(false);
-          setDescriptionText("Coller le lien du dossier FACTURATION™ 3.0");
+          setDescriptionText("Veuillez coller le lien Google Drive du dossier FACTURATION™ 3.0");
           return;
         }
 
@@ -235,11 +236,11 @@
             lastValidFolderId = isValid ? folderId : "";
             setInputInvalid(!isValid);
             if (!isValid) {
-              setDescriptionText("Fichiers manquants");
+              setDescriptionText("Lien non valide");
               setDescriptionError(true);
             } else {
               setDescriptionError(false);
-              setDescriptionText("Coller le lien du dossier FACTURATION™ 3.0");
+              setDescriptionText("Veuillez coller le lien Google Drive du dossier FACTURATION™ 3.0");
             }
             if (!isSubmitting) {
               setSubmitDisabled(!isValid);
@@ -249,7 +250,7 @@
             if (token !== lastValidationToken) return;
             lastValidFolderId = "";
             setInputInvalid(true);
-            setDescriptionText("Fichiers manquants");
+            setDescriptionText("Lien non valide");
             setDescriptionError(true);
             if (!isSubmitting) {
               setSubmitDisabled(true);
@@ -286,7 +287,7 @@
               setSubmittingState(false);
               lastValidFolderId = "";
               setInputInvalid(true);
-              setDescriptionText("Fichiers manquants");
+              setDescriptionText("Lien non valide");
               setDescriptionError(true);
               return;
             }
@@ -295,7 +296,7 @@
           .withFailureHandler(() => {
             setSubmittingState(false);
             setInputInvalid(true);
-            setDescriptionText("Fichiers manquants");
+            setDescriptionText("Lien non valide");
             setDescriptionError(true);
           })
           .submitSystemRootFolderForm(String(raw || ""), resumeAction, resumePayload);
