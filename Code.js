@@ -83,10 +83,6 @@ function ouvrirPopup() {
   });
 }
 
-function onOpen() {
-  Logger.log('onOpen triggered at: ' + new Date());
-}
-
 function nouveauProjet() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
 
