@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <base target="_top">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+	  <base target="_top">
+	  <meta name="viewport" content="width=device-width, initial-scale=1">
+	  <link rel="preconnect" href="https://fonts.googleapis.com">
+	  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
+	  <style>
+	    * {
+	      margin: 0;
+	      padding: 0;
+	      box-sizing: border-box;
+	    }
 
     html, body {
       margin: 0;
@@ -78,49 +81,60 @@
       text-align: center;
     }
 
-    .list-container {
-      flex: 1;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-
-	    .invoice-item {
-	      display: flex;
-	      align-items: center;
-	      gap: 10px;
-	      padding: 10px 0;
-	      border-bottom: 1px solid #eeeeee;
-	      font-size: calc(13pt + 2px);
-	      font-weight: 500;
-	      color: #000;
+	    .list-container {
+	      flex: 1;
+	      overflow-y: auto;
+	      padding-right: 4px;
+	      padding-bottom: 78px;
 	    }
 
-    .invoice-item input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      cursor: pointer;
-    }
+		    .invoice-item {
+		      display: flex;
+		      align-items: center;
+		      gap: 10px;
+		      padding: 10px 0;
+		      border-bottom: 1px solid #eeeeee;
+		      font-size: calc(13pt + 2px);
+		      font-weight: 600;
+		      color: #000;
+		    }
 
-    .message-title {
-      font-size: 16pt;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
+	    .invoice-item input[type="checkbox"] {
+	      width: 18px;
+	      height: 18px;
+	      cursor: pointer;
+	      accent-color: #00983a;
+	    }
+
+	    .invoice-item input[type="checkbox"]:checked + span {
+	      font-weight: 700;
+	    }
+
+	    .message-title {
+	      font-size: 16pt;
+	      font-weight: bold;
+	      margin-bottom: 10px;
+	    }
 
     .message-sub {
       font-size: 13pt;
       line-height: 1.4;
     }
 
-	    .footer {
-	      width: 100%;
-	      height: 78px;
-	      display: flex;
-	      justify-content: flex-end;
-	      align-items: stretch;
-	      padding: 24px 0 4px 0;
-	      background: #fff;
-	    }
+		    .footer {
+		      position: fixed;
+		      left: 0;
+		      right: 0;
+		      bottom: 0;
+		      width: 100%;
+		      height: 78px;
+		      display: flex;
+		      justify-content: flex-end;
+		      align-items: stretch;
+		      padding: 24px 0 4px 0;
+		      background: #fff;
+		      z-index: 10;
+		    }
 
 	    .footer .btn {
 	      width: 100%;
