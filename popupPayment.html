@@ -63,13 +63,13 @@
       flex-direction: column;
     }
 
-    .popup-view.active {
-      display: flex;
-    }
+	    .popup-view.active {
+	      display: flex;
+	    }
 
-    .form-view {
-      padding: 20px 0 80px 0;
-    }
+	    .form-view {
+	      padding: 20px 0 0 0;
+	    }
 
     .error-view {
       justify-content: center;
@@ -84,15 +84,16 @@
       padding-right: 4px;
     }
 
-    .invoice-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 0;
-      border-bottom: 1px solid #eeeeee;
-      font-size: 13pt;
-      color: #000;
-    }
+	    .invoice-item {
+	      display: flex;
+	      align-items: center;
+	      gap: 10px;
+	      padding: 10px 0;
+	      border-bottom: 1px solid #eeeeee;
+	      font-size: calc(13pt + 2px);
+	      font-weight: 500;
+	      color: #000;
+	    }
 
     .invoice-item input[type="checkbox"] {
       width: 18px;
@@ -111,24 +112,28 @@
       line-height: 1.4;
     }
 
-    .footer {
-      position: fixed;
-      bottom: 0;
-      right: 0;
-      width: 100%;
-      height: 70px;
-      display: flex;
-      justify-content: flex-end;
-      align-items: flex-end;
-      padding: 0 0 0 0;
-      background: #fff;
-    }
+	    .footer {
+	      width: 100%;
+	      height: 78px;
+	      display: flex;
+	      justify-content: flex-end;
+	      align-items: stretch;
+	      padding: 24px 0 4px 0;
+	      background: #fff;
+	    }
 
-    .btn {
-      margin-left: 20px;
-      min-height: 52px;
-      padding: 0 48px;
-      border-radius: 7px;
+	    .footer .btn {
+	      width: 100%;
+	      height: 50px;
+	      min-height: 50px;
+	      margin-left: 0;
+	    }
+
+	    .btn {
+	      margin-left: 20px;
+	      min-height: 52px;
+	      padding: 0 48px;
+	      border-radius: 7px;
       cursor: pointer;
       border: none;
       font-size: 23px;
@@ -174,24 +179,22 @@
     }
   </style>
 </head>
-<body>
-  <div id="popupContainer" class="container">
-    <div id="formView" class="popup-view form-view active">
-      <div class="message-title">Enregistrer un paiement</div>
-      <div class="list-container">
-        <? for (let i = 0; i < invoices.length; i++) { ?>
-          <label class="invoice-item">
-            <input type="checkbox" name="invoiceNumber" value="<?= invoices[i].invoiceNumber ?>" onchange="updateSubmitState()">
-            <span>Facture #<?= invoices[i].invoiceNumber ?></span>
-          </label>
-        <? } ?>
-      </div>
+	<body>
+	  <div id="popupContainer" class="container">
+	    <div id="formView" class="popup-view form-view active">
+	      <div class="list-container">
+	        <? for (let i = 0; i < invoices.length; i++) { ?>
+	          <label class="invoice-item">
+	            <input type="checkbox" name="invoiceNumber" value="<?= invoices[i].invoiceNumber ?>" onchange="updateSubmitState()">
+	            <span>Facture #<?= invoices[i].invoiceNumber ?></span>
+	          </label>
+	        <? } ?>
+	      </div>
 
-      <div class="footer">
-        <button class="btn btn-cancel" onclick="google.script.host.close()">Fermer</button>
-        <button id="submit" class="btn btn-green" onclick="submitForm()" disabled>Enregistrer</button>
-      </div>
-    </div>
+	      <div class="footer">
+	        <button id="submit" class="btn btn-green" onclick="submitForm()" disabled>Enregistrer</button>
+	      </div>
+	    </div>
 
     <div id="errorView" class="popup-view error-view">
       <div class="message-title" id="errorTitle">Attention</div>
