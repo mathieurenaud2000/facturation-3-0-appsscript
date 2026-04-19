@@ -221,6 +221,15 @@ function formatInvoiceNumber_(number, padLength) {
   return String(number).padStart(padLength, "0");
 }
 
+function normalizeInvoiceNumberForComparison_(value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  // Ne garder que les numéros, puis enlever les zéros à gauche.
+  // "001" et "1" doivent être équivalents pour les comparaisons historiques.
+  if (!/^\d+$/.test(trimmed)) return "";
+  return String(Number(trimmed));
+}
+
 function getExistingInvoiceValues_(facturerTrackingSheet) {
   const facturerTrackingLastRow = facturerTrackingSheet.getLastRow();
   return facturerTrackingLastRow >= 6
@@ -1300,6 +1309,9 @@ function registerInvoicePayments(selectedInvoiceNumbers) {
       .map(value => String(value || "").trim())
       .filter(String)
   )];
+  const normalizedSelectedInvoiceKeys = new Set(
+    normalizedInvoiceNumbers.map(normalizeInvoiceNumberForComparison_).filter(String)
+  );
 
   if (normalizedInvoiceNumbers.length === 0) {
     throw new Error("Aucune facture sélectionnée.");
@@ -1315,7 +1327,7 @@ function registerInvoicePayments(selectedInvoiceNumbers) {
       paymentDate: row[6],
       rowNumber: index + 6
     }))
-    .filter(entry => normalizedInvoiceNumbers.includes(entry.invoiceNumber));
+    .filter(entry => normalizedSelectedInvoiceKeys.has(normalizeInvoiceNumberForComparison_(entry.invoiceNumber)));
 
   if (selectedTrackingRows.some(entry => entry.paymentDate !== "" && entry.paymentDate !== null)) {
     throw new Error("Cette facture est déjà marquée comme payée.");
@@ -1331,10 +1343,12 @@ function registerInvoicePayments(selectedInvoiceNumbers) {
     const timeRows = facturerTimeSheet.getRange(`P7:S${lastTimeRow}`).getValues();
     timeRows.forEach((row, index) => {
       const invoiceNumber = String(row[0] || "").trim();
-      if (normalizedInvoiceNumbers.includes(invoiceNumber)) {
+      const normalizedTimeInvoice = normalizeInvoiceNumberForComparison_(invoiceNumber);
+      if (normalizedSelectedInvoiceKeys.has(normalizedTimeInvoice)) {
         const rowNumber = index + 7;
         facturerTimeSheet.getRange(`R${rowNumber}`).setValue(true);
         facturerTimeSheet.getRange(`S${rowNumber}`).setValue(today).setNumberFormat("d mmmm yyyy");
+        facturerTimeSheet.getRange(`A${rowNumber}:U${rowNumber}`).setFontColor("#999999");
       }
     });
   }
@@ -1420,7 +1434,8 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   });
   const facturerScopeSummary = facturerCampaignSummary.join(", ");
 
-  facturerTempSheet.getRange("L1").setValue(facturerFullInvoiceNumber);
+  // Forcer texte pour préserver les zéros à gauche ("001") dans le PDF.
+  facturerTempSheet.getRange("L1").setNumberFormat("@").setValue(facturerFullInvoiceNumber);
   facturerTempSheet.getRange("C7").setValue(facturerToday).setNumberFormat("d mmmm yyyy");
   facturerTempSheet.getRange("C10").setValue(contact);
   facturerTempSheet.getRange("C12").setValue(formatFrenchInvoiceList_(facturerCampaignSummary));
@@ -1454,11 +1469,14 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
       const facturerRowIndex = row.index;
       facturerTimeSheet.getRange(`A${facturerRowIndex}`).setValue(false);
       facturerTimeSheet.getRange(`O${facturerRowIndex}`).setValue(true);
-      facturerTimeSheet.getRange(`P${facturerRowIndex}`).setValue(facturerFullInvoiceNumber);
+      // Forcer texte pour préserver les zéros à gauche dans FEUILLE DE TEMPS.
+      facturerTimeSheet.getRange(`P${facturerRowIndex}`).setNumberFormat("@").setValue(facturerFullInvoiceNumber);
       facturerTimeSheet.getRange(`Q${facturerRowIndex}`).setValue(facturerToday).setNumberFormat("d mmmm yyyy");
     });
 
     const facturerTrackingRow = facturerTrackingSheet.getLastRow() + 1 >= 6 ? facturerTrackingSheet.getLastRow() + 1 : 6;
+    // IMPORTANT: fixer le format texte avant d'écrire pour éviter la coercition "001" -> 1.
+    facturerTrackingSheet.getRange(`B${facturerTrackingRow}`).setNumberFormat("@");
     facturerTrackingSheet.getRange(`A${facturerTrackingRow}:I${facturerTrackingRow}`).setValues([[
       false,
       facturerFullInvoiceNumber,
@@ -1470,7 +1488,8 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
       "",
       ""
     ]]);
-    facturerTrackingSheet.getRange(`B${facturerTrackingRow}`).setNumberFormat("@");
+    // Case à cocher réelle en colonne A (pas seulement la valeur FALSE).
+    facturerTrackingSheet.getRange(`A${facturerTrackingRow}`).insertCheckboxes().setValue(false);
     facturerTrackingSheet.getRange(`C${facturerTrackingRow}`).setNumberFormat("d mmmm yyyy");
 
     facturerSpreadsheet.deleteSheet(facturerTempSheet);
