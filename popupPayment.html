@@ -245,7 +245,7 @@
 	                <span>Facture #<?= invoices[i].invoiceNumber ?></span>
 	                <span class="invoice-amount"><?= invoices[i].totalAmount ?></span>
 	              </div>
-	              <div class="invoice-details"><?= [invoices[i].client, invoices[i].projectTitle, invoices[i].serviceTitle].filter(Boolean).join(" · ") ?></div>
+	              <div class="invoice-details"><?= [invoices[i].client, invoices[i].campaign, invoices[i].project].filter(Boolean).join(" · ") ?></div>
 	            </div>
 	          </label>
 	        <? } ?>

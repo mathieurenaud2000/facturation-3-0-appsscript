@@ -1468,9 +1468,10 @@ function paye() {
 
   const facturerSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const facturerTrackingSheet = facturerSpreadsheet.getSheetByName("FACTURATION");
+  const facturerTimeSheet = facturerSpreadsheet.getSheetByName("FEUILLE DE TEMPS");
 
-  if (!facturerTrackingSheet) {
-    openStandaloneMessageView_("Erreur : La feuille FACTURATION n'existe pas.");
+  if (!facturerTrackingSheet || !facturerTimeSheet) {
+    openStandaloneMessageView_("Erreur : La feuille 'FACTURATION' ou 'FEUILLE DE TEMPS' est manquante.");
     return;
   }
 
@@ -1478,25 +1479,34 @@ function paye() {
   const trackingValues = lastRow >= 6
     ? facturerTrackingSheet.getRange(`B6:H${lastRow}`).getValues()
     : [];
-  const pdfFormulas = lastRow >= 6 ? facturerTrackingSheet.getRange(`G6:G${lastRow}`).getFormulas() : [];
-  const pdfLinks = lastRow >= 6 ? facturerTrackingSheet.getRange(`G6:G${lastRow}`).getRichTextValues() : [];
+  const lastTimeRow = facturerTimeSheet.getLastRow();
+  const timeValues = lastTimeRow >= 7 ? facturerTimeSheet.getRange(`B7:P${lastTimeRow}`).getValues() : [];
+  const invoiceDetailsByNumber = new Map();
+  timeValues.forEach(row => {
+    const invoiceKey = normalizeInvoiceNumberForComparison_(row[14]);
+    if (!invoiceKey) return;
+    if (!invoiceDetailsByNumber.has(invoiceKey)) {
+      invoiceDetailsByNumber.set(invoiceKey, { clients: new Set(), campaigns: new Set(), projects: new Set() });
+    }
+    const details = invoiceDetailsByNumber.get(invoiceKey);
+    ["clients", "campaigns", "projects"].forEach((field, index) => {
+      const value = String(row[index] || "").trim();
+      if (value) details[field].add(value);
+    });
+  });
   const unpaidInvoices = trackingValues
     .map((row, index) => ({ row, index }))
     .filter(({ row }) => String(row[0] || "").trim() !== "" && (row[6] === "" || row[6] === null))
     .map(({ row, index }) => {
       const invoiceNumber = String(row[0] || "").trim();
-      const formula = pdfFormulas[index] ? pdfFormulas[index][0] : "";
-      const richText = pdfLinks[index] ? pdfLinks[index][0] : null;
-      const formulaMatch = String(formula || "").match(/HYPERLINK\(\s*"([^"]+)"/i);
-      const pdfUrl = formulaMatch ? formulaMatch[1] : (richText && richText.getLinkUrl()) || String(row[5] || "");
-      const metadata = readInvoiceDisplayMetadata_(pdfUrl, invoiceNumber);
+      const details = invoiceDetailsByNumber.get(normalizeInvoiceNumberForComparison_(invoiceNumber));
       const amount = Number(row[4]);
       return {
         invoiceNumber,
         totalAmount: Number.isFinite(amount) ? amount.toLocaleString("fr-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " $" : "Montant non disponible",
-        client: metadata.client || String(row[2] || "").trim(),
-        projectTitle: metadata.projectTitle || String(row[3] || "").trim(),
-        serviceTitle: metadata.serviceTitle || "Titre du service non disponible",
+        client: details && details.clients.size ? [...details.clients].join(", ") : String(row[2] || "").trim(),
+        campaign: details && details.campaigns.size ? [...details.campaigns].join(", ") : String(row[3] || "").trim(),
+        project: details && details.projects.size ? [...details.projects].join(", ") : "Projet non disponible",
         rowNumber: index + 6
       };
     });
