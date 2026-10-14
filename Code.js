@@ -1519,7 +1519,7 @@ function paye() {
   const html = HtmlService.createTemplateFromFile("popupPayment");
   html.invoices = unpaidInvoices;
 
-  const htmlOutput = html.evaluate().setWidth(520).setHeight(430);
+  const htmlOutput = html.evaluate().setWidth(520).setHeight(300);
   htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
   SpreadsheetApp.getUi().showModelessDialog(htmlOutput, "Enregistrer un paiement");
 }
