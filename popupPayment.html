@@ -92,12 +92,45 @@
 		      display: flex;
 		      align-items: center;
 		      gap: 10px;
-		      padding: 10px 0;
+		      padding: 14px 12px;
 		      border-bottom: 1px solid #eeeeee;
 		      font-size: calc(13pt + 2px);
 		      font-weight: 500;
 		      color: #000;
+		      cursor: pointer;
 		    }
+
+      .invoice-content {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .invoice-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 14px;
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .invoice-heading .invoice-amount {
+        white-space: nowrap;
+      }
+
+      .invoice-details {
+        margin-top: 6px;
+        color: #666666;
+        font-size: 13px;
+        font-weight: 400;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+      }
+
+      .invoice-item input[type="checkbox"]:checked + .invoice-content .invoice-heading {
+        color: #007b2e;
+        font-weight: 700;
+      }
 
 	    .invoice-item input[type="checkbox"] {
 	      width: 18px;
@@ -207,7 +240,13 @@
 	        <? for (let i = 0; i < invoices.length; i++) { ?>
 	          <label class="invoice-item">
 	            <input type="checkbox" name="invoiceNumber" value="<?= invoices[i].invoiceNumber ?>" onchange="updateSubmitState()">
-	            <span>Facture #<?= invoices[i].invoiceNumber ?></span>
+	            <div class="invoice-content">
+	              <div class="invoice-heading">
+	                <span>Facture #<?= invoices[i].invoiceNumber ?></span>
+	                <span class="invoice-amount"><?= invoices[i].totalAmount ?></span>
+	              </div>
+	              <div class="invoice-details"><?= [invoices[i].client, invoices[i].projectTitle, invoices[i].serviceTitle].filter(Boolean).join(" · ") ?></div>
+	            </div>
 	          </label>
 	        <? } ?>
 	      </div>

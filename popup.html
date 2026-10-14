@@ -316,6 +316,20 @@
       font-weight: 700;
     }
 
+    .invoice-openai-warning {
+      margin-bottom: 18px;
+      padding: 12px 14px;
+      border-radius: 7px;
+      background: #fff4d6;
+      color: #614600;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .invoice-openai-warning[hidden] {
+      display: none;
+    }
+
     .invoice-summary-value-row {
       display: inline-flex;
       align-items: baseline;
@@ -1211,6 +1225,7 @@
 	      </div>
 	      <div id="invoicePreviewContent" class="invoice-preview-content">
 	        <div id="invoicePreviewScroll" class="invoice-preview-scroll">
+	          <div id="previewOpenAIWarning" class="invoice-openai-warning" role="status" hidden></div>
 	          <section class="invoice-summary-grid" aria-label="Résumé de la facture">
 	            <div class="invoice-summary-label">Client</div>
             <div class="invoice-summary-value" id="previewClientValue"></div>
@@ -2204,6 +2219,9 @@
         ? options.scrollTop
         : (scrollElement ? scrollElement.scrollTop : 0);
       const campaigns = [...new Set(blocks.map(block => String(block.campaign || "").trim()).filter(Boolean))];
+      const openaiWarning = document.getElementById("previewOpenAIWarning");
+      openaiWarning.textContent = preview.openaiWarning || "";
+      openaiWarning.hidden = !preview.openaiWarning;
       document.getElementById("previewClientValue").textContent = preview.client || "";
       document.getElementById("previewProjectsLabel").textContent = campaigns.length > 1 ? "Projets" : "Projet";
       document.getElementById("previewProjectsValue").textContent = formatFrenchList(campaigns);

@@ -611,6 +611,7 @@ function validateInvoiceGeneration_() {
 
   const validationCategories = new Set();
   const distinctClients = new Set();
+  const invalidAmountRows = [];
   const toDecimalHours = (value) => {
     if (value instanceof Date) {
       return value.getHours() + value.getMinutes() / 60 + value.getSeconds() / 3600;
@@ -624,7 +625,7 @@ function validateInvoiceGeneration_() {
     return NaN;
   };
 
-  facturerCheckedRows.forEach(({ row }) => {
+  facturerCheckedRows.forEach(({ row, index }) => {
     const client = String(row[1] || "").trim();
     if (client) {
       distinctClients.add(client);
@@ -648,6 +649,11 @@ function validateInvoiceGeneration_() {
       validationCategories.add("invalid_time");
     }
 
+    if (isMissingValue(row[10]) || !["number", "string"].includes(typeof row[10]) || !Number.isFinite(Number(row[10]))) {
+      invalidAmountRows.push(index);
+      validationCategories.add("invalid_amount");
+    }
+
     if (row[14] === true) {
       validationCategories.add("already_invoiced");
     }
@@ -668,7 +674,8 @@ function validateInvoiceGeneration_() {
     "invalid_rate",
     "already_invoiced",
     "already_paid",
-    "invalid_time"
+    "invalid_time",
+    "invalid_amount"
   ];
   const validationMessages = {
     same_client: "Un seul client par facture.",
@@ -677,7 +684,8 @@ function validateInvoiceGeneration_() {
     already_invoiced: "Attention, certaines entrées ont déjà été facturées.",
     already_paid: "Attention. Certaines entrées ont déjà été payées.",
     task_running: "Attention, tâche en cours.",
-    invalid_time: "Attention, heure invalide."
+    invalid_time: "Attention, heure invalide.",
+    invalid_amount: `Attention. Montant invalide en colonne K, ligne${invalidAmountRows.length > 1 ? "s" : ""} ${invalidAmountRows.join(", ")}. Corrigez le montant avant de facturer.`
   };
 
   for (const category of validationPriority) {
@@ -817,11 +825,12 @@ function generateInvoiceTextWithOpenAI(previewPayload) {
   const apiKey = PropertiesService.getScriptProperties().getProperty("OPENAI_API_KEY");
   if (!apiKey) {
     Logger.log("OpenAI invoice preview skipped: missing OPENAI_API_KEY. Local fallback used.");
-    return null;
+    return { success: false, message: "OpenAI n’a pas été utilisé : la clé API n’est pas configurée. Les textes de remplacement sont affichés et peuvent être modifiés." };
   }
 
   const requestPayload = {
-    model: "gpt-4o-mini",
+    model: "gpt-6-luna",
+    reasoning: { effort: "none" },
     instructions: [
       "Tu aides a preparer un apercu de facture pour un client.",
       "Retourne uniquement du JSON valide, sans Markdown ni texte hors JSON.",
@@ -870,7 +879,7 @@ function generateInvoiceTextWithOpenAI(previewPayload) {
       }
     },
     temperature: 0.2,
-    max_output_tokens: 1200
+    max_output_tokens: Math.max(1200, (previewPayload.blocks || []).length * 300 + 300)
   };
 
   try {
@@ -886,21 +895,24 @@ function generateInvoiceTextWithOpenAI(previewPayload) {
     const responseCode = response.getResponseCode();
     if (responseCode < 200 || responseCode >= 300) {
       Logger.log(`OpenAI invoice preview failed: HTTP ${responseCode}. Local fallback used.`);
-      return null;
+      return { success: false, message: `OpenAI n’a pas pu générer les textes (erreur ${responseCode}). Les textes de remplacement sont affichés et peuvent être modifiés.` };
     }
 
     const responseData = JSON.parse(response.getContentText());
+    if (responseData.status && responseData.status !== "completed") {
+      return { success: false, message: "La réponse d’OpenAI est incomplète. Les textes de remplacement sont affichés et peuvent être modifiés." };
+    }
     const outputText = extractOpenAIInvoiceResponseText_(responseData);
     const generatedText = parseOpenAIInvoiceText_(outputText);
     if (!generatedText) {
       Logger.log("OpenAI invoice preview failed: invalid or empty JSON. Local fallback used.");
-      return null;
+      return { success: false, message: "OpenAI a retourné une réponse inutilisable. Les textes de remplacement sont affichés et peuvent être modifiés." };
     }
 
-    return generatedText;
+    return Object.assign({ success: true }, generatedText);
   } catch (error) {
     Logger.log(`OpenAI invoice preview exception: ${error && error.message ? error.message : error}. Local fallback used.`);
-    return null;
+    return { success: false, message: "OpenAI n’a pas pu générer les textes. Les textes de remplacement sont affichés et peuvent être modifiés." };
   }
 }
 
@@ -982,7 +994,10 @@ function buildFixedInvoiceBlocks_(facturerCheckedRows) {
 
     const activityName = cleanText(row[4]);
     const time = toDecimalHours(row[8]);
-    const price = Number(row[10]) || 0;
+    const price = Number(row[10]);
+    if (row[10] === "" || row[10] === null || !Number.isFinite(price)) {
+      throw new Error(`Montant invalide en colonne K, ligne ${index}.`);
+    }
     const existingActivity = block.activities.find(activity => normalizeString_(activity.name) === normalizeString_(activityName));
     if (existingActivity) {
       existingActivity.time += time;
@@ -1127,20 +1142,13 @@ function buildFixedInvoiceLayoutRows_(blocks) {
 
 function writeFixedInvoiceBlocks_(sheet, blocks) {
   const startRow = 21;
-  const contentRowCount = 28;
+  const templateContentRowCount = 28;
   const bufferRow = 49;
   const minimumRowHeight = 1;
   const bufferRowExtensionPx = 40;
   const targetHeight = 640; //625 605
   const layoutRows = buildFixedInvoiceLayoutRows_(blocks);
   const targetTotalHeight = targetHeight + bufferRowExtensionPx;
-
-  if (layoutRows.length > contentRowCount) {
-    return {
-      success: false,
-      message: "Trop d’informations pour une seule facture. Veuillez réduire le nombre de blocs, d’activités ou de descriptions."
-    };
-  }
 
   const requestedContentHeight = layoutRows.reduce((sum, layoutRow) => {
     return sum + layoutRow.height;
@@ -1153,10 +1161,22 @@ function writeFixedInvoiceBlocks_(sheet, blocks) {
     };
   }
 
+  const contentRowCount = Math.max(templateContentRowCount, layoutRows.length);
+  const extraRows = contentRowCount - templateContentRowCount;
+  if (extraRows > 0) {
+    sheet.insertRowsBefore(bufferRow, extraRows);
+    sheet.getRange(startRow, 1, 1, 16).copyTo(
+      sheet.getRange(bufferRow, 1, extraRows, 16),
+      SpreadsheetApp.CopyPasteType.PASTE_FORMAT,
+      false
+    );
+  }
+
   const workRange = sheet.getRange(startRow, 1, contentRowCount, 16);
   workRange.breakApart();
   workRange.clearContent();
   workRange.setWrap(false);
+  workRange.setFontWeight("normal");
   sheet.setRowHeights(startRow, contentRowCount, minimumRowHeight);
 
   layoutRows.forEach((layoutRow, index) => {
@@ -1458,13 +1478,28 @@ function paye() {
   const trackingValues = lastRow >= 6
     ? facturerTrackingSheet.getRange(`B6:H${lastRow}`).getValues()
     : [];
+  const pdfFormulas = lastRow >= 6 ? facturerTrackingSheet.getRange(`G6:G${lastRow}`).getFormulas() : [];
+  const pdfLinks = lastRow >= 6 ? facturerTrackingSheet.getRange(`G6:G${lastRow}`).getRichTextValues() : [];
   const unpaidInvoices = trackingValues
-    .map((row, index) => ({
-      invoiceNumber: String(row[0] || "").trim(),
-      paymentDate: row[6],
-      rowNumber: index + 6
-    }))
-    .filter(entry => entry.invoiceNumber !== "" && (entry.paymentDate === "" || entry.paymentDate === null));
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) => String(row[0] || "").trim() !== "" && (row[6] === "" || row[6] === null))
+    .map(({ row, index }) => {
+      const invoiceNumber = String(row[0] || "").trim();
+      const formula = pdfFormulas[index] ? pdfFormulas[index][0] : "";
+      const richText = pdfLinks[index] ? pdfLinks[index][0] : null;
+      const formulaMatch = String(formula || "").match(/HYPERLINK\(\s*"([^"]+)"/i);
+      const pdfUrl = formulaMatch ? formulaMatch[1] : (richText && richText.getLinkUrl()) || String(row[5] || "");
+      const metadata = readInvoiceDisplayMetadata_(pdfUrl, invoiceNumber);
+      const amount = Number(row[4]);
+      return {
+        invoiceNumber,
+        totalAmount: Number.isFinite(amount) ? amount.toLocaleString("fr-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " $" : "Montant non disponible",
+        client: metadata.client || String(row[2] || "").trim(),
+        projectTitle: metadata.projectTitle || String(row[3] || "").trim(),
+        serviceTitle: metadata.serviceTitle || "Titre du service non disponible",
+        rowNumber: index + 6
+      };
+    });
 
   if (unpaidInvoices.length === 0) {
     openStandaloneMessageView_("Aucune facture non payée existe.", "Attention");
@@ -1474,9 +1509,27 @@ function paye() {
   const html = HtmlService.createTemplateFromFile("popupPayment");
   html.invoices = unpaidInvoices;
 
-  const htmlOutput = html.evaluate().setWidth(400).setHeight(360);
+  const htmlOutput = html.evaluate().setWidth(520).setHeight(430);
   htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1');
   SpreadsheetApp.getUi().showModelessDialog(htmlOutput, "Enregistrer un paiement");
+}
+
+function readInvoiceDisplayMetadata_(pdfUrl, invoiceNumber) {
+  const fileId = extractDriveFileIdFromUrl_(pdfUrl);
+  if (!fileId) return {};
+  try {
+    const description = DriveApp.getFileById(fileId).getDescription() || "";
+    const marker = "MAT_INVOICE_METADATA:";
+    const markerIndex = description.lastIndexOf(marker);
+    if (markerIndex === -1) return {};
+    const metadata = JSON.parse(description.slice(markerIndex + marker.length));
+    return normalizeInvoiceNumberForComparison_(metadata.invoiceNumber) === normalizeInvoiceNumberForComparison_(invoiceNumber)
+      ? metadata
+      : {};
+  } catch (error) {
+    Logger.log(`Invoice display metadata unavailable: ${invoiceNumber}`);
+    return {};
+  }
 }
 
 function registerInvoicePayments(selectedInvoiceNumbers) {
@@ -1538,7 +1591,35 @@ function registerInvoicePayments(selectedInvoiceNumbers) {
   }
 }
 
+function captureInvoiceRangeState_(range) {
+  return {
+    range,
+    values: range.getValues(),
+    formulas: range.getFormulas(),
+    numberFormats: range.getNumberFormats(),
+    dataValidations: range.getDataValidations()
+  };
+}
+
+function restoreInvoiceRangeState_(state) {
+  state.range.setValues(state.values.map((row, rowIndex) => row.map((value, columnIndex) => state.formulas[rowIndex][columnIndex] || value)));
+  state.range.setNumberFormats(state.numberFormats);
+  state.range.setDataValidations(state.dataValidations);
+}
+
 function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExistingFile, invoicePreview) {
+  const lock = LockService.getDocumentLock() || LockService.getScriptLock();
+  if (!lock.tryLock(30000)) {
+    return { success: false, message: "Une facture est déjà en cours d’enregistrement. Veuillez patienter puis recommencer." };
+  }
+  try {
+    return submitFacturerForm_(contact, activityType, invoiceNumber, overwriteExistingFile, invoicePreview);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function submitFacturerForm_(contact, activityType, invoiceNumber, overwriteExistingFile, invoicePreview) {
   const validationResult = validateInvoiceGeneration_();
   if (!validationResult.success) {
     return validationResult;
@@ -1585,20 +1666,6 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
     return { success: false, message: "Aucune activité n’est sélectionnée" };
   }
 
-  const wasModelSheetHidden = facturerModelSheet.isSheetHidden();
-  if (wasModelSheetHidden) {
-    facturerModelSheet.showSheet();
-  }
-  let facturerTempSheet;
-  try {
-    facturerTempSheet = facturerModelSheet.copyTo(facturerSpreadsheet).setName(facturerFullInvoiceNumber);
-  } finally {
-    if (wasModelSheetHidden) {
-      facturerModelSheet.hideSheet();
-    }
-  }
-  Logger.log(`Temp invoice sheet created: name="${facturerTempSheet.getName()}", sheetId=${facturerTempSheet.getSheetId()}, index=${facturerTempSheet.getIndex()}`);
-
   const facturerInvoiceBlocks = applyValidatedInvoicePreviewToBlocks_(buildFixedInvoiceBlocks_(facturerRowsToInvoice), invoicePreview);
   const validatedServiceTitle = cleanGeneratedInvoiceText_(invoicePreview && invoicePreview.serviceTitle);
   const facturerServiceTitle = validatedServiceTitle || activityType;
@@ -1618,37 +1685,55 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
   });
   const facturerScopeSummary = facturerCampaignSummary.join(", ");
 
-  // Forcer texte pour préserver les zéros à gauche ("001") dans le PDF.
-  facturerTempSheet.getRange("L1").setNumberFormat("@").setValue(facturerFullInvoiceNumber);
-  facturerTempSheet.getRange("C7").setValue(facturerToday).setNumberFormat("d mmmm yyyy");
-  facturerTempSheet.getRange("C10").setValue(contact);
-  facturerTempSheet.getRange("C12").setValue(formatFrenchInvoiceList_(facturerCampaignSummary));
-  facturerTempSheet.getRange("C14").setValue(facturerServiceTitle);
-  facturerTempSheet.getRange("C17").setValue(Number(facturerTotalAmount));
-  facturerTempSheet.getRange("N51").setValue(Number(facturerTotalAmount));
-  const fixedBlockWriteResult = writeFixedInvoiceBlocks_(facturerTempSheet, facturerInvoiceBlocks);
-  if (!fixedBlockWriteResult.success) {
-    facturerSpreadsheet.deleteSheet(facturerTempSheet);
-    return fixedBlockWriteResult;
-  }
-
-  SpreadsheetApp.flush();
+  const timeStates = facturerRowsToInvoice.flatMap(({ index }) => [
+    captureInvoiceRangeState_(facturerTimeSheet.getRange(`A${index}`)),
+    captureInvoiceRangeState_(facturerTimeSheet.getRange(`O${index}:Q${index}`))
+  ]);
+  const facturerTrackingRow = Math.max(6, facturerTrackingSheet.getLastRow() + 1);
+  const originalTrackingRowCount = facturerTrackingSheet.getMaxRows();
+  const wasModelSheetHidden = facturerModelSheet.isSheetHidden();
+  let facturerTempSheet = null;
   let facturerPdfFile = null;
+  let trackingState = null;
+  let timeWritesStarted = false;
+  let trackingWritesStarted = false;
+  let previousFileTrashAttempted = false;
+  let trackingRowsAdded = 0;
   try {
+    if (wasModelSheetHidden) facturerModelSheet.showSheet();
+    facturerTempSheet = facturerModelSheet.copyTo(facturerSpreadsheet);
+    facturerTempSheet.setName(facturerFullInvoiceNumber);
+    if (wasModelSheetHidden) facturerModelSheet.hideSheet();
+
+    facturerTempSheet.getRange("L1").setNumberFormat("@").setValue(facturerFullInvoiceNumber);
+    facturerTempSheet.getRange("C7").setValue(facturerToday).setNumberFormat("d mmmm yyyy");
+    facturerTempSheet.getRange("C10").setValue(contact);
+    facturerTempSheet.getRange("C12").setValue(formatFrenchInvoiceList_(facturerCampaignSummary));
+    facturerTempSheet.getRange("C14").setValue(facturerServiceTitle);
+    facturerTempSheet.getRange("C17").setValue(Number(facturerTotalAmount));
+    facturerTempSheet.getRange("N51").setValue(Number(facturerTotalAmount));
+    const fixedBlockWriteResult = writeFixedInvoiceBlocks_(facturerTempSheet, facturerInvoiceBlocks);
+    if (!fixedBlockWriteResult.success) {
+      return fixedBlockWriteResult;
+    }
+
+    SpreadsheetApp.flush();
     const facturerSheetNamesBeforeExport = facturerSpreadsheet.getSheets().map(sheet => sheet.getName());
     const facturerTempSheetStillExists = facturerSpreadsheet.getSheets().some(sheet => sheet.getSheetId() === facturerTempSheet.getSheetId());
     Logger.log(`Temp invoice sheet expected before export: name="${facturerTempSheet.getName()}", sheetId=${facturerTempSheet.getSheetId()}`);
     Logger.log(`Spreadsheet sheets before export: ${JSON.stringify(facturerSheetNamesBeforeExport)}`);
     Logger.log(`Temp invoice sheet exists before export: ${facturerTempSheetStillExists}`);
     const facturerPdfBlob = exportInvoiceSheetPdfBlob_(facturerSpreadsheet.getId(), facturerTempSheet.getSheetId(), facturerFileName);
-    if (facturerExistingFile) {
-      facturerPdfFile = facturerDriveFolder.createFile(facturerPdfBlob);
-      facturerExistingFile.setTrashed(true);
-    } else {
-      facturerPdfFile = facturerDriveFolder.createFile(facturerPdfBlob);
-    }
+    facturerPdfFile = facturerDriveFolder.createFile(facturerPdfBlob);
+    facturerPdfFile.setDescription("MAT_INVOICE_METADATA:" + JSON.stringify({
+      invoiceNumber: facturerFullInvoiceNumber,
+      client: contact,
+      projectTitle: formatFrenchInvoiceList_(facturerCampaignSummary),
+      serviceTitle: facturerServiceTitle
+    }));
     const facturerPdfUrl = facturerPdfFile.getUrl();
 
+    timeWritesStarted = true;
     facturerRowsToInvoice.forEach(row => {
       const facturerRowIndex = row.index;
       facturerTimeSheet.getRange(`A${facturerRowIndex}`).setValue(false);
@@ -1658,7 +1743,13 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
       facturerTimeSheet.getRange(`Q${facturerRowIndex}`).setValue(facturerToday).setNumberFormat("d mmmm yyyy");
     });
 
-    const facturerTrackingRow = facturerTrackingSheet.getLastRow() + 1 >= 6 ? facturerTrackingSheet.getLastRow() + 1 : 6;
+    if (facturerTrackingRow > originalTrackingRowCount) {
+      const rowsToAdd = facturerTrackingRow - originalTrackingRowCount;
+      facturerTrackingSheet.insertRowsAfter(originalTrackingRowCount, rowsToAdd);
+      trackingRowsAdded = rowsToAdd;
+    }
+    trackingState = captureInvoiceRangeState_(facturerTrackingSheet.getRange(`A${facturerTrackingRow}:I${facturerTrackingRow}`));
+    trackingWritesStarted = true;
     // IMPORTANT: fixer le format texte avant d'écrire pour éviter la coercition "001" -> 1.
     facturerTrackingSheet.getRange(`B${facturerTrackingRow}`).setNumberFormat("@");
     facturerTrackingSheet.getRange(`A${facturerTrackingRow}:I${facturerTrackingRow}`).setValues([[
@@ -1676,19 +1767,53 @@ function submitFacturerForm(contact, activityType, invoiceNumber, overwriteExist
     facturerTrackingSheet.getRange(`A${facturerTrackingRow}`).insertCheckboxes().setValue(false);
     facturerTrackingSheet.getRange(`C${facturerTrackingRow}`).setNumberFormat("d mmmm yyyy");
 
-    facturerSpreadsheet.deleteSheet(facturerTempSheet);
+    SpreadsheetApp.flush();
+    if (facturerExistingFile) {
+      previousFileTrashAttempted = true;
+      facturerExistingFile.setTrashed(true);
+    }
     return { success: true, pdfUrl: facturerPdfUrl, invoiceNumber: facturerFullInvoiceNumber };
   } catch (e) {
     Logger.log(`Exception: ${e.message}`);
-    if (facturerPdfFile) {
+    let rollbackSucceeded = true;
+    const rollbackActions = [];
+    if (timeWritesStarted) timeStates.forEach(state => rollbackActions.push(() => restoreInvoiceRangeState_(state)));
+    if (trackingWritesStarted) rollbackActions.push(() => restoreInvoiceRangeState_(trackingState));
+    if (previousFileTrashAttempted) rollbackActions.push(() => facturerExistingFile.setTrashed(false));
+    if (trackingRowsAdded) rollbackActions.push(() => facturerTrackingSheet.deleteRows(originalTrackingRowCount + 1, trackingRowsAdded));
+    rollbackActions.push(() => SpreadsheetApp.flush());
+    rollbackActions.forEach(action => {
+      try {
+        action();
+      } catch (rollbackError) {
+        rollbackSucceeded = false;
+        Logger.log(`Invoice rollback failed: ${rollbackError.message}`);
+      }
+    });
+    if (rollbackSucceeded && facturerPdfFile) {
       try {
         facturerPdfFile.setTrashed(true);
       } catch (trashError) {
         Logger.log(`Cleanup exception: ${trashError.message}`);
       }
     }
-    facturerSpreadsheet.deleteSheet(facturerTempSheet);
-    return { success: false, message: "Erreur lors de la génération du PDF." };
+    return {
+      success: false,
+      message: rollbackSucceeded
+        ? "Erreur lors de la génération du PDF."
+        : "Enregistrement incomplet : le PDF a été conservé. Vérifiez les activités et la feuille FACTURATION avant de recommencer."
+    };
+  } finally {
+    try {
+      if (wasModelSheetHidden && !facturerModelSheet.isSheetHidden()) facturerModelSheet.hideSheet();
+    } catch (cleanupError) {
+      Logger.log(`Invoice model visibility restoration failed: ${cleanupError.message}`);
+    }
+    try {
+      if (facturerTempSheet) facturerSpreadsheet.deleteSheet(facturerTempSheet);
+    } catch (cleanupError) {
+      Logger.log(`Invoice temporary sheet cleanup failed: ${cleanupError.message}`);
+    }
   }
 }
 
@@ -1856,7 +1981,7 @@ function prepareInvoicePreview(invoiceNumber) {
       }))
     })
     : null;
-  if (generatedInvoiceText) {
+  if (generatedInvoiceText && generatedInvoiceText.success !== false) {
     const generatedServiceTitle = cleanGeneratedInvoiceText_(generatedInvoiceText.serviceTitle);
     if (generatedServiceTitle) {
       serviceTitle = generatedServiceTitle;
@@ -1884,12 +2009,23 @@ function prepareInvoicePreview(invoiceNumber) {
       projects,
       serviceTitle,
       totalAmount: Number(totalAmount.toFixed(2)),
+      openaiWarning: generatedInvoiceText && generatedInvoiceText.success === false ? generatedInvoiceText.message : "",
       blocks
     }
   };
 }
 
 // NOUVELLE ENTRÉ DE TEMPS
+
+function getTimeEntryBlockStartRow_(sheet, rowNumber) {
+  const rows = sheet.getRange(`B7:E${rowNumber}`).getValues();
+  for (let index = rows.length - 1; index >= 0; index--) {
+    if (rows[index].every(value => value === null || String(value).trim() === "")) {
+      return index + 8;
+    }
+  }
+  return 7;
+}
 
 function newTimeEntry() {
   const initGuard = ensureSystemRootInitializedOrShowDialog_("newTimeEntry", null);
@@ -2087,10 +2223,11 @@ function submitTimeEntryForm(client, campaign, project, activity, newRow, checke
 
   const now = new Date();
   const currentTimeValue = (now.getHours() * 60 + now.getMinutes()) / (24 * 60);
+  const cumulativeStartRow = checkedRowIndex === -1 ? 7 : getTimeEntryBlockStartRow_(sheetTime, checkedRowIndex);
   const buildTimeFormula = (rowNumber) => `=IF(H${rowNumber}<>""; ROUND((IF(H${rowNumber}<G${rowNumber}; H${rowNumber}+1; H${rowNumber})-G${rowNumber})*96)/4; "")`;
-  const buildHoursCumulativeFormula = (rowNumber) => `=IF(H${rowNumber}<>""; SUM($I$7:I${rowNumber}); "")`;
+  const buildHoursCumulativeFormula = (rowNumber) => `=IF(H${rowNumber}<>""; SUM($I$${cumulativeStartRow}:I${rowNumber}); "")`;
   const buildAmountFormula = (rowNumber) => `=IF(H${rowNumber}<>""; I${rowNumber}*T${rowNumber}; "")`;
-  const buildAmountCumulativeFormula = (rowNumber) => `=IF(H${rowNumber}<>""; SUM($K$7:K${rowNumber}); "")`;
+  const buildAmountCumulativeFormula = (rowNumber) => `=IF(H${rowNumber}<>""; SUM($K$${cumulativeStartRow}:K${rowNumber}); "")`;
   const applyTimeColumnsDisplayFormat = () => {
     const lastTimeRow = Math.max(7, sheetTime.getLastRow());
     sheetTime.getRange(`G7:H${lastTimeRow}`).setNumberFormat("HH:mm");
